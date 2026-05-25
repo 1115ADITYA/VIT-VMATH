@@ -118,4 +118,296 @@
           }
         });
       });
+
+      // ========================
+      // THEME TOGGLE
+      // ========================
+      const themeToggle = document.getElementById('theme-toggle');
+      if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          if (isDark) {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+          } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+          }
+        });
+      }
+
+      // ========================
+      // SEARCH SOLVER DATABASE
+      // ========================
+      const SEARCHABLE_TOOLS = [
+        {
+          name: 'Determinant Calculator',
+          cat: 'matrices',
+          desc: 'Calculate matrix determinant step-by-step',
+          targetId: 'tool-det',
+          tabId: 'cat-nav-matrices'
+        },
+        {
+          name: 'Matrix Inverse',
+          cat: 'matrices',
+          desc: 'Find the inverse of a square matrix',
+          targetId: 'tool-inverse',
+          tabId: 'cat-nav-matrices'
+        },
+        {
+          name: 'Eigenvalue & Eigenvector',
+          cat: 'eigen_analysis',
+          desc: 'Calculate characteristic equations and eigenvectors',
+          targetId: 'tool-eigen',
+          tabId: 'cat-nav-eigen'
+        },
+        {
+          name: 'Diagonalisation',
+          cat: 'eigen_analysis',
+          desc: 'Diagonalise symmetric and non-symmetric matrices',
+          targetId: 'tool-diag',
+          tabId: 'cat-nav-diag'
+        },
+        {
+          name: 'Gauss-Seidel Method',
+          cat: 'numerical_methods',
+          desc: 'Iterative solver for systems of linear equations',
+          targetId: 'tool-gauss-seidel',
+          tabId: 'cat-nav-numerical'
+        },
+        {
+          name: 'Newton-Raphson',
+          cat: 'root_finding',
+          desc: 'Iterative root finding with live 2D/3D plots',
+          targetId: 'tool-newton',
+          tabId: 'cat-nav-numerical'
+        },
+        {
+          name: 'Simpson\'s 1/3 Rule',
+          cat: 'integration',
+          desc: 'Approximate definite integrals numerically',
+          targetId: 'tool-simpson',
+          tabId: 'cat-nav-integration'
+        },
+        {
+          name: 'Runge-Kutta Method',
+          cat: 'ode_methods',
+          desc: 'Solve initial value ODE problems using RK4',
+          targetId: 'tool-rk',
+          tabId: 'cat-nav-ode'
+        },
+        {
+          name: 'Row Echelon Form',
+          cat: 'matrices',
+          desc: 'Convert matrices to REF or RREF forms',
+          targetId: 'cat-nav-echelon',
+          tabId: 'cat-nav-echelon'
+        },
+        {
+          name: 'Partial Differentiation',
+          cat: 'partial_diff',
+          desc: 'Find critical points and local extrema',
+          targetId: 'cat-nav-partial',
+          tabId: 'cat-nav-partial'
+        },
+        {
+          name: 'Statistics & Data Modelling',
+          cat: 'statistics',
+          desc: 'Fit regression lines and run hypothesis tests',
+          targetId: 'cat-nav-stats',
+          tabId: 'cat-nav-stats'
+        },
+        {
+          name: 'Graph Plotter',
+          cat: 'graph_plotter',
+          desc: 'Plot mathematical equations in 2D or 3D',
+          targetId: 'cat-nav-graph',
+          tabId: 'cat-nav-graph'
+        }
+      ];
+
+      // ========================
+      // SEARCH ENGINE LOGIC
+      // ========================
+      const searchInput = document.getElementById('nav-search-input');
+      const clearSearchBtn = document.getElementById('search-clear-btn');
+      const searchDropdown = document.getElementById('search-results-dropdown');
+      let searchSelectedIndex = -1;
+
+      if (searchInput && searchDropdown) {
+        // Input Listener
+        searchInput.addEventListener('input', () => {
+          const query = searchInput.value.trim().toLowerCase();
+          
+          if (query.length === 0) {
+            clearSearchBtn.style.display = 'none';
+            searchDropdown.classList.add('hidden');
+            searchDropdown.innerHTML = '';
+            searchSelectedIndex = -1;
+            return;
+          }
+
+          clearSearchBtn.style.display = 'block';
+          const matches = SEARCHABLE_TOOLS.filter(tool => 
+            tool.name.toLowerCase().includes(query) || 
+            tool.desc.toLowerCase().includes(query) ||
+            tool.cat.toLowerCase().includes(query)
+          );
+
+          renderResults(matches, query);
+        });
+
+        // Focus Listener to show dropdown with initial state if there's text
+        searchInput.addEventListener('focus', () => {
+          const query = searchInput.value.trim().toLowerCase();
+          if (query.length > 0) {
+            searchDropdown.classList.remove('hidden');
+          }
+        });
+
+        // Keydown keyboard navigation
+        searchInput.addEventListener('keydown', (e) => {
+          const items = searchDropdown.querySelectorAll('.search-dropdown-item');
+          if (items.length === 0) return;
+
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            searchSelectedIndex = (searchSelectedIndex + 1) % items.length;
+            updateSearchSelection(items);
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            searchSelectedIndex = (searchSelectedIndex - 1 + items.length) % items.length;
+            updateSearchSelection(items);
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (searchSelectedIndex >= 0 && searchSelectedIndex < items.length) {
+              items[searchSelectedIndex].click();
+            } else if (items.length > 0) {
+              items[0].click();
+            }
+          } else if (e.key === 'Escape') {
+            searchDropdown.classList.add('hidden');
+            searchInput.blur();
+          }
+        });
+
+        // Clear button click
+        if (clearSearchBtn) {
+          clearSearchBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            clearSearchBtn.style.display = 'none';
+            searchDropdown.classList.add('hidden');
+            searchDropdown.innerHTML = '';
+            searchSelectedIndex = -1;
+            searchInput.focus();
+          });
+        }
+
+        // Global key shortcut for '/' to focus search
+        document.addEventListener('keydown', (e) => {
+          if (e.key === '/' && document.activeElement !== searchInput && 
+              document.activeElement.tagName !== 'INPUT' && 
+              document.activeElement.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+          }
+        });
+
+        // Document click listener to close dropdown on clicking outside
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('#nav-search-container')) {
+            searchDropdown.classList.add('hidden');
+          }
+        });
+      }
+
+      // Render search autocomplete matches
+      function renderResults(matches, query) {
+        searchDropdown.innerHTML = '';
+        searchSelectedIndex = -1;
+
+        if (matches.length === 0) {
+          const noResults = document.createElement('div');
+          noResults.className = 'search-dropdown-no-results';
+          noResults.textContent = 'No matching calculators found';
+          searchDropdown.appendChild(noResults);
+          searchDropdown.classList.remove('hidden');
+          return;
+        }
+
+        // Dropdown Header
+        const header = document.createElement('div');
+        header.className = 'search-dropdown-header';
+        header.textContent = `Calculators (${matches.length})`;
+        searchDropdown.appendChild(header);
+
+        // Populate items
+        matches.forEach((tool, index) => {
+          const item = document.createElement('div');
+          item.className = 'search-dropdown-item';
+          item.setAttribute('data-index', index);
+
+          // Highlight matching letters in title
+          const titleEscaped = tool.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+          const regex = new RegExp(`(${titleEscaped})`, 'gi');
+          const highlightedName = tool.name.replace(regex, '<mark>$1</mark>');
+
+          item.innerHTML = `
+            <div class="search-item-title">${highlightedName}</div>
+            <div class="search-item-meta">
+              <span class="search-item-desc">${tool.desc}</span>
+              <span class="search-item-tag">${tool.cat.replace('_', ' ')}</span>
+            </div>
+          `;
+
+          // Handle selection click
+          item.addEventListener('click', () => {
+            // 1. Activate tab in category subnav if it exists
+            if (tool.tabId) {
+              const tabEl = document.getElementById(tool.tabId);
+              if (tabEl) {
+                tabEl.click();
+              }
+            }
+
+            // 2. Scroll to target element and highlight it
+            const targetEl = document.getElementById(tool.targetId);
+            if (targetEl) {
+              setTimeout(() => {
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Trigger row flash visual highlight
+                targetEl.classList.remove('row-highlight-flash');
+                void targetEl.offsetWidth; // Force element reflow
+                targetEl.classList.add('row-highlight-flash');
+              }, 180);
+            }
+
+            // Reset search input and dropdown
+            searchInput.value = '';
+            clearSearchBtn.style.display = 'none';
+            searchDropdown.classList.add('hidden');
+            searchDropdown.innerHTML = '';
+            searchSelectedIndex = -1;
+            searchInput.blur();
+          });
+
+          searchDropdown.appendChild(item);
+        });
+
+        searchDropdown.classList.remove('hidden');
+      }
+
+      // Update dropdown visual styling on arrow navigation
+      function updateSearchSelection(items) {
+        items.forEach((item, index) => {
+          if (index === searchSelectedIndex) {
+            item.classList.add('selected');
+            item.scrollIntoView({ block: 'nearest' });
+          } else {
+            item.classList.remove('selected');
+          }
+        });
+      }
     });
