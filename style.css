@@ -914,148 +914,7 @@
       color: var(--teal);
     }
 
-    /* ========================
-   STUDENT REVIEWS
-======================== */
-    #students-section {
-      padding: 0 var(--pad-x) 90px;
-    }
 
-    #students-inner {
-      max-width: 1600px;
-      margin: 0 auto;
-      background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
-      border-radius: 24px;
-      padding: 72px 64px;
-      display: flex;
-      gap: 72px;
-      align-items: center;
-      position: relative;
-      overflow: hidden;
-    }
-
-    #students-inner::before {
-      content: '';
-      position: absolute;
-      bottom: -100px;
-      right: -100px;
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(ellipse, rgba(245, 158, 11, 0.1) 0%, transparent 70%);
-      pointer-events: none;
-    }
-
-    #students-left {
-      flex: 1;
-    }
-
-    #students-left .s-chip {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.12);
-    }
-
-    #students-left .s-chip span {
-      color: rgba(255, 255, 255, 0.55);
-    }
-
-    #students-title {
-      font-family: 'Fraunces', serif;
-      font-size: clamp(32px, 3.5vw, 50px);
-      font-weight: 900;
-      color: var(--white);
-      letter-spacing: -2px;
-      line-height: 1.0;
-      margin-bottom: 18px;
-    }
-
-    #students-title em {
-      color: var(--amber);
-      font-style: italic;
-    }
-
-    #students-desc {
-      font-size: 15px;
-      color: rgba(255, 255, 255, 0.55);
-      line-height: 1.7;
-      max-width: 380px;
-      margin-bottom: 32px;
-    }
-
-    #students-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 15px 30px;
-      background: var(--amber);
-      color: var(--navy);
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 700;
-      border: none;
-      transition: background 0.2s, transform 0.15s;
-    }
-
-    #students-btn:hover {
-      background: var(--amber2);
-      transform: translateY(-1px);
-    }
-
-    #students-right {
-      width: min(340px, 40%);
-      flex-shrink: 0;
-    }
-
-    #students-reviews {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .si-rev {
-      background: rgba(255, 255, 255, 0.07);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 14px;
-      padding: 18px 20px;
-    }
-
-    .si-rev-text {
-      font-size: 13px;
-      color: rgba(255, 255, 255, 0.68);
-      line-height: 1.6;
-      margin-bottom: 12px;
-    }
-
-    .si-rev-author {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .si-av {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--amber), #d97706);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--navy);
-      flex-shrink: 0;
-    }
-
-    .si-name {
-      font-size: 12px;
-      font-weight: 600;
-      color: rgba(255, 255, 255, 0.88);
-    }
-
-    .si-role {
-      font-size: 10px;
-      color: rgba(255, 255, 255, 0.38);
-      margin-top: 1px;
-    }
 
     /* ========================
    FOOTER
@@ -1221,15 +1080,6 @@
         grid-template-columns: 1fr;
       }
 
-      #students-inner {
-        flex-direction: column;
-        padding: 48px 36px;
-        gap: 40px;
-      }
-
-      #students-right {
-        width: 100%;
-      }
     }
 
     /* 700px */
@@ -1247,6 +1097,22 @@
       #nav-cta {
         padding: 8px 16px;
         font-size: 13px;
+      }
+
+      .section {
+        padding: 60px var(--pad-x);
+      }
+
+      #features-section {
+        padding-top: 50px;
+      }
+
+      #categories-section {
+        padding: 60px var(--pad-x);
+      }
+
+      #hero {
+        gap: 40px;
       }
 
       #bento-grid {
@@ -1276,16 +1142,32 @@
         grid-template-columns: 1fr;
         gap: 28px;
       }
+
+      #footer {
+        padding: 48px var(--pad-x) 28px;
+      }
     }
 
     /* 480px */
     @media (max-width: 480px) {
-      #cats-grid {
-        grid-template-columns: 1fr;
+      .section {
+        padding: 48px var(--pad-x);
       }
 
-      #students-inner {
-        padding: 36px 24px;
+      #features-section {
+        padding-top: 36px;
+      }
+
+      #categories-section {
+        padding: 48px var(--pad-x);
+      }
+
+      #hero {
+        gap: 32px;
+      }
+
+      #cats-grid {
+        grid-template-columns: 1fr;
       }
 
       #hero-actions {
@@ -1296,5 +1178,9 @@
       #hero-btn-secondary {
         width: 100%;
         text-align: center;
+      }
+
+      #footer {
+        padding: 36px var(--pad-x) 20px;
       }
     }
