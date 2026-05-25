@@ -33,6 +33,14 @@
       btn2d.addEventListener('click', () => switchTab(btn2d, view2d, true));
       btn3d.addEventListener('click', () => switchTab(btn3d, view3d, true));
       btnTable.addEventListener('click', () => switchTab(btnTable, viewTable, false));
+      
+      // Prevent clicks inside preview panels from bubbling up and triggering filters
+      const previewPanels = document.querySelectorAll('.nav-preview-panel');
+      previewPanels.forEach(panel => {
+        panel.addEventListener('click', (evt) => {
+          evt.stopPropagation();
+        });
+      });
 
       // Category Filtering
       const catNavItems = document.querySelectorAll('.cat-nav-item');
