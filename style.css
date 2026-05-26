@@ -207,9 +207,10 @@
 
     /* Floating preview panel */
     .nav-preview-panel {
+      --shift-x: 0px;
       position: absolute;
       top: 100%;
-      left: 50%;
+      left: calc(50% + var(--shift-x));
       transform: translateX(-50%) translateY(12px);
       width: 320px;
       background: var(--panel-bg);
@@ -235,7 +236,7 @@
       content: '';
       position: absolute;
       bottom: 100%;
-      left: 50%;
+      left: calc(50% - var(--shift-x));
       transform: translateX(-50%);
       border-width: 6px;
       border-style: solid;
@@ -883,11 +884,17 @@
       background: var(--white);
       padding: 28px;
       cursor: pointer;
-      transition: background 0.2s;
+      position: relative;
+      transition: background 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+                  transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+                  box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
 
     .cat-c:hover {
       background: var(--bg);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 28px rgba(15, 23, 41, 0.08);
+      z-index: 2;
     }
 
     .cat-c-num {
@@ -1602,4 +1609,14 @@ html[data-theme="dark"] .moon-icon {
     flex: 1;
   }
 }
+
+/* ==========================================================================
+   CATEGORY NAVIGATION & SCROLL OFFSET
+   ========================================================================= */
+
+.cat-c, #categories-section, #tools-section {
+  scroll-margin-top: 130px; /* 108px sticky nav height + 22px padding offset */
+}
+
+
 

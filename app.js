@@ -11,6 +11,40 @@
         });
       }
 
+      // Smart hover card positioning for desktop screens
+      const catNavItemsForHover = document.querySelectorAll('.cat-nav-item');
+      catNavItemsForHover.forEach(item => {
+        const panel = item.querySelector('.nav-preview-panel');
+        if (!panel) return;
+
+        item.addEventListener('mouseenter', () => {
+          if (window.innerWidth < 1024) return; // Only run on desktop
+
+          // Reset shift first to get natural measurement
+          panel.style.setProperty('--shift-x', '0px');
+
+          const rect = panel.getBoundingClientRect();
+          const viewportWidth = window.innerWidth;
+          const padding = 16; // Safe margin from viewport edge
+
+          const panelLeft = rect.left;
+          const panelRight = rect.right;
+
+          let shiftX = 0;
+          if (panelLeft < padding) {
+            shiftX = padding - panelLeft;
+          } else if (panelRight > viewportWidth - padding) {
+            shiftX = (viewportWidth - padding) - panelRight;
+          }
+
+          panel.style.setProperty('--shift-x', `${shiftX}px`);
+        });
+
+        item.addEventListener('mouseleave', () => {
+          panel.style.setProperty('--shift-x', '0px');
+        });
+      });
+
       // Graph Tab Switching
       const btn2d = document.getElementById('ctrl-2d');
       const btn3d = document.getElementById('ctrl-3d');
@@ -42,7 +76,7 @@
         });
       });
 
-      // Category Filtering
+      // Category Filtering & Navigation
       const catNavItems = document.querySelectorAll('.cat-nav-item');
       const catCards = document.querySelectorAll('.cat-c');
       const toolRows = document.querySelectorAll('.tool-i');
@@ -57,23 +91,37 @@
 
           const catId = item.id.replace('cat-nav-', '');
 
-          // Filter grid cards
+          // Keep all grid cards visible so scroll and focus transitions work perfectly
           catCards.forEach(card => {
-            const cardId = card.id.replace('cat-', '');
-            if (catId === 'all') {
-              card.style.display = 'block';
-            } else {
-              let match = false;
-              if (catId === 'matrices' || catId === 'echelon') {
-                match = (cardId === 'matrices');
-              } else if (catId === 'eigen' || catId === 'diag') {
-                match = (cardId === 'eigen');
-              } else {
-                match = (cardId === catId);
-              }
-              card.style.display = match ? 'block' : 'none';
-            }
+            card.style.display = 'block';
           });
+
+          // Determine scroll target and perform navigation
+          let targetEl = null;
+          if (item.dataset.clickedCardDirectly === 'true') {
+            // Scroll to the popular tools section since they clicked the card directly
+            targetEl = document.getElementById('tools-section');
+            delete item.dataset.clickedCardDirectly;
+          } else {
+            // Scroll to matching card
+            let targetCardId = '';
+            if (catId === 'all') {
+              targetCardId = 'categories-section';
+            } else {
+              if (catId === 'matrices' || catId === 'echelon') {
+                targetCardId = 'cat-matrices';
+              } else if (catId === 'eigen' || catId === 'diag') {
+                targetCardId = 'cat-eigen';
+              } else {
+                targetCardId = `cat-${catId}`;
+              }
+            }
+            targetEl = document.getElementById(targetCardId);
+          }
+
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
 
           // Filter tools
           toolRows.forEach(row => {
@@ -115,6 +163,20 @@
           if (toolsSection) {
             const visibleToolsCount = Array.from(toolRows).filter(row => row.style.display !== 'none').length;
             toolsSection.style.display = visibleToolsCount > 0 ? 'block' : 'none';
+          }
+        });
+      });
+
+      // Category Card Click Integration
+      catCards.forEach(card => {
+        card.addEventListener('click', () => {
+          const cardId = card.id.replace('cat-', '');
+          const navItemId = `cat-nav-${cardId}`;
+          const navItem = document.getElementById(navItemId);
+          if (navItem) {
+            // Set flag to scroll directly to the popular tools section
+            navItem.dataset.clickedCardDirectly = 'true';
+            navItem.click();
           }
         });
       });
