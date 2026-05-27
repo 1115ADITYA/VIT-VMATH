@@ -15,73 +15,824 @@
   </script>
   <link rel="stylesheet" href="style.css">
   <style>
-    #get-started-container {
-      min-height: 100vh;
+    /* App Layout */
+    body {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      background-color: var(--bg);
+    }
+    
+    /* Top Header */
+    header.app-header {
+      height: var(--nav-h);
+      background: var(--nav-bg);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 2rem;
+      flex-shrink: 0;
+      gap: 2rem;
+    }
+
+    .brand-logo {
+      font-family: 'Fraunces', serif;
+      font-weight: 900;
+      font-size: 1.5rem;
+      color: var(--navy);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .brand-logo svg {
+      width: 24px;
+      height: 24px;
+      fill: var(--amber);
+    }
+
+    .sem-nav {
+      display: flex;
+      gap: 1rem;
+    }
+    
+    .sem-btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: transparent;
+      font-family: 'Figtree', sans-serif;
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+    
+    .sem-btn:hover {
+      color: var(--text);
+      background: var(--bg2);
+    }
+    
+    .sem-btn.active {
+      background: var(--navy);
+      color: var(--white);
+    }
+
+    .header-search {
+      display: flex;
+      align-items: center;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 0.4rem 1rem;
+      gap: 0.5rem;
+      margin-left: auto;
+      transition: all 0.2s;
+    }
+    .header-search:focus-within {
+      border-color: var(--amber);
+      background: var(--white);
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+    }
+    .header-search .search-icon {
+      width: 16px;
+      height: 16px;
+      stroke: var(--muted);
+    }
+    .header-search input {
+      border: none;
+      background: transparent;
+      font-family: 'Figtree', sans-serif;
+      font-size: 0.95rem;
+      color: var(--text);
+      outline: none;
+      width: 220px;
+    }
+    .header-search input::placeholder {
+      color: var(--muted);
+    }
+
+    /* Main Workspace */
+    .workspace {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background: var(--white);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+      padding: 1.5rem;
+    }
+
+    .sidebar-section {
+      margin-bottom: 1.5rem;
+    }
+
+    .sidebar-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      padding-left: 0.5rem;
+    }
+
+    .calc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .calc-item {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border: 1px solid transparent;
+    }
+
+    .calc-item:hover {
+      background: var(--bg);
+    }
+
+    .calc-item.active {
+      background: rgba(13, 148, 136, 0.1);
+      color: var(--teal);
+      border-color: rgba(13, 148, 136, 0.2);
+    }
+    
+    .calc-item svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+    }
+
+    /* Main Area */
+    .main-area {
+      flex: 1;
+      background: var(--bg2);
+      padding: 2rem;
+      overflow-y: auto;
+      display: flex;
+      justify-content: center;
+    }
+    
+    .calc-container {
+      width: 100%;
+      max-width: 800px;
+      display: none;
+      animation: fadeIn 0.4s ease forwards;
+    }
+    
+    .calc-container.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+
+    .card-header {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-family: 'Fraunces', serif;
+      font-size: 2rem;
+      color: var(--navy);
+      margin-bottom: 0.5rem;
+    }
+
+    .card-desc {
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    /* Matrix Input Grid */
+    .matrix-input-wrapper {
+      display: inline-block;
+      position: relative;
+      padding: 0 1rem;
+    }
+    
+    .matrix-input-wrapper::before,
+    .matrix-input-wrapper::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      border: 2px solid var(--navy);
+      border-radius: 4px;
+    }
+    
+    .matrix-input-wrapper::before {
+      left: 0;
+      border-right: none;
+    }
+    
+    .matrix-input-wrapper::after {
+      right: 0;
+      border-left: none;
+    }
+
+    .matrix-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+      padding: 0.5rem;
+    }
+
+    .matrix-cell {
+      width: 60px;
+      height: 60px;
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      transition: border-color 0.2s;
+    }
+    
+    .matrix-cell:focus {
+      outline: none;
+      border-color: var(--amber);
+      background: var(--white);
+    }
+
+    .calc-action {
+      margin-top: 2rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .btn-primary {
+      background: var(--amber);
+      color: var(--navy);
+      border: none;
+      padding: 0.75rem 2rem;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+    }
+
+    /* Steps Section */
+    .steps-container {
+      display: none;
+      margin-top: 2rem;
+    }
+    
+    .steps-container.active {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .step-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--teal);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .step-number {
+      background: rgba(13, 148, 136, 0.1);
+      color: var(--teal);
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .step-title {
+      font-weight: 600;
+      color: var(--navy);
+      font-size: 1.1rem;
+    }
+    
+    .step-desc {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 1rem;
+    }
+
+    .step-body-flex {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      padding: 1rem 0;
+      flex-wrap: wrap;
+    }
+
+    .step-action-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      text-align: center;
+      max-width: 200px;
+    }
+
+    .step-arrow svg {
+      width: 24px;
+      height: 24px;
+      stroke: var(--amber);
+    }
+
+    .display-matrix-wrapper {
+      display: inline-block;
+      position: relative;
+      padding: 0 0.75rem;
+    }
+    .display-matrix-wrapper::before,
+    .display-matrix-wrapper::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      border: 2px solid var(--navy);
+      border-radius: 4px;
+    }
+    .display-matrix-wrapper::before {
+      left: 0;
+      border-right: none;
+    }
+    .display-matrix-wrapper::after {
+      right: 0;
+      border-left: none;
+    }
+    .display-matrix {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem 1rem;
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+    .final-result {
+      background: var(--navy);
+      color: var(--white);
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-top: 2rem;
+      text-align: center;
+      font-family: 'Fraunces', serif;
+      font-size: 1.5rem;
+    }
+    
+    .final-result span {
+      color: var(--amber);
+    }
+
+    .placeholder-state {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      height: 100%;
+      color: var(--muted);
       text-align: center;
-      padding: 2rem;
-      background-color: var(--bg);
-      color: var(--text);
     }
     
-    #get-started-container h1 {
-      font-family: 'Fraunces', serif;
-      font-size: clamp(2rem, 5vw, 4rem);
+    .placeholder-state svg {
+      width: 64px;
+      height: 64px;
+      stroke: var(--border2);
       margin-bottom: 1rem;
     }
-    
-    #get-started-container p {
-      font-family: 'Figtree', sans-serif;
-      font-size: 1.125rem;
-      color: var(--muted);
-      margin-bottom: 2rem;
-      max-width: 600px;
-    }
 
-    #back-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      border-radius: 9999px;
-      font-family: 'Figtree', sans-serif;
-      font-weight: 500;
-      font-size: 1rem;
-      text-decoration: none;
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-
-    #back-btn:hover {
-      background: var(--surface-hover);
-      transform: translateY(-2px);
-    }
-    
-    #back-btn svg {
-      width: 18px;
-      height: 18px;
-    }
   </style>
 </head>
 <body>
-  
-  <div id="get-started-container">
-    <h1>Welcome to VMath</h1>
-    <p>This is your personalized workspace. Here you can find all the mathematical tools and resources to solve complex engineering problems effortlessly.</p>
-    
-    <a href="/" id="back-btn">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+
+  <!-- Header -->
+  <header class="app-header">
+    <a href="/" class="brand-logo">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
       </svg>
-      Go Back to Home
+      VMath
     </a>
+    
+    <nav class="sem-nav">
+      <button class="sem-btn active" onclick="selectSem(1)">Semester 1</button>
+      <button class="sem-btn" onclick="selectSem(2)">Semester 2</button>
+      <button class="sem-btn" onclick="selectSem(3)">Semester 3</button>
+    </nav>
+
+    <div class="header-search">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input type="text" id="app-search" placeholder="Search calculators..." autocomplete="off" oninput="handleSearch(this.value)">
+    </div>
+  </header>
+
+  <!-- Workspace -->
+  <div class="workspace">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar-content">
+      <!-- Injected via JS based on Sem -->
+    </aside>
+
+    <!-- Main Area -->
+    <main class="main-area">
+      
+      <!-- Placeholder when nothing selected -->
+      <div id="placeholder-ui" class="placeholder-state active">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+        <h3>Select a calculator from the sidebar</h3>
+        <p>Choose a mathematical tool to get started with your calculations.</p>
+      </div>
+
+      <!-- Rank Finder UI -->
+      <div id="rank-finder-ui" class="calc-container">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Rank Finder</h2>
+            <p class="card-desc">Calculate the rank of a 3x3 matrix using step-by-step Gaussian elimination. Great for understanding the core concepts of linear algebra.</p>
+          </div>
+          
+          <div style="text-align: center;">
+            <div class="matrix-input-wrapper">
+              <div class="matrix-grid">
+                <input type="number" class="matrix-cell" id="m00" value="1">
+                <input type="number" class="matrix-cell" id="m01" value="2">
+                <input type="number" class="matrix-cell" id="m02" value="3">
+                
+                <input type="number" class="matrix-cell" id="m10" value="2">
+                <input type="number" class="matrix-cell" id="m11" value="4">
+                <input type="number" class="matrix-cell" id="m12" value="6">
+                
+                <input type="number" class="matrix-cell" id="m20" value="1">
+                <input type="number" class="matrix-cell" id="m21" value="0">
+                <input type="number" class="matrix-cell" id="m22" value="-1">
+              </div>
+            </div>
+          </div>
+
+          <div class="calc-action">
+            <button class="btn-primary" onclick="calculateRank()">
+              Calculate Step-by-Step
+              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="steps-output" class="steps-container">
+          <!-- Steps will be generated here -->
+        </div>
+      </div>
+
+    </main>
   </div>
 
+  <script>
+    const data = {
+      1: [
+        {
+          category: 'Matrices',
+          items: [
+            { id: 'rank', name: 'Rank Finder', icon: 'M4 6h16M4 12h16M4 18h7' },
+            { id: 'det', name: 'Determinant (Soon)', icon: 'M4 4h16v16H4z' },
+            { id: 'inv', name: 'Inverse (Soon)', icon: 'M8 7h8M8 11h8M8 15h8' }
+          ]
+        },
+        {
+          category: 'Calculus',
+          items: [
+            { id: 'diff', name: 'Differentiation (Soon)', icon: 'M3 3v18h18' }
+          ]
+        }
+      ],
+      2: [
+        {
+          category: 'Vector Spaces',
+          items: [
+            { id: 'basis', name: 'Basis Finder (Soon)', icon: 'M13 10V3L4 14h7v7l9-11h-7z' }
+          ]
+        }
+      ],
+      3: [
+        {
+          category: 'Probability',
+          items: [
+            { id: 'bayes', name: 'Bayes Theorem (Soon)', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' }
+          ]
+        }
+      ]
+    };
+
+    function selectSem(sem, resetUI = true) {
+      if(resetUI) {
+        const searchInput = document.getElementById('app-search');
+        if(searchInput) searchInput.value = '';
+      }
+
+      // Update Active Button
+      document.querySelectorAll('.sem-btn').forEach((btn, idx) => {
+        if(idx + 1 === sem) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+
+      // Populate Sidebar
+      const sidebar = document.getElementById('sidebar-content');
+      sidebar.innerHTML = '';
+      
+      const semData = data[sem];
+      if(semData) {
+        semData.forEach(section => {
+          const secHtml = `
+            <div class="sidebar-section">
+              <div class="sidebar-title">${section.category}</div>
+              <div class="calc-list">
+                ${section.items.map(item => `
+                  <div class="calc-item" onclick="openCalc('${item.id}', this)">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}"></path></svg>
+                    ${item.name}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+          sidebar.innerHTML += secHtml;
+        });
+      }
+
+      if(resetUI) {
+        if(sem === 1) {
+          openCalc('rank', document.querySelector('.calc-item'));
+        } else {
+          openCalc('none', null);
+        }
+      }
+    }
+
+    function handleSearch(query) {
+      query = query.toLowerCase().trim();
+      const sidebar = document.getElementById('sidebar-content');
+      sidebar.innerHTML = '';
+
+      if (!query) {
+        let activeSem = 1;
+        document.querySelectorAll('.sem-btn').forEach((btn, idx) => {
+          if(btn.classList.contains('active')) activeSem = idx + 1;
+        });
+        selectSem(activeSem, false);
+        return;
+      }
+
+      document.querySelectorAll('.sem-btn').forEach(btn => btn.classList.remove('active'));
+
+      let resultsHtml = '';
+      let matchCount = 0;
+
+      Object.values(data).forEach(semData => {
+        semData.forEach(section => {
+          const filteredItems = section.items.filter(item => item.name.toLowerCase().includes(query) || section.category.toLowerCase().includes(query));
+          if (filteredItems.length > 0) {
+            resultsHtml += `
+              <div class="sidebar-section">
+                <div class="sidebar-title">${section.category}</div>
+                <div class="calc-list">
+                  ${filteredItems.map(item => `
+                    <div class="calc-item" onclick="openCalc('${item.id}', this)">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}"></path></svg>
+                      ${item.name}
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `;
+            matchCount += filteredItems.length;
+          }
+        });
+      });
+
+      if (matchCount === 0) {
+        sidebar.innerHTML = `<div style="padding: 2rem 1rem; color: var(--muted); font-size: 0.95rem; text-align: center;">No calculators found for "${query}"</div>`;
+      } else {
+        sidebar.innerHTML = resultsHtml;
+      }
+    }
+
+    function openCalc(calcId, element) {
+      // Update sidebar active state
+      if(element) {
+        document.querySelectorAll('.calc-item').forEach(el => el.classList.remove('active'));
+        element.classList.add('active');
+      }
+
+      // Hide all containers
+      document.getElementById('placeholder-ui').style.display = 'none';
+      document.getElementById('rank-finder-ui').classList.remove('active');
+      document.getElementById('steps-output').classList.remove('active');
+
+      if(calcId === 'rank') {
+        document.getElementById('rank-finder-ui').classList.add('active');
+      } else {
+        document.getElementById('placeholder-ui').style.display = 'flex';
+      }
+    }
+
+    // Initialize with Sem 1
+    selectSem(1);
+
+    // Matrix Formatting Helper (HTML Grid with brackets)
+    function formatMatrix(m) {
+      let html = '<div class="display-matrix-wrapper"><div class="display-matrix">';
+      for(let i=0; i<3; i++) {
+        for(let j=0; j<3; j++) {
+          html += `<div>${Math.round(m[i][j]*100)/100}</div>`;
+        }
+      }
+      html += '</div></div>';
+      return html;
+    }
+
+    // Rank Calculation Logic (Dummy Gaussian for 3x3)
+    function calculateRank() {
+      const output = document.getElementById('steps-output');
+      output.innerHTML = '';
+      output.classList.add('active');
+      
+      // Read values
+      let m = [];
+      for(let i=0; i<3; i++) {
+        let row = [];
+        for(let j=0; j<3; j++) {
+          row.push(parseFloat(document.getElementById(`m${i}${j}`).value) || 0);
+        }
+        m.push(row);
+      }
+
+      let stepsHtml = '';
+      let stepCount = 1;
+
+      function addStep(title, desc, beforeMatrix, afterMatrix) {
+        let targetMatrix = afterMatrix || beforeMatrix;
+        stepsHtml += `
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">${title}</div>
+            </div>
+            <div class="step-desc" style="text-align: center; font-size: 1.05rem; margin-bottom: 1.5rem;">${desc}</div>
+            <div style="text-align: center; margin-top: 1rem;">${formatMatrix(targetMatrix)}</div>
+          </div>
+        `;
+      }
+
+      addStep("Initial Matrix", "We start with the given 3x3 matrix.", null, JSON.parse(JSON.stringify(m)));
+
+      // Step 1: Pivot at (0,0)
+      if(Math.abs(m[0][0]) < 1e-9) {
+        let beforeM = JSON.parse(JSON.stringify(m));
+        // Swap with row 1 or 2
+        if(Math.abs(m[1][0]) > 1e-9) {
+          let temp = m[0]; m[0] = m[1]; m[1] = temp;
+          addStep("Row Swap", "<b>R1 ↔ R2</b>", beforeM, JSON.parse(JSON.stringify(m)));
+        } else if(Math.abs(m[2][0]) > 1e-9) {
+          let temp = m[0]; m[0] = m[2]; m[2] = temp;
+          addStep("Row Swap", "<b>R1 ↔ R3</b>", beforeM, JSON.parse(JSON.stringify(m)));
+        }
+      }
+
+      // Eliminate col 0
+      if(Math.abs(m[0][0]) > 1e-9) {
+        let beforeM = JSON.parse(JSON.stringify(m));
+        let eliminated = false;
+        let p = m[0][0];
+        let desc = [];
+        if(Math.abs(m[1][0]) > 1e-9) {
+          let factor = m[1][0] / p;
+          for(let j=0; j<3; j++) m[1][j] -= factor * beforeM[0][j];
+          let factorStr = Math.round(factor * 100) / 100;
+          let op = factorStr < 0 ? `R2 = R2 + ${Math.abs(factorStr)} * R1` : `R2 = R2 - ${factorStr} * R1`;
+          desc.push(op);
+          eliminated = true;
+        }
+        if(Math.abs(m[2][0]) > 1e-9) {
+          let factor = m[2][0] / p;
+          for(let j=0; j<3; j++) m[2][j] -= factor * beforeM[0][j];
+          let factorStr = Math.round(factor * 100) / 100;
+          let op = factorStr < 0 ? `R3 = R3 + ${Math.abs(factorStr)} * R1` : `R3 = R3 - ${factorStr} * R1`;
+          desc.push(op);
+          eliminated = true;
+        }
+        if(eliminated) {
+          // round near zero
+          for(let i=1;i<3;i++) for(let j=0;j<3;j++) if(Math.abs(m[i][j]) < 1e-9) m[i][j] = 0;
+          addStep("Eliminate Column 1", "<b>" + desc.join('<br>') + "</b>", beforeM, JSON.parse(JSON.stringify(m)));
+        }
+      }
+
+      // Pivot at (1,1)
+      if(Math.abs(m[1][1]) < 1e-9 && Math.abs(m[2][1]) > 1e-9) {
+         let beforeM = JSON.parse(JSON.stringify(m));
+         let temp = m[1]; m[1] = m[2]; m[2] = temp;
+         addStep("Row Swap", "<b>R2 ↔ R3</b>", beforeM, JSON.parse(JSON.stringify(m)));
+      }
+
+      // Eliminate col 1
+      if(Math.abs(m[1][1]) > 1e-9) {
+        let beforeM = JSON.parse(JSON.stringify(m));
+        if(Math.abs(m[2][1]) > 1e-9) {
+          let factor = m[2][1] / m[1][1];
+          for(let j=0; j<3; j++) m[2][j] -= factor * beforeM[1][j];
+          // round near zero
+          for(let j=0;j<3;j++) if(Math.abs(m[2][j]) < 1e-9) m[2][j] = 0;
+          let factorStr = Math.round(factor * 100) / 100;
+          let op = factorStr < 0 ? `R3 = R3 + ${Math.abs(factorStr)} * R2` : `R3 = R3 - ${factorStr} * R2`;
+          addStep("Eliminate Column 2", `<b>${op}</b>`, beforeM, JSON.parse(JSON.stringify(m)));
+        }
+      }
+
+      // Count rank
+      let rank = 0;
+      for(let i=0; i<3; i++) {
+        let isNonZero = false;
+        for(let j=0; j<3; j++) {
+          m[i][j] = Math.round(m[i][j] * 100) / 100; // Format for display
+          if(Math.abs(m[i][j]) > 1e-9) isNonZero = true;
+        }
+        if(isNonZero) rank++;
+      }
+
+      stepsHtml += `
+        <div class="final-result">
+          The Rank of the Matrix is <span>${rank}</span>
+        </div>
+      `;
+
+      output.innerHTML = stepsHtml;
+      
+      // Scroll to steps
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  </script>
 </body>
 </html>
