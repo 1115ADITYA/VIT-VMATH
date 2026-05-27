@@ -410,4 +410,134 @@
           }
         });
       }
+      
+      // ========================
+      // VMATH CHATBOT LOGIC
+      // ========================
+      const chatFab = document.getElementById('vmath-chatbot-fab');
+      const chatWindow = document.getElementById('vmath-chatbot-window');
+      const chatCloseBtn = document.getElementById('vmath-chatbot-close');
+      const chatInput = document.getElementById('vmath-chatbot-input');
+      const chatSendBtn = document.getElementById('vmath-chatbot-send');
+      const chatMessages = document.getElementById('vmath-chatbot-messages');
+
+      if (chatFab && chatWindow && chatCloseBtn) {
+        // Open chat
+        chatFab.addEventListener('click', () => {
+          chatWindow.classList.remove('hidden');
+          chatFab.style.transform = 'scale(0)';
+          chatFab.style.pointerEvents = 'none';
+          chatInput.focus();
+        });
+
+        // Close chat
+        chatCloseBtn.addEventListener('click', () => {
+          chatWindow.classList.add('hidden');
+          chatFab.style.transform = '';
+          chatFab.style.pointerEvents = 'auto';
+        });
+
+        // Environment config loader
+        async function loadConfig() {
+          try {
+            const response = await fetch('env.txt');
+            if (!response.ok) throw new Error('Network response was not ok');
+            const text = await response.text();
+            const config = {};
+            text.split('\n').forEach(line => {
+              const match = line.match(/^([^=]+)=(.*)$/);
+              if (match) {
+                config[match[1].trim()] = match[2].trim();
+              }
+            });
+            return config;
+          } catch (error) {
+            console.error("Could not load env.txt file. Are you running a local server?", error);
+            return null;
+          }
+        }
+
+        let chatHistory = [
+          { role: "system", content: "You are VMath AI, a helpful engineering mathematics tutor and guide. Provide concise and accurate answers." }
+        ];
+
+        // Send message handler
+        const handleSendMessage = async () => {
+          const text = chatInput.value.trim();
+          if (!text) return;
+
+          // Add user message to UI
+          const userMsg = document.createElement('div');
+          userMsg.className = 'vmath-message vmath-message-user';
+          userMsg.innerHTML = `
+            <div class="vmath-message-avatar">U</div>
+            <div class="vmath-message-bubble"><p>${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p></div>
+          `;
+          chatMessages.appendChild(userMsg);
+          chatInput.value = '';
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+
+          chatHistory.push({ role: "user", content: text });
+
+          // Add bot loading bubble
+          const botMsg = document.createElement('div');
+          botMsg.className = 'vmath-message vmath-message-bot';
+          botMsg.innerHTML = `
+            <div class="vmath-message-avatar">✦</div>
+            <div class="vmath-message-bubble"><p class="typing">Thinking...</p></div>
+          `;
+          chatMessages.appendChild(botMsg);
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+
+          const config = await loadConfig();
+          if (!config || !config.API_KEY || !config.AI_MODEL) {
+            botMsg.querySelector('.vmath-message-bubble p').innerHTML = "I couldn't read the <code>env.txt</code> file. Make sure you are serving the site over HTTP and the file contains API_KEY and AI_MODEL.";
+            chatHistory.pop(); // Remove user message from history if failed
+            return;
+          }
+
+          try {
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${config.API_KEY}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': window.location.href,
+                'X-Title': 'VMath AI'
+              },
+              body: JSON.stringify({
+                model: config.AI_MODEL,
+                messages: chatHistory
+              })
+            });
+
+            if (!response.ok) {
+              const errText = await response.text();
+              throw new Error(`API Error: ${response.status} - ${errText}`);
+            }
+
+            const data = await response.json();
+            const botReply = data.choices[0].message.content;
+            
+            chatHistory.push({ role: "assistant", content: botReply });
+            // Simple markdown-to-html for line breaks and bold
+            let htmlReply = botReply.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            botMsg.querySelector('.vmath-message-bubble').innerHTML = `<p>${htmlReply}</p>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+          } catch (error) {
+            console.error("Chat error:", error);
+            botMsg.querySelector('.vmath-message-bubble p').innerHTML = "Oops! Something went wrong connecting to the AI. " + error.message;
+            chatHistory.pop(); // Remove user message from history if failed
+          }
+        };
+
+        chatSendBtn.addEventListener('click', handleSendMessage);
+        chatInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSendMessage();
+          }
+        });
+      }
     });
