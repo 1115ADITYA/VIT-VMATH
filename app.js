@@ -499,25 +499,7 @@
           chatFab.style.pointerEvents = 'auto';
         });
 
-        // Environment config loader
-        async function loadConfig() {
-          try {
-            const response = await fetch('env.txt');
-            if (!response.ok) throw new Error('Network response was not ok');
-            const text = await response.text();
-            const config = {};
-            text.split('\n').forEach(line => {
-              const match = line.match(/^([^=]+)=(.*)$/);
-              if (match) {
-                config[match[1].trim()] = match[2].trim();
-              }
-            });
-            return config;
-          } catch (error) {
-            console.error("Could not load env.txt file. Are you running a local server?", error);
-            return null;
-          }
-        }
+
 
         let chatHistory = [
           { role: "system", content: "You are VMath AI, a helpful engineering mathematics tutor and guide. Provide concise and accurate answers." }
@@ -551,31 +533,20 @@
           chatMessages.appendChild(botMsg);
           chatMessages.scrollTop = chatMessages.scrollHeight;
 
-          const config = await loadConfig();
-          if (!config || !config.API_KEY || !config.AI_MODEL) {
-            botMsg.querySelector('.vmath-message-bubble p').innerHTML = "I couldn't read the <code>env.txt</code> file. Make sure you are serving the site over HTTP and the file contains API_KEY and AI_MODEL.";
-            chatHistory.pop(); // Remove user message from history if failed
-            return;
-          }
-
           try {
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            const response = await fetch('/api/chat', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${config.API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': window.location.href,
-                'X-Title': 'VMath AI'
+                'Content-Type': 'application/json'
               },
               body: JSON.stringify({
-                model: config.AI_MODEL,
                 messages: chatHistory
               })
             });
 
             if (!response.ok) {
-              const errText = await response.text();
-              throw new Error(`API Error: ${response.status} - ${errText}`);
+              const errData = await response.json().catch(() => ({}));
+              throw new Error(errData.error || `API Error: ${response.status}`);
             }
 
             const data = await response.json();
