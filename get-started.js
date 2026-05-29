@@ -333,11 +333,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const jacobiDim = document.getElementById('jacobi-dim-selector');
       const standardWrapper = document.getElementById('standard-matrix-wrapper');
       const jacobiWrapper = document.getElementById('jacobi-grid-container');
+      const newtonWrapper = document.getElementById('newton-input-container');
 
       if (standardDim) standardDim.style.display = 'none';
       if (jacobiDim) jacobiDim.style.display = 'none';
       if (standardWrapper) standardWrapper.style.display = 'none';
       if (jacobiWrapper) jacobiWrapper.style.display = 'none';
+      if (newtonWrapper) newtonWrapper.style.display = 'none';
 
       if(calcId === 'none') {
         document.getElementById('overview-ui').style.display = 'flex';
@@ -357,6 +359,8 @@ document.addEventListener('DOMContentLoaded', () => {
           if (jacobiDim) jacobiDim.style.display = 'flex';
           if (jacobiWrapper) jacobiWrapper.style.display = 'flex';
           renderJacobiInputs();
+        } else if (calcId === 'newton-raphson') {
+          if (newtonWrapper) newtonWrapper.style.display = 'flex';
         } else {
           if (standardDim) standardDim.style.display = 'flex';
           if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -550,6 +554,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       } else if (currentCalc === 'gauss-seidel') {
         calculateGaussIterative('seidel');
+        return;
+      } else if (currentCalc === 'newton-raphson') {
+        calculateNewtonRaphson();
         return;
       }
       const output = document.getElementById('steps-output');
@@ -1300,6 +1307,486 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (method === 'seidel') {
         stepsHtml += `<div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;"><div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Convergence Comparison</div><div style="font-size: 1rem; line-height: 1.5; color: var(--navy);"><strong>Gauss-Seidel</strong> typically converges significantly faster than <strong>Gauss-Jacobi</strong>. This is because Gauss-Seidel immediately reuses newly computed values of variables within the very same iteration, whereas Gauss-Jacobi is forced to wait until the next iteration to utilize them.</div></div>`;
+      }
+
+      output.innerHTML = stepsHtml;
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ==========================================
+    // NEWTON-RAPHSON CORE ENGINE & CALCULUS UTILS
+    // ==========================================
+
+    function splitIntoTerms(expr) {
+      expr = expr.replace(/\s+/g, ''); // remove spaces
+      let terms = [];
+      let current = '';
+      let parenDepth = 0;
+      
+      for (let i = 0; i < expr.length; i++) {
+        let char = expr[i];
+        if (char === '(') parenDepth++;
+        if (char === ')') parenDepth--;
+        
+        if ((char === '+' || char === '-') && parenDepth === 0) {
+          if (current) {
+            terms.push(current);
+          }
+          current = char; // start new term with sign
+        } else {
+          current += char;
+        }
+      }
+      if (current) {
+        terms.push(current);
+      }
+      
+      return terms.map(t => {
+        if (t.startsWith('+')) t = t.substring(1);
+        return t;
+      });
+    }
+
+    function differentiateTerm(term) {
+      let isNegative = false;
+      if (term.startsWith('-')) {
+        isNegative = true;
+        term = term.substring(1);
+      }
+      
+      let result = '';
+      
+      // Pattern 1: Pure Constant
+      if (/^\d+(\.\d+)?$/.test(term)) {
+        return '0';
+      }
+      
+      // Pattern 2: Power of x (e.g. x^3, 2*x^2, -x, etc.)
+      let powMatch = term.match(/^(?:(\d+(?:\.\d+)?)\*?)?x(?:\^(\d+))?$/);
+      if (powMatch) {
+        let coef = powMatch[1] ? parseFloat(powMatch[1]) : 1;
+        let power = powMatch[2] ? parseInt(powMatch[2]) : 1;
+        
+        if (power === 1) {
+          result = `${coef}`;
+        } else {
+          let newCoef = coef * power;
+          let newPower = power - 1;
+          if (newPower === 1) {
+            result = `${newCoef}x`;
+          } else {
+            result = `${newCoef}x^${newPower}`;
+          }
+        }
+        
+        if (isNegative) return `-${result}`;
+        return result;
+      }
+      
+      // Pattern 3: Sin(u)
+      let sinMatch = term.match(/^(?:(\d+(?:\.\d+)?)\*?)?sin\((.*?)\)$/);
+      if (sinMatch) {
+        let coef = sinMatch[1] ? parseFloat(sinMatch[1]) : 1;
+        let arg = sinMatch[2];
+        let argDeriv = differentiateSymbolic(arg);
+        if (argDeriv === '0') return '0';
+        
+        let lead = coef;
+        if (argDeriv !== '1') {
+          lead = isNaN(parseFloat(argDeriv)) ? `${lead}*(${argDeriv})` : lead * parseFloat(argDeriv);
+        }
+        result = `${lead}*cos(${arg})`;
+        if (isNegative) return `-${result}`;
+        return result;
+      }
+      
+      // Pattern 4: Cos(u)
+      let cosMatch = term.match(/^(?:(\d+(?:\.\d+)?)\*?)?cos\((.*?)\)$/);
+      if (cosMatch) {
+        let coef = cosMatch[1] ? parseFloat(cosMatch[1]) : 1;
+        let arg = cosMatch[2];
+        let argDeriv = differentiateSymbolic(arg);
+        if (argDeriv === '0') return '0';
+        
+        let lead = coef;
+        if (argDeriv !== '1') {
+          lead = isNaN(parseFloat(argDeriv)) ? `${lead}*(${argDeriv})` : lead * parseFloat(argDeriv);
+        }
+        result = `${lead}*sin(${arg})`;
+        isNegative = !isNegative;
+        if (isNegative) return `-${result}`;
+        return result;
+      }
+      
+      // Pattern 5: Exp
+      let expMatch = term.match(/^(?:(\d+(?:\.\d+)?)\*?)?e\^(x|\((.*?)\))$/) || term.match(/^(?:(\d+(?:\.\d+)?)\*?)?exp\((.*?)\)$/);
+      if (expMatch) {
+        let coef = expMatch[1] ? parseFloat(expMatch[1]) : 1;
+        let arg = expMatch[3] || expMatch[2] || expMatch[4];
+        if (arg === 'x') {
+          result = `${coef}*e^x`;
+        } else {
+          let argDeriv = differentiateSymbolic(arg);
+          if (argDeriv === '0') return '0';
+          let lead = coef;
+          if (argDeriv !== '1') {
+            lead = isNaN(parseFloat(argDeriv)) ? `${lead}*(${argDeriv})` : lead * parseFloat(argDeriv);
+          }
+          result = `${lead}*e^(${arg})`;
+        }
+        if (isNegative) return `-${result}`;
+        return result;
+      }
+      
+      // Pattern 6: Ln(u)
+      let logMatch = term.match(/^(?:(\d+(?:\.\d+)?)\*?)?ln\((.*?)\)$/);
+      if (logMatch) {
+        let coef = logMatch[1] ? parseFloat(logMatch[1]) : 1;
+        let arg = logMatch[2];
+        let argDeriv = differentiateSymbolic(arg);
+        if (argDeriv === '0') return '0';
+        result = `(${coef}*(${argDeriv}))/(${arg})`;
+        if (isNegative) return `-${result}`;
+        return result;
+      }
+      
+      if (term.includes('*')) {
+        let parts = term.split('*');
+        if (parts.length === 2) {
+          let u = parts[0];
+          let v = parts[1];
+          let du = differentiateSymbolic(u);
+          let dv = differentiateSymbolic(v);
+          result = `(${u})*(${dv}) + (${v})*(${du})`;
+          if (isNegative) return `-(${result})`;
+          return result;
+        }
+      }
+
+      return `d/dx(${isNegative ? '-' : ''}${term})`;
+    }
+
+    function differentiateSymbolic(expr) {
+      if (!expr || expr.trim() === '') return '0';
+      let terms = splitIntoTerms(expr);
+      let derivedTerms = terms.map(t => differentiateTerm(t));
+      
+      let merged = '';
+      for (let i = 0; i < derivedTerms.length; i++) {
+        let t = derivedTerms[i];
+        if (t === '0') continue;
+        
+        if (merged.length > 0) {
+          if (t.startsWith('-')) {
+            merged += ` - ${t.substring(1)}`;
+          } else {
+            merged += ` + ${t}`;
+          }
+        } else {
+          merged += t;
+        }
+      }
+      
+      if (!merged) return '0';
+      
+      merged = merged.replace(/\b1\*/g, '')
+                     .replace(/\*1\b/g, '')
+                     .replace(/\b1x/g, 'x')
+                     .replace(/\+-/g, '-')
+                     .replace(/\s+/g, ' ')
+                     .trim();
+                     
+      return merged;
+    }
+
+    function evaluateMath(expr, xVal) {
+      let jsExpr = expr.toLowerCase().replace(/\s+/g, '');
+      jsExpr = jsExpr.replace(/(\d)(x)/g, '$1*$2');
+      
+      jsExpr = jsExpr.replace(/\bsin\b/g, 'Math.sin')
+                     .replace(/\bcos\b/g, 'Math.cos')
+                     .replace(/\btan\b/g, 'Math.tan')
+                     .replace(/\bexp\b/g, 'Math.exp')
+                     .replace(/\bln\b/g, 'Math.log')
+                     .replace(/\blog\b/g, 'Math.log10')
+                     .replace(/\bpi\b/g, 'Math.PI');
+                     
+      jsExpr = jsExpr.replace(/\be\^(x|\((.*?)\))/g, (match, p1, p2) => {
+        let inner = p2 || p1;
+        return `Math.exp(${inner})`;
+      });
+
+      jsExpr = jsExpr.replace(/\^/g, '**');
+
+      try {
+        const fn = new Function('x', `with(Math) { return ${jsExpr}; }`);
+        let result = fn(xVal);
+        if (isNaN(result) || !isFinite(result)) return NaN;
+        return result;
+      } catch (err) {
+        return NaN;
+      }
+    }
+
+    function evaluateMathDerivative(expr, xVal) {
+      let h = 1e-8;
+      let f_plus = evaluateMath(expr, xVal + h);
+      let f_minus = evaluateMath(expr, xVal - h);
+      if (isNaN(f_plus) || isNaN(f_minus)) return NaN;
+      return (f_plus - f_minus) / (2 * h);
+    }
+
+    function generateNewtonGraphSVG(expr, root, initialGuess) {
+      let minX = Math.min(root, initialGuess) - 1.0;
+      let maxX = Math.max(root, initialGuess) + 1.0;
+      if (maxX - minX < 0.5) {
+        minX = root - 1.0;
+        maxX = root + 1.0;
+      }
+      
+      let pointsCount = 60;
+      let points = [];
+      let minY = Infinity;
+      let maxY = -Infinity;
+      
+      for (let i = 0; i <= pointsCount; i++) {
+        let x = minX + (maxX - minX) * (i / pointsCount);
+        let y = evaluateMath(expr, x);
+        if (!isNaN(y) && isFinite(y)) {
+          points.push({ x, y });
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+      
+      if (minY > 0) minY = -0.5;
+      if (maxY < 0) maxY = 0.5;
+      
+      let yPadding = (maxY - minY) * 0.1 || 0.5;
+      minY -= yPadding;
+      maxY += yPadding;
+      
+      let width = 500;
+      let height = 240;
+      let paddingLeft = 50;
+      let paddingRight = 20;
+      let paddingTop = 20;
+      let paddingBottom = 35;
+      
+      let chartW = width - paddingLeft - paddingRight;
+      let chartH = height - paddingTop - paddingBottom;
+      
+      function toSvgX(x) {
+        return paddingLeft + ((x - minX) / (maxX - minX)) * chartW;
+      }
+      
+      function toSvgY(y) {
+        return paddingTop + chartH - ((y - minY) / (maxY - minY)) * chartH;
+      }
+      
+      let pathD = '';
+      for (let i = 0; i < points.length; i++) {
+        let sx = toSvgX(points[i].x);
+        let sy = toSvgY(points[i].y);
+        if (sy >= paddingTop && sy <= paddingTop + chartH) {
+          if (pathD === '') {
+            pathD += `M ${sx} ${sy}`;
+          } else {
+            pathD += ` L ${sx} ${sy}`;
+          }
+        }
+      }
+      
+      let yZeroY = toSvgY(0);
+      let xAxisHtml = '';
+      if (yZeroY >= paddingTop && yZeroY <= paddingTop + chartH) {
+        xAxisHtml = `<line x1="${paddingLeft}" y1="${yZeroY}" x2="${width - paddingRight}" y2="${yZeroY}" stroke="var(--border)" stroke-width="2" stroke-dasharray="4,4" />`;
+      }
+      
+      let xZeroX = toSvgX(0);
+      let yAxisHtml = '';
+      if (xZeroX >= paddingLeft && xZeroX <= paddingLeft + chartW) {
+        yAxisHtml = `<line x1="${xZeroX}" y1="${paddingTop}" x2="${xZeroX}" y2="${height - paddingBottom}" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="2,2" />`;
+      }
+      
+      let guessX = toSvgX(initialGuess);
+      let guessY = toSvgY(evaluateMath(expr, initialGuess));
+      let rootX = toSvgX(root);
+      let rootY = toSvgY(0);
+      
+      let graphHtml = `
+        <div style="margin-top: 2rem; width: 100%; display: flex; flex-direction: column; align-items: center;">
+          <div style="font-weight:700; color:var(--navy); font-size:1.1rem; margin-bottom:1rem; font-family:'Fraunces', serif;">✦ Graphical Convergence Curve</div>
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; width: 100%; max-width: 540px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);">
+            <svg viewBox="0 0 ${width} ${height}" style="width: 100%; height: auto;">
+              <!-- Grid/Axes -->
+              ${xAxisHtml}
+              ${yAxisHtml}
+              
+              <!-- Function Curve -->
+              <path d="${pathD}" fill="none" stroke="var(--amber)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+              
+              <!-- Guess Point marker -->
+              <circle cx="${guessX}" cy="${guessY}" r="5" fill="#ef4444" />
+              <line x1="${guessX}" y1="${guessY}" x2="${guessX}" y2="${yZeroY}" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="2,2" />
+              <text x="${guessX}" y="${yZeroY >= guessY ? yZeroY + 16 : yZeroY - 8}" font-size="11" font-family="'IBM Plex Mono', monospace" fill="#ef4444" text-anchor="middle">x₀ (${initialGuess})</text>
+              
+              <!-- Root Point marker -->
+              <circle cx="${rootX}" cy="${rootY}" r="6" fill="var(--teal)" stroke="#ffffff" stroke-width="2" />
+              <text x="${rootX}" y="${rootY - 12}" font-size="12" font-weight="700" font-family="'IBM Plex Mono', monospace" fill="var(--teal)" text-anchor="middle">Root (${root.toFixed(4)})</text>
+              
+              <!-- Axis Labels -->
+              <text x="${width - paddingRight - 10}" y="${yZeroY - 6}" font-size="11" font-weight="600" fill="var(--muted)" text-anchor="end">x-axis</text>
+            </svg>
+          </div>
+        </div>
+      `;
+      return graphHtml;
+    }
+
+    function calculateNewtonRaphson() {
+      const output = document.getElementById('steps-output');
+      output.innerHTML = '';
+      output.classList.add('active');
+
+      let expr = document.getElementById('newton-function').value.trim();
+      let guessValStr = document.getElementById('newton-guess').value.trim();
+      let toleranceValStr = document.getElementById('newton-tolerance').value.trim();
+      let maxIterValStr = document.getElementById('newton-max-iter').value.trim();
+      let decimalsValStr = document.getElementById('newton-decimals').value.trim();
+
+      if (expr === '' || guessValStr === '' || toleranceValStr === '' || maxIterValStr === '' || decimalsValStr === '') {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (!/x/i.test(expr)) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Function Variable</div></div><div class="step-desc">The function expression must contain the variable <b>'x'</b> (e.g. <code>x^3 - x - 1</code>).</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let testVal = evaluateMath(expr, 1.0);
+      if (isNaN(testVal)) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Function Syntax</div></div><div class="step-desc">Please ensure the function is written correctly (e.g. <code>x^3 - x - 1</code>, <code>cos(x) - x</code>). Check for unmatched parentheses or dangling operators.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let guess = parseFloat(guessValStr);
+      let tolerance = parseFloat(toleranceValStr);
+      let maxIter = parseInt(maxIterValStr);
+      let decimals = parseInt(decimalsValStr);
+
+      if (isNaN(guess) || !isFinite(guess)) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Guess</div></div><div class="step-desc">Initial Guess x₀ must be a valid real number.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (isNaN(tolerance) || tolerance <= 0 || tolerance > 1) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Tolerance</div></div><div class="step-desc">Tolerance must be a positive number less than or equal to 1.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (isNaN(maxIter) || maxIter < 1 || maxIter > 500) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Max Iterations</div></div><div class="step-desc">Maximum iterations must be an integer between 1 and 500.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let stepsHtml = '';
+      let stepCount = 1;
+
+      // Step 1: Given Function
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Given Function</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">We start with the following given equation representing the function:</div><div style="font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">f(x) = ${expr}</div></div></div>`;
+
+      // Step 2: Derivative
+      let derivedExpr = differentiateSymbolic(expr);
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Derivative Analysis</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">Differentiating the function symbolically with respect to 'x':</div><div style="font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">f'(x) = ${derivedExpr}</div></div></div>`;
+
+      // Step 3: Newton Raphson Formula
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Newton Raphson Iteration Formula</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">The standard Newton Raphson iterative equation is defined as:</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;"><span>x<sub>n+1</sub> = x<sub>n</sub> - </span><span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;"><span style="display: block; border-bottom: 2px solid var(--navy); padding: 0 8px;">f(x<sub>n</sub>)</span><span style="display: block; padding: 2px 0 0 0;">f'(x<sub>n</sub>)</span></span></div><div style="font-size:0.95rem; line-height:1.5; color:var(--muted); text-align: center;">We will use this formula recursive step-by-step to calculate progressively closer root estimations.</div></div></div>`;
+
+      // Step 4: Initial Guess
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Initial Guess Value</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">We begin the iterative approximation cycle starting with the user-entered initial value:</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.35rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">x₀ = ${guess.toFixed(decimals)}</div></div></div>`;
+
+      let currentX = guess;
+      let tableRows = [];
+      let converged = false;
+      let finalIter = 0;
+      let isHalted = false;
+
+      for (let k = 1; k <= maxIter; k++) {
+        let fVal = evaluateMath(expr, currentX);
+        let fPrimeVal = evaluateMathDerivative(expr, currentX);
+
+        if (isNaN(fVal) || isNaN(fPrimeVal)) {
+          stepsHtml += `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626; font-size:1.25rem;">Iteration ${k} halted: Evaluation Error</div></div><div class="step-desc" style="font-size:1rem;">The function or its derivative evaluated to an undefined value (NaN) at x = ${currentX.toFixed(decimals)}. Newton Raphson cannot continue.</div></div>`;
+          isHalted = true;
+          break;
+        }
+
+        if (Math.abs(fPrimeVal) < 1e-12) {
+          stepsHtml += `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626; font-size:1.25rem;">Iteration ${k} halted: Division by Zero</div></div><div class="step-desc" style="font-size:1rem;">The derivative f'(x) became zero (or near-zero) at x = ${currentX.toFixed(decimals)}:<br><br><span style="font-weight:700; color:#dc2626; font-size:1.1rem; display:block; text-align:center;">Derivative became zero. Newton Raphson cannot continue.</span></div></div>`;
+          isHalted = true;
+          break;
+        }
+
+        let nextX = currentX - (fVal / fPrimeVal);
+        let err = Math.abs(nextX - currentX);
+
+        tableRows.push({
+          iter: k,
+          xn: currentX,
+          fxn: fVal,
+          fprime: fPrimeVal,
+          xnext: nextX,
+          error: err
+        });
+
+        let iterSubStr = `<div style="padding: 1.25rem; border: 1px solid var(--border); border-left: 4px solid var(--amber); background: var(--bg); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; display: flex; flex-direction: column; gap: 0.75rem;">
+          <div>1. Evaluate function: <b>f(${currentX.toFixed(decimals)}) = ${fVal.toFixed(decimals)}</b></div>
+          <div>2. Evaluate derivative: <b>f'(${currentX.toFixed(decimals)}) = ${fPrimeVal.toFixed(decimals)}</b></div>
+          <div style="border-top: 1px dashed var(--border); padding-top: 0.75rem; margin-top: 0.25rem;">3. Substitute into formula:</div>
+          <div style="display: flex; align-items: center; gap: 0.5rem; padding-left: 1rem;">
+            <span>x<sub>${k}</sub> = ${currentX.toFixed(decimals)} - </span>
+            <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;"><span style="display: block; border-bottom: 1px dashed var(--navy); padding: 0 4px;">${fVal.toFixed(decimals)}</span><span style="display: block; padding: 1px 0;">${fPrimeVal.toFixed(decimals)}</span></span>
+            <span> = <strong>${nextX.toFixed(decimals)}</strong></span>
+          </div>
+        </div>`;
+
+        stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Iteration ${k}</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div></div><div class="step-content" style="display: none;"><div class="step-desc">Using x<sub>${k-1}</sub> = ${currentX.toFixed(decimals)} in the Newton Raphson steps:</div><div style="margin-top: 1rem;">${iterSubStr}</div><div style="margin-top: 1.25rem; padding: 1rem; background: var(--bg); border-radius: 8px; font-size: 0.95rem; color: var(--navy); border: 1px solid var(--border);"><div style="font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase; font-size: 0.85rem; letter-spacing:0.05em; color:var(--muted);">Error Calculation:</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1rem; margin-bottom: 0.5rem;">Error = |x<sub>${k}</sub> - x<sub>${k-1}</sub>| = |${nextX.toFixed(decimals)} - ${currentX.toFixed(decimals)}| = <strong>${err.toFixed(decimals)}</strong></div><div style="font-weight: 700; border-top: 1px dashed var(--border); padding-top: 0.5rem; margin-top: 0.5rem; font-size: 0.95rem;">Comparison: ${err.toFixed(decimals)} ${err < tolerance ? ` &lt; ${tolerance} (&epsilon;) <span style="color: var(--teal)">&nbsp;&bull;&nbsp; Converged!</span>` : ` &ge; ${tolerance} (&epsilon;)`}</div></div></div></div>`;
+
+        currentX = nextX;
+        finalIter = k;
+        if (err < tolerance) { converged = true; break; }
+      }
+
+      if (!isHalted) {
+        // Step Summary Table
+        stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Iteration Summary Table</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div></div><div class="step-content" style="display: none;"><div class="step-desc">A unified view of variable approximations:</div><div style="overflow-x: auto; margin-top: 1.5rem;"><table style="width: 100%; border-collapse: collapse; border: 1px solid var(--border);"><thead><tr style="background: var(--bg); border-bottom: 2px solid var(--border);"><th style="padding: 0.75rem; color: var(--navy); width: 80px;">Iter</th><th style="padding: 0.75rem; color: var(--navy);">x<sub>n</sub></th><th style="padding: 0.75rem; color: var(--navy);">f(x<sub>n</sub>)</th><th style="padding: 0.75rem; color: var(--navy);">f'(x<sub>n</sub>)</th><th style="padding: 0.75rem; color: var(--navy);">x<sub>n+1</sub></th><th style="padding: 0.75rem; color: var(--navy);">Abs Error</th></tr></thead><tbody>${tableRows.map(row => `<tr style="border-bottom: 1px solid var(--border); ${row.iter === finalIter && converged ? 'background: rgba(13, 148, 136, 0.05); font-weight:600;' : ''}"><td style="padding: 0.75rem; text-align: center; font-weight: 600;">${row.iter}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.xn.toFixed(decimals)}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.fxn.toFixed(decimals)}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.fprime.toFixed(decimals)}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.xnext.toFixed(decimals)}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: var(--navy);">${row.error.toFixed(decimals)}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+
+        // SVG Graph Plot
+        let chartGraphHtml = '';
+        try {
+          chartGraphHtml = generateNewtonGraphSVG(expr, currentX, guess);
+        } catch(gErr) {
+          console.error("SVG Plot error:", gErr);
+        }
+
+        // Final answer card
+        stepsHtml += converged 
+          ? `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: var(--navy); color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Solution Converged Successfully!</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system converged within tolerance limit (&epsilon; = ${tolerance}) after <strong>${finalIter}</strong> iterations.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Solved Root:</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${currentX.toFixed(decimals)}</span></div></div>${chartGraphHtml}</div>` 
+          : `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #991b1b; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">⚠️ Limits Reached Without Convergence</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system did not converge to tolerance (&epsilon; = ${tolerance}) within <strong>${maxIter}</strong> iterations limit.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Last Computed State (Iteration ${finalIter}):</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${currentX.toFixed(decimals)}</span></div></div></div>`;
       }
 
       output.innerHTML = stepsHtml;
