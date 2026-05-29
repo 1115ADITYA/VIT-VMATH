@@ -334,12 +334,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const standardWrapper = document.getElementById('standard-matrix-wrapper');
       const jacobiWrapper = document.getElementById('jacobi-grid-container');
       const newtonWrapper = document.getElementById('newton-input-container');
+      const falsePositionWrapper = document.getElementById('false-position-input-container');
 
       if (standardDim) standardDim.style.display = 'none';
       if (jacobiDim) jacobiDim.style.display = 'none';
       if (standardWrapper) standardWrapper.style.display = 'none';
       if (jacobiWrapper) jacobiWrapper.style.display = 'none';
       if (newtonWrapper) newtonWrapper.style.display = 'none';
+      if (falsePositionWrapper) falsePositionWrapper.style.display = 'none';
 
       if(calcId === 'none') {
         document.getElementById('overview-ui').style.display = 'flex';
@@ -361,6 +363,8 @@ document.addEventListener('DOMContentLoaded', () => {
           renderJacobiInputs();
         } else if (calcId === 'newton-raphson') {
           if (newtonWrapper) newtonWrapper.style.display = 'flex';
+        } else if (calcId === 'false-position') {
+          if (falsePositionWrapper) falsePositionWrapper.style.display = 'flex';
         } else {
           if (standardDim) standardDim.style.display = 'flex';
           if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -557,6 +561,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       } else if (currentCalc === 'newton-raphson') {
         calculateNewtonRaphson();
+        return;
+      } else if (currentCalc === 'false-position') {
+        calculateFalsePosition();
         return;
       }
       const output = document.getElementById('steps-output');
@@ -1787,6 +1794,434 @@ document.addEventListener('DOMContentLoaded', () => {
         stepsHtml += converged 
           ? `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: var(--navy); color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Solution Converged Successfully!</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system converged within tolerance limit (&epsilon; = ${tolerance}) after <strong>${finalIter}</strong> iterations.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Solved Root:</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${currentX.toFixed(decimals)}</span></div></div>${chartGraphHtml}</div>` 
           : `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #991b1b; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">⚠️ Limits Reached Without Convergence</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system did not converge to tolerance (&epsilon; = ${tolerance}) within <strong>${maxIter}</strong> iterations limit.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Last Computed State (Iteration ${finalIter}):</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${currentX.toFixed(decimals)}</span></div></div></div>`;
+      }
+
+      output.innerHTML = stepsHtml;
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ==========================================
+    // FALSE POSITION (REGULA FALSI) LOGIC ENGINE
+    // ==========================================
+
+    function generateFalsePositionGraphSVG(expr, root, initA, initB) {
+      let minX = Math.min(root, initA, initB) - 0.5;
+      let maxX = Math.max(root, initA, initB) + 0.5;
+      if (maxX - minX < 0.5) {
+        minX = root - 1.0;
+        maxX = root + 1.0;
+      }
+      
+      let pointsCount = 100;
+      let points = [];
+      let minY = Infinity;
+      let maxY = -Infinity;
+      
+      for (let i = 0; i <= pointsCount; i++) {
+        let x = minX + (maxX - minX) * (i / pointsCount);
+        let y = evaluateMath(expr, x);
+        if (!isNaN(y) && isFinite(y)) {
+          points.push({ x, y });
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+      
+      if (minY > 0) minY = -0.5;
+      if (maxY < 0) maxY = 0.5;
+      
+      let yPadding = (maxY - minY) * 0.15 || 0.5;
+      minY -= yPadding;
+      maxY += yPadding;
+      
+      let width = 500;
+      let height = 240;
+      let paddingLeft = 50;
+      let paddingRight = 20;
+      let paddingTop = 20;
+      let paddingBottom = 35;
+      
+      let chartW = width - paddingLeft - paddingRight;
+      let chartH = height - paddingTop - paddingBottom;
+      
+      function toSvgX(x) {
+        return paddingLeft + ((x - minX) / (maxX - minX)) * chartW;
+      }
+      
+      function toSvgY(y) {
+        return paddingTop + chartH - ((y - minY) / (maxY - minY)) * chartH;
+      }
+      
+      let pathD = '';
+      for (let i = 0; i < points.length; i++) {
+        let sx = toSvgX(points[i].x);
+        let sy = toSvgY(points[i].y);
+        if (sy >= paddingTop && sy <= paddingTop + chartH) {
+          if (pathD === '') {
+            pathD += `M ${sx} ${sy}`;
+          } else {
+            pathD += ` L ${sx} ${sy}`;
+          }
+        }
+      }
+      
+      let yZeroY = toSvgY(0);
+      let xAxisHtml = '';
+      if (yZeroY >= paddingTop && yZeroY <= paddingTop + chartH) {
+        xAxisHtml = `<line x1="${paddingLeft}" y1="${yZeroY}" x2="${width - paddingRight}" y2="${yZeroY}" stroke="var(--border)" stroke-width="2" stroke-dasharray="4,4" />`;
+      }
+      
+      let xZeroX = toSvgX(0);
+      let yAxisHtml = '';
+      if (xZeroX >= paddingLeft && xZeroX <= paddingLeft + chartW) {
+        yAxisHtml = `<line x1="${xZeroX}" y1="${paddingTop}" x2="${xZeroX}" y2="${height - paddingBottom}" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="2,2" />`;
+      }
+      
+      let f_a = evaluateMath(expr, initA);
+      let f_b = evaluateMath(expr, initB);
+      
+      let aX = toSvgX(initA);
+      let aY = toSvgY(f_a);
+      let bX = toSvgX(initB);
+      let bY = toSvgY(f_b);
+      let rootX = toSvgX(root);
+      let rootY = toSvgY(0);
+      
+      let secantLineHtml = '';
+      if (isFinite(aY) && isFinite(bY)) {
+        secantLineHtml = `<line x1="${aX}" y1="${aY}" x2="${bX}" y2="${bY}" stroke="#3b82f6" stroke-width="2" stroke-dasharray="3,3" />`;
+      }
+      
+      let graphHtml = `
+        <div style="margin-top: 2rem; width: 100%; display: flex; flex-direction: column; align-items: center;">
+          <div style="font-weight:700; color:var(--navy); font-size:1.1rem; margin-bottom:1rem; font-family:'Fraunces', serif;">✦ Graphical Secant Convergence</div>
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; width: 100%; max-width: 540px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.03);">
+            <svg viewBox="0 0 ${width} ${height}" style="width: 100%; height: auto;">
+              <!-- Grid/Axes -->
+              ${xAxisHtml}
+              ${yAxisHtml}
+              
+              <!-- Function Curve -->
+              <path d="${pathD}" fill="none" stroke="var(--amber)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+              
+              <!-- Secant line -->
+              ${secantLineHtml}
+              
+              <!-- Point a marker -->
+              <circle cx="${aX}" cy="${aY}" r="5" fill="#ef4444" />
+              <line x1="${aX}" y1="${aY}" x2="${aX}" y2="${yZeroY}" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="2,2" />
+              <text x="${aX}" y="${aY >= yZeroY ? aY + 14 : aY - 6}" font-size="10" font-family="'IBM Plex Mono', monospace" fill="#ef4444" text-anchor="middle">a (${initA})</text>
+              
+              <!-- Point b marker -->
+              <circle cx="${bX}" cy="${bY}" r="5" fill="#ef4444" />
+              <line x1="${bX}" y1="${bY}" x2="${bX}" y2="${yZeroY}" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="2,2" />
+              <text x="${bX}" y="${bY >= yZeroY ? bY + 14 : bY - 6}" font-size="10" font-family="'IBM Plex Mono', monospace" fill="#ef4444" text-anchor="middle">b (${initB})</text>
+              
+              <!-- Root Point marker -->
+              <circle cx="${rootX}" cy="${rootY}" r="6" fill="var(--teal)" stroke="#ffffff" stroke-width="2" />
+              <text x="${rootX}" y="${rootY - 12}" font-size="12" font-weight="700" font-family="'IBM Plex Mono', monospace" fill="var(--teal)" text-anchor="middle">Root (${root.toFixed(4)})</text>
+              
+              <!-- Axis Labels -->
+              <text x="${width - paddingRight - 10}" y="${yZeroY - 6}" font-size="11" font-weight="600" fill="var(--muted)" text-anchor="end">x-axis</text>
+            </svg>
+          </div>
+        </div>
+      `;
+      return graphHtml;
+    }
+
+    function calculateFalsePosition() {
+      const output = document.getElementById('steps-output');
+      output.innerHTML = '';
+      output.classList.add('active');
+
+      let expr = document.getElementById('false-position-function').value.trim();
+      let aValStr = document.getElementById('false-position-a').value.trim();
+      let bValStr = document.getElementById('false-position-b').value.trim();
+      let toleranceValStr = document.getElementById('false-position-tolerance').value.trim();
+      let maxIterValStr = document.getElementById('false-position-max-iter').value.trim();
+      let decimalsValStr = document.getElementById('false-position-decimals').value.trim();
+
+      if (expr === '' || aValStr === '' || bValStr === '' || toleranceValStr === '' || maxIterValStr === '' || decimalsValStr === '') {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (!/x/i.test(expr)) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Function Variable</div></div><div class="step-desc">The function expression must contain the variable <b>'x'</b> (e.g. <code>x^3 - x - 1</code>).</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let testVal = evaluateMath(expr, 1.0);
+      if (isNaN(testVal)) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Function Syntax</div></div><div class="step-desc">Please ensure the function is written correctly (e.g. <code>x^3 - x - 1</code>, <code>cos(x) - x</code>). Check for unmatched parentheses or dangling operators.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let initA = parseFloat(aValStr);
+      let initB = parseFloat(bValStr);
+      let tolerance = parseFloat(toleranceValStr);
+      let maxIter = parseInt(maxIterValStr);
+      let decimals = parseInt(decimalsValStr);
+
+      if (isNaN(initA) || !isFinite(initA) || isNaN(initB) || !isFinite(initB)) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Boundary Values</div></div><div class="step-desc">Lower bound (a) and Upper bound (b) must be valid real numbers.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (initA === initB) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Interval</div></div><div class="step-desc">Lower bound and upper bound cannot be equal.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (isNaN(tolerance) || tolerance <= 0 || tolerance > 1) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Tolerance</div></div><div class="step-desc">Tolerance must be a positive number less than or equal to 1.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (isNaN(maxIter) || maxIter < 1 || maxIter > 500) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Max Iterations</div></div><div class="step-desc">Maximum iterations must be an integer between 1 and 500.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let f_initA = evaluateMath(expr, initA);
+      let f_initB = evaluateMath(expr, initB);
+
+      if (isNaN(f_initA) || isNaN(f_initB)) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Evaluation Error</div></div><div class="step-desc">The function could not be evaluated at the boundaries. Check for division by zero or log of negative numbers.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (f_initA * f_initB > 0) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626; font-size:1.25rem;">Root Bracketing Failure</div></div><div class="step-desc" style="font-size:1.05rem;">
+          Evaluating boundaries:<br>
+          f(a) = f(${initA.toFixed(decimals)}) = ${f_initA.toFixed(decimals)}<br>
+          f(b) = f(${initB.toFixed(decimals)}) = ${f_initB.toFixed(decimals)}<br><br>
+          Verification:<br>
+          f(a) &times; f(b) = (${f_initA.toFixed(decimals)}) &times; (${f_initB.toFixed(decimals)}) = ${(f_initA * f_initB).toFixed(decimals)} &gt; 0<br><br>
+          <span style="font-weight:700; color: #dc2626; display: block; text-align: center; margin-top: 1rem; font-size: 1.1rem;">Root is not bracketed in the selected interval.<br>False Position Method cannot proceed.</span>
+        </div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let stepsHtml = '';
+      let stepCount = 1;
+
+      // Step 1: Given Function
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Given Function</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">We start with the following given equation representing the function:</div><div style="font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">f(x) = ${expr}</div></div></div>`;
+
+      // Step 2: Initial Interval
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Initial Interval</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">We are given the initial interval boundaries:</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; color: var(--navy); text-align: center; margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>a = ${initA.toFixed(decimals)}</div>
+        <div>b = ${initB.toFixed(decimals)}</div>
+      </div><div class="step-desc" style="margin-top: 1rem;">Evaluating the function at these boundary values:</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; color: var(--navy); text-align: center; margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>f(a) = f(${initA.toFixed(decimals)}) = ${f_initA.toFixed(decimals)}</div>
+        <div>f(b) = f(${initB.toFixed(decimals)}) = ${f_initB.toFixed(decimals)}</div>
+      </div></div></div>`;
+
+      // Step 3: Root Bracketing Verification
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Root Bracketing Verification</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">According to Intermediate Value Theorem, a root exists in [a, b] if the function signs at the boundaries are opposite (i.e. f(a) &times; f(b) &lt; 0):</div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        f(a) &times; f(b) = (${f_initA.toFixed(decimals)}) &times; (${f_initB.toFixed(decimals)}) = ${(f_initA * f_initB).toFixed(decimals)} &lt; 0
+      </div><div style="text-align: center; font-weight: 600; color: var(--teal); font-size:1.05rem;">A root exists in the interval [${initA.toFixed(decimals)}, ${initB.toFixed(decimals)}].</div></div></div>`;
+
+      // Step 4: False Position Formula
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">False Position Formula</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">The False Position formula uses linear interpolation between the boundary points to estimate the root:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+          <span>x<sub>r</sub> = </span>
+          <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+            <span style="display: block; border-bottom: 2px solid var(--navy); padding: 0 8px;">a &bull; f(b) - b &bull; f(a)</span>
+            <span style="display: block; padding: 2px 0 0 0;">f(b) - f(a)</span>
+          </span>
+        </div>
+        <div style="font-size:0.95rem; line-height:1.5; color:var(--muted); text-align: center;">Where <strong>x<sub>r</sub></strong> is the new approximation of the root.</div></div></div>`;
+
+      let a = initA;
+      let b = initB;
+      let prevXr = null;
+      let tableRows = [];
+      let converged = false;
+      let finalIter = 0;
+      let isHalted = false;
+
+      for (let k = 1; k <= maxIter; k++) {
+        let f_a = evaluateMath(expr, a);
+        let f_b = evaluateMath(expr, b);
+
+        if (isNaN(f_a) || isNaN(f_b) || Math.abs(f_b - f_a) < 1e-15) {
+          stepsHtml += `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626; font-size:1.25rem;">Iteration ${k} halted: Evaluation Error</div></div><div class="step-desc" style="font-size:1rem;">Evaluation error or zero denominator at boundary points. False Position cannot continue.</div></div>`;
+          isHalted = true;
+          break;
+        }
+
+        let xr = (a * f_b - b * f_a) / (f_b - f_a);
+        let f_xr = evaluateMath(expr, xr);
+
+        if (isNaN(xr) || isNaN(f_xr)) {
+          stepsHtml += `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626; font-size:1.25rem;">Iteration ${k} halted: Evaluation Error</div></div><div class="step-desc" style="font-size:1rem;">The function evaluated to NaN at xr = ${xr.toFixed(decimals)}. False Position cannot continue.</div></div>`;
+          isHalted = true;
+          break;
+        }
+
+        let err = prevXr !== null ? Math.abs(xr - prevXr) : null;
+
+        tableRows.push({
+          iter: k,
+          a: a,
+          b: b,
+          xr: xr,
+          fxr: f_xr,
+          error: err !== null ? err : NaN
+        });
+
+        let substitutionHtml = `
+          <div style="padding: 1.25rem; border: 1px solid var(--border); border-left: 4px solid var(--amber); background: var(--bg); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div>&bull; Current Interval: <b>[a, b] = [${a.toFixed(decimals)}, ${b.toFixed(decimals)}]</b></div>
+            <div>&bull; Boundaries: <b>f(a) = ${f_a.toFixed(decimals)}</b>, <b>f(b) = ${f_b.toFixed(decimals)}</b></div>
+            <div style="border-top: 1px dashed var(--border); padding-top: 0.75rem; margin-top: 0.25rem;">&bull; Substitution into formula:</div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding-left: 1rem; flex-wrap: wrap;">
+              <span>x<sub>r</sub> = </span>
+              <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+                <span style="display: block; border-bottom: 1px dashed var(--navy); padding: 0 4px;">(${a.toFixed(decimals)})(${f_b.toFixed(decimals)}) - (${b.toFixed(decimals)})(${f_a.toFixed(decimals)})</span>
+                <span style="display: block; padding: 1px 0;">${f_b.toFixed(decimals)} - (${f_a.toFixed(decimals)})</span>
+              </span>
+              <span> = <strong>${xr.toFixed(decimals)}</strong></span>
+            </div>
+            <div style="border-top: 1px dashed var(--border); padding-top: 0.75rem; margin-top: 0.25rem;">&bull; Function evaluation at root approximation:</div>
+            <div style="padding-left: 1rem;">
+              f(x<sub>r</sub>) = f(${xr.toFixed(decimals)}) = <strong>${f_xr.toFixed(decimals)}</strong>
+            </div>
+          </div>
+        `;
+
+        let testProduct = f_a * f_xr;
+        let nextIntervalReasoning = '';
+        let nextA = a;
+        let nextB = b;
+
+        if (testProduct < 0) {
+          nextB = xr;
+          nextIntervalReasoning = `
+            <div>Since <b>f(a) &times; f(x<sub>r</sub>) &lt; 0</b> (opposite signs):</div>
+            <div style="padding-left: 1rem; margin-top: 0.25rem; font-weight: 600;">
+              f(${a.toFixed(decimals)}) &times; f(${xr.toFixed(decimals)}) = (${f_a.toFixed(decimals)}) &times; (${f_xr.toFixed(decimals)}) = ${(testProduct).toFixed(decimals)} &lt; 0
+            </div>
+            <div style="margin-top: 0.5rem;">The root lies in the left sub-interval: <b>[a, x<sub>r</sub>]</b>.</div>
+            <div style="margin-top: 0.25rem; color: var(--teal); font-weight: 700;">Update: Upper Bound b = x<sub>r</sub> = ${xr.toFixed(decimals)}</div>
+          `;
+        } else {
+          nextA = xr;
+          nextIntervalReasoning = `
+            <div>Since <b>f(a) &times; f(x<sub>r</sub>) &ge; 0</b> (same signs):</div>
+            <div style="padding-left: 1rem; margin-top: 0.25rem; font-weight: 600;">
+              f(${a.toFixed(decimals)}) &times; f(${xr.toFixed(decimals)}) = (${f_a.toFixed(decimals)}) &times; (${f_xr.toFixed(decimals)}) = ${(testProduct).toFixed(decimals)} &ge; 0
+            </div>
+            <div style="margin-top: 0.5rem;">The root lies in the right sub-interval: <b>[x<sub>r</sub>, b]</b>.</div>
+            <div style="margin-top: 0.25rem; color: var(--teal); font-weight: 700;">Update: Lower Bound a = x<sub>r</sub> = ${xr.toFixed(decimals)}</div>
+          `;
+        }
+
+        let errorCalcHtml = '';
+        if (err !== null) {
+          errorCalcHtml = `
+            <div style="font-family:'IBM Plex Mono',monospace; font-size: 1rem; margin-bottom: 0.5rem;">
+              Error = |x<sub>r</sub><sup>(current)</sup> - x<sub>r</sub><sup>(previous)</sup>| = |${xr.toFixed(decimals)} - ${prevXr.toFixed(decimals)}| = <strong>${err.toFixed(decimals)}</strong>
+            </div>
+            <div style="font-weight: 700; border-top: 1px dashed var(--border); padding-top: 0.5rem; margin-top: 0.5rem; font-size: 0.95rem;">
+              Comparison: ${err.toFixed(decimals)} ${err < tolerance ? ` &lt; ${tolerance} (&epsilon;) <span style="color: var(--teal)">&nbsp;&bull;&nbsp; Converged!</span>` : ` &ge; ${tolerance} (&epsilon;)`}
+            </div>
+          `;
+        } else {
+          errorCalcHtml = `
+            <div style="font-family:'IBM Plex Mono',monospace; font-size: 1rem; margin-bottom: 0.5rem;">
+              Error = <strong>Not Applicable</strong> (First iteration)
+            </div>
+            <div style="font-weight: 700; border-top: 1px dashed var(--border); padding-top: 0.5rem; margin-top: 0.5rem; font-size: 0.95rem;">
+              Comparison: N/A &ge; ${tolerance} (&epsilon;) &mdash; Continue iteration.
+            </div>
+          `;
+        }
+
+        stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Iteration ${k}</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div></div><div class="step-content" style="display: none;">
+          <div class="step-desc">Using interval bounds [a, b] = [${a.toFixed(decimals)}, ${b.toFixed(decimals)}] to compute the new root approximation:</div>
+          <div style="margin-top: 1rem;">${substitutionHtml}</div>
+          <div style="margin-top: 1.25rem; padding: 1.25rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; line-height: 1.5;">
+            <div style="font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing:0.05em; color:var(--muted); margin-bottom: 0.5rem;">Interval Update Decision:</div>
+            ${nextIntervalReasoning}
+          </div>
+          <div style="margin-top: 1.25rem; padding: 1rem; background: var(--bg); border-radius: 8px; font-size: 0.95rem; color: var(--navy); border: 1px solid var(--border);">
+            <div style="font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase; font-size: 0.85rem; letter-spacing:0.05em; color:var(--muted);">Error Calculation:</div>
+            ${errorCalcHtml}
+          </div>
+        </div></div>`;
+
+        prevXr = xr;
+        a = nextA;
+        b = nextB;
+        finalIter = k;
+
+        if (err !== null && err < tolerance) {
+          converged = true;
+          break;
+        }
+      }
+
+      if (!isHalted) {
+        let tableRowsHtml = tableRows.map(row => {
+          let errValStr = isNaN(row.error) ? '-' : row.error.toFixed(decimals);
+          let isFinalRow = row.iter === finalIter && converged;
+          let rowStyle = isFinalRow ? 'background: rgba(13, 148, 136, 0.05); font-weight:600;' : '';
+          return `<tr style="border-bottom: 1px solid var(--border); ${rowStyle}">
+            <td style="padding: 0.75rem; text-align: center; font-weight: 600;">${row.iter}</td>
+            <td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.a.toFixed(decimals)}</td>
+            <td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.b.toFixed(decimals)}</td>
+            <td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.xr.toFixed(decimals)}</td>
+            <td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.fxr.toFixed(decimals)}</td>
+            <td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: var(--navy);">${errValStr}</td>
+          </tr>`;
+        }).join('');
+
+        stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Iteration Summary Table</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div></div><div class="step-content" style="display: none;"><div class="step-desc">A unified view of variable approximations:</div><div style="overflow-x: auto; margin-top: 1.5rem;"><table style="width: 100%; border-collapse: collapse; border: 1px solid var(--border);"><thead><tr style="background: var(--bg); border-bottom: 2px solid var(--border);"><th style="padding: 0.75rem; color: var(--navy); width: 80px;">Iter</th><th style="padding: 0.75rem; color: var(--navy);">a</th><th style="padding: 0.75rem; color: var(--navy);">b</th><th style="padding: 0.75rem; color: var(--navy);">x<sub>r</sub></th><th style="padding: 0.75rem; color: var(--navy);">f(x<sub>r</sub>)</th><th style="padding: 0.75rem; color: var(--navy);">Abs Error</th></tr></thead><tbody>${tableRowsHtml}</tbody></table></div></div></div>`;
+
+        if (converged) {
+          let lastRow = tableRows[tableRows.length - 1];
+          stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Convergence Check</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div></div><div class="step-content" style="display: none;"><div class="step-desc">Comparing final iteration error with tolerance threshold:</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size:1.15rem; color:var(--navy); text-align:center; margin:1.5rem 0; padding: 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;">
+              <div>Error &lt; Tolerance</div>
+              <div style="font-weight: 700; font-size: 1.3rem; margin-top: 0.5rem; color: var(--teal);">
+                ${lastRow.error.toFixed(decimals)} &lt; ${tolerance} &mdash; True
+              </div>
+            </div>
+            <div style="font-size:0.95rem; line-height:1.5; color:var(--muted); text-align: center;">The method converged as the error is strictly below tolerance.</div></div></div>`;
+        }
+
+        let chartGraphHtml = '';
+        let finalXr = tableRows[tableRows.length - 1].xr;
+        try {
+          chartGraphHtml = generateFalsePositionGraphSVG(expr, finalXr, initA, initB);
+        } catch(gErr) {
+          console.error("SVG Plot error:", gErr);
+        }
+
+        stepsHtml += converged 
+          ? `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: var(--navy); color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Solution Converged Successfully!</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system converged within tolerance limit (&epsilon; = ${tolerance}) after <strong>${finalIter}</strong> iterations.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Solved Root:</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${finalXr.toFixed(decimals)}</span></div><div style="font-size: 0.9rem; opacity:0.8; margin-top: 0.5rem;">Converged after <strong>${finalIter}</strong> iterations</div></div>${chartGraphHtml}</div>` 
+          : `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #991b1b; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">⚠️ Limits Reached Without Convergence</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Method did not converge within the specified iteration limit (&epsilon; = ${tolerance}) within <strong>${maxIter}</strong> iterations limit.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Last Computed State (Iteration ${finalIter}):</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${finalXr.toFixed(decimals)}</span></div></div></div>`;
+
+        stepsHtml += `<div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;"><div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Method Characteristics</div><div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">False Position Method combines interval bracketing with interpolation, making it generally faster than the Bisection Method while maintaining guaranteed bracketing of the root.</div></div>`;
       }
 
       output.innerHTML = stepsHtml;
