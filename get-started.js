@@ -328,6 +328,17 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('matrix-calc-ui').classList.remove('active');
       document.getElementById('steps-output').classList.remove('active');
 
+      // Toggle elements based on whether it is Gauss Jacobi
+      const standardDim = document.getElementById('standard-dim-selector');
+      const jacobiDim = document.getElementById('jacobi-dim-selector');
+      const standardWrapper = document.getElementById('standard-matrix-wrapper');
+      const jacobiWrapper = document.getElementById('jacobi-grid-container');
+
+      if (standardDim) standardDim.style.display = 'none';
+      if (jacobiDim) jacobiDim.style.display = 'none';
+      if (standardWrapper) standardWrapper.style.display = 'none';
+      if (jacobiWrapper) jacobiWrapper.style.display = 'none';
+
       if(calcId === 'none') {
         document.getElementById('overview-ui').style.display = 'flex';
       } else {
@@ -341,6 +352,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('matrix-calc-title').innerText = calcName;
         document.getElementById('matrix-calc-ui').classList.add('active');
+
+        if(calcId === 'gauss-jacobi') {
+          if (jacobiDim) jacobiDim.style.display = 'flex';
+          if (jacobiWrapper) jacobiWrapper.style.display = 'flex';
+          renderJacobiInputs();
+        } else {
+          if (standardDim) standardDim.style.display = 'flex';
+          if (standardWrapper) standardWrapper.style.display = 'inline-block';
+          renderMatrixInputs();
+        }
         
         // Scroll down
         document.querySelector('.main-area').scrollTo({ top: 0, behavior: 'smooth' });
@@ -419,6 +440,55 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize dimensions
     renderMatrixInputs();
 
+    // Gauss Jacobi Dynamic Input State & Builders
+    let currentJacobiDim = 3;
+
+    function renderJacobiInputs() {
+      const containerA = document.getElementById('jacobi-matrix-a');
+      const containerB = document.getElementById('jacobi-vector-b');
+      const containerX0 = document.getElementById('jacobi-vector-x0');
+      if(!containerA || !containerB || !containerX0) return;
+
+      containerA.style.gridTemplateColumns = `repeat(${currentJacobiDim}, 1fr)`;
+      containerB.style.gridTemplateColumns = `1fr`;
+      containerX0.style.gridTemplateColumns = `1fr`;
+
+      let htmlA = '';
+      let htmlB = '';
+      let htmlX0 = '';
+
+      for(let i=0; i<currentJacobiDim; i++) {
+        // Matrix A row i
+        for(let j=0; j<currentJacobiDim; j++) {
+          let existing = document.getElementById(`ja_${i}_${j}`);
+          let val = existing ? existing.value : (i === j ? 10 : 1);
+          htmlA += `<input type="number" class="matrix-cell" id="ja_${i}_${j}" value="${val}">`;
+        }
+
+        // Vector B
+        let existingB = document.getElementById(`jb_${i}`);
+        let valB = existingB ? existingB.value : (10 + i * 2);
+        htmlB += `<input type="number" class="matrix-cell" id="jb_${i}" value="${valB}">`;
+
+        // Vector X0
+        let existingX0 = document.getElementById(`jx0_${i}`);
+        let valX0 = existingX0 ? existingX0.value : 0;
+        htmlX0 += `<input type="number" class="matrix-cell" id="jx0_${i}" value="${valX0}">`;
+      }
+
+      containerA.innerHTML = htmlA;
+      containerB.innerHTML = htmlB;
+      containerX0.innerHTML = htmlX0;
+      
+      const dimLabel = document.getElementById('dim-jacobi');
+      if (dimLabel) dimLabel.innerText = currentJacobiDim;
+    }
+
+    function changeDimJacobi(delta) {
+      currentJacobiDim = Math.max(2, Math.min(10, currentJacobiDim + delta));
+      renderJacobiInputs();
+    }
+
     // Keyboard Navigation for Matrix Inputs (Enter Key)
     document.addEventListener('keydown', (e) => {
       if(e.key === 'Enter' && e.target.classList.contains('matrix-cell')) {
@@ -475,6 +545,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Rank Calculation Logic
     function calculateMatrix() {
+      if (currentCalc === 'gauss-jacobi') {
+        calculateGaussJacobi();
+        return;
+      }
       const output = document.getElementById('steps-output');
       output.innerHTML = '';
       output.classList.add('active');
@@ -718,5 +792,471 @@ document.addEventListener('DOMContentLoaded', () => {
       output.innerHTML = stepsHtml;
       
       // Scroll to steps
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ==========================================
+    // GAUSS JACOBI MATHEMATICAL & LOGIC ENGINE
+    // ==========================================
+
+    function getDeterminant(matrix) {
+      let n = matrix.length;
+      let m = JSON.parse(JSON.stringify(matrix));
+      let det = 1;
+      for (let i = 0; i < n; i++) {
+        let pivot = i;
+        for (let j = i + 1; j < n; j++) {
+          if (Math.abs(m[j][i]) > Math.abs(m[pivot][i])) {
+            pivot = j;
+          }
+        }
+        if (Math.abs(m[pivot][i]) < 1e-12) return 0;
+        if (pivot !== i) {
+          let temp = m[i]; m[i] = m[pivot]; m[pivot] = temp;
+          det *= -1;
+        }
+        det *= m[i][i];
+        for (let j = i + 1; j < n; j++) {
+          let factor = m[j][i] / m[i][i];
+          for (let k = i; k < n; k++) {
+            m[j][k] -= factor * m[i][k];
+          }
+        }
+      }
+      return det;
+    }
+
+    function toggleStep(header) {
+      const card = header.closest('.step-card');
+      const content = card.querySelector('.step-content');
+      const icon = header.querySelector('.step-toggle-icon');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        if (icon) icon.style.transform = 'rotate(0deg)';
+      } else {
+        content.style.display = 'none';
+        if (icon) icon.style.transform = 'rotate(-90deg)';
+      }
+    }
+
+    function getVarName(idx, total) {
+      if (total <= 3) {
+        return ['x', 'y', 'z'][idx];
+      } else {
+        return `x<sub>${idx + 1}</sub>`;
+      }
+    }
+
+    function formatEquation(rowA, valB, total) {
+      let parts = [];
+      for (let j = 0; j < total; j++) {
+        let coef = rowA[j];
+        if (coef === 0) continue;
+        let varName = getVarName(j, total);
+        let sign = '';
+        if (parts.length > 0) {
+          sign = coef >= 0 ? ' + ' : ' - ';
+        } else {
+          sign = coef >= 0 ? '' : '-';
+        }
+        let absCoef = Math.abs(coef);
+        let coefStr = absCoef === 1 ? '' : absCoef;
+        parts.push(`${sign}${coefStr}${varName}`);
+      }
+      return parts.join('') + ` = ${valB}`;
+    }
+
+    function isDiagonallyDominant(A) {
+      let n = A.length;
+      for (let i = 0; i < n; i++) {
+        let diag = Math.abs(A[i][i]);
+        let offDiag = 0;
+        for (let j = 0; j < n; j++) {
+          if (i !== j) offDiag += Math.abs(A[i][j]);
+        }
+        if (diag < offDiag) return false;
+      }
+      return true;
+    }
+
+    function findBestPermutation(A) {
+      let n = A.length;
+      
+      if (n <= 6) {
+        let bestP = null;
+        let bestDominantRows = -1;
+        let bestMarginSum = -Infinity;
+
+        function permute(p, used) {
+          if (p.length === n) {
+            let dominantRows = 0;
+            let marginSum = 0;
+            for (let i = 0; i < n; i++) {
+              let r = p[i];
+              let diagVal = Math.abs(A[r][i]);
+              let offDiagSum = 0;
+              for (let j = 0; j < n; j++) {
+                if (i !== j) offDiagSum += Math.abs(A[r][j]);
+              }
+              marginSum += (diagVal - offDiagSum);
+              if (diagVal >= offDiagSum) dominantRows++;
+            }
+
+            if (dominantRows > bestDominantRows) {
+              bestDominantRows = dominantRows;
+              bestMarginSum = marginSum;
+              bestP = [...p];
+            } else if (dominantRows === bestDominantRows && marginSum > bestMarginSum) {
+              bestMarginSum = marginSum;
+              bestP = [...p];
+            }
+            return;
+          }
+
+          for (let i = 0; i < n; i++) {
+            if (!used[i]) {
+              used[i] = true;
+              p.push(i);
+              permute(p, used);
+              p.pop();
+              used[i] = false;
+            }
+          }
+        }
+
+        permute([], new Array(n).fill(false));
+        return bestP;
+      } else {
+        let p = new Array(n).fill(-1);
+        let rowUsed = new Array(n).fill(false);
+        for (let col = 0; col < n; col++) {
+          let maxVal = -1;
+          let bestRow = -1;
+          for (let row = 0; row < n; row++) {
+            if (!rowUsed[row]) {
+              let val = Math.abs(A[row][col]);
+              if (val > maxVal) {
+                maxVal = val;
+                bestRow = row;
+              }
+            }
+          }
+          if (bestRow !== -1) {
+            p[col] = bestRow;
+            rowUsed[bestRow] = true;
+          }
+        }
+        for (let col = 0; col < n; col++) {
+          if (p[col] === -1) {
+            for (let row = 0; row < n; row++) {
+              if (!rowUsed[row]) {
+                p[col] = row;
+                rowUsed[row] = true;
+                break;
+              }
+            }
+          }
+        }
+        return p;
+      }
+    }
+function calculateGaussJacobi() {
+      const output = document.getElementById('steps-output');
+      output.innerHTML = '';
+      output.classList.add('active');
+
+      let n = currentJacobiDim;
+      let A = [];
+      let B = [];
+      let X0 = [];
+
+      let hasInvalid = false;
+      let hasEmpty = false;
+      for (let i = 0; i < n; i++) {
+        let row = [];
+        for (let j = 0; j < n; j++) {
+          let valStr = document.getElementById(`ja_${i}_${j}`).value.trim();
+          if (valStr === '') { hasEmpty = true; }
+          let val = parseFloat(valStr);
+          if (isNaN(val) || !isFinite(val)) { hasInvalid = true; }
+          row.push(val);
+        }
+        A.push(row);
+
+        let valBStr = document.getElementById(`jb_${i}`).value.trim();
+        if (valBStr === '') { hasEmpty = true; }
+        let valB = parseFloat(valBStr);
+        if (isNaN(valB) || !isFinite(valB)) { hasInvalid = true; }
+        B.push(valB);
+
+        let valX0Str = document.getElementById(`jx0_${i}`).value.trim();
+        if (valX0Str === '') { hasEmpty = true; }
+        let valX0 = parseFloat(valX0Str);
+        if (isNaN(valX0) || !isFinite(valX0)) { hasInvalid = true; }
+        X0.push(valX0);
+      }
+
+      let tolerance = parseFloat(document.getElementById('jacobi-tolerance').value);
+      let maxIter = parseInt(document.getElementById('jacobi-max-iter').value);
+
+      if (isNaN(tolerance) || tolerance <= 0 || tolerance > 1) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Tolerance</div></div><div class="step-desc">Tolerance must be a positive number less than or equal to 1.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      if (isNaN(maxIter) || maxIter < 1 || maxIter > 500) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Max Iterations</div></div><div class="step-desc">Maximum iterations must be an integer between 1 and 500.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let decimalsVal = document.getElementById('jacobi-decimals').value.trim();
+      let decimals = parseInt(decimalsVal);
+      if (isNaN(decimals) || !/^\d+$/.test(decimalsVal) || decimals < 0 || decimals > 15) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (hasEmpty || hasInvalid) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Matrix Entries</div></div><div class="step-desc">Please ensure all cells are filled with valid numeric values.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let zeroDiags = [];
+      for (let i = 0; i < n; i++) {
+        if (Math.abs(A[i][i]) < 1e-12) {
+          zeroDiags.push(i + 1);
+        }
+      }
+
+      let origDet = getDeterminant(A);
+      if (Math.abs(origDet) < 1e-12) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626; font-size: 1.25rem;">Critical Error: Singular Matrix</div></div><div class="step-desc" style="font-size: 1rem;">The coefficient matrix A is singular (determinant = 0). A singular matrix does not have a unique solution, so Gauss-Jacobi cannot solve this system.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let origDominant = isDiagonallyDominant(A);
+      let rearrangedPerformed = false;
+      let finalA = JSON.parse(JSON.stringify(A));
+      let finalB = [...B];
+      let perm = Array.from({length: n}, (_, i) => i);
+
+      let bestP = findBestPermutation(A);
+      let isDifferent = false;
+      for (let i = 0; i < n; i++) {
+        if (bestP[i] !== i) {
+          isDifferent = true;
+          break;
+        }
+      }
+
+      if (isDifferent) {
+        let origDomRows = 0;
+        for (let i = 0; i < n; i++) {
+          let diag = Math.abs(A[i][i]);
+          let offDiag = 0;
+          for (let j = 0; j < n; j++) {
+            if (i !== j) offDiag += Math.abs(A[i][j]);
+          }
+          if (diag >= offDiag) origDomRows++;
+        }
+
+        let newDomRows = 0;
+        for (let i = 0; i < n; i++) {
+          let originalRowIdx = bestP[i];
+          let diagVal = Math.abs(A[originalRowIdx][i]);
+          let offDiagSum = 0;
+          for (let j = 0; j < n; j++) {
+            if (i !== j) offDiagSum += Math.abs(A[originalRowIdx][j]);
+          }
+          if (diagVal >= offDiagSum) newDomRows++;
+        }
+
+        if (newDomRows > origDomRows || (!origDominant && newDomRows === n)) {
+          rearrangedPerformed = true;
+          perm = bestP;
+          finalA = [];
+          finalB = [];
+          for (let i = 0; i < n; i++) {
+            finalA.push(A[perm[i]]);
+            finalB.push(B[perm[i]]);
+          }
+        }
+      }
+
+      let finalZeroDiags = [];
+      for (let i = 0; i < n; i++) {
+        if (Math.abs(finalA[i][i]) < 1e-12) {
+          finalZeroDiags.push(i + 1);
+        }
+      }
+      if (finalZeroDiags.length > 0) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626; font-size: 1.25rem;">Critical Error: Division by Zero</div></div><div class="step-desc" style="font-size: 1rem;">Zero diagonal entries detected at Row(s): <b>${finalZeroDiags.join(', ')}</b> of the arranged matrix.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let isFinalDominant = isDiagonallyDominant(finalA);
+      let diagDominanceDetails = [];
+      for (let i = 0; i < n; i++) {
+        let diagVal = Math.abs(finalA[i][i]);
+        let offDiagSum = 0;
+        let sumExpr = [];
+        for (let j = 0; j < n; j++) {
+          if (i !== j) {
+            offDiagSum += Math.abs(finalA[i][j]);
+            sumExpr.push(`|${finalA[i][j]}|`);
+          }
+        }
+        let conditionMet = diagVal > offDiagSum;
+        diagDominanceDetails.push({
+          row: i + 1,
+          diag: diagVal,
+          sum: offDiagSum,
+          expr: sumExpr.join(' + ') || '0',
+          met: conditionMet
+        });
+      }
+
+      let beta = [];
+      let sassenfeldDetails = [];
+      let maxBeta = 0;
+      for (let i = 0; i < n; i++) {
+        let diagVal = Math.abs(finalA[i][i]);
+        let sum = 0;
+        let sassenfeldExprParts = [];
+        for (let j = 0; j < i; j++) {
+          sum += Math.abs(finalA[i][j]) * beta[j];
+          sassenfeldExprParts.push(`|${finalA[i][j]}| &times; ${beta[j].toFixed(decimals)}`);
+        }
+        for (let j = i + 1; j < n; j++) {
+          sum += Math.abs(finalA[i][j]);
+          sassenfeldExprParts.push(`|${finalA[i][j]}|`);
+        }
+        let bVal = sum / diagVal;
+        beta.push(bVal);
+        if (bVal > maxBeta) maxBeta = bVal;
+
+        sassenfeldDetails.push({
+          row: i + 1,
+          expr: `(${sassenfeldExprParts.join(' + ') || '0'}) / |${finalA[i][i]}|`,
+          val: bVal
+        });
+      }
+
+      let sassenfeldGuaranteed = maxBeta < 1;
+      let guaranteed = isFinalDominant || sassenfeldGuaranteed;
+
+      if (!guaranteed) {
+        if (!confirm("Warning: Gauss Jacobi may not converge for this system. Do you want to continue anyway?")) {
+          return;
+        }
+      }
+
+      let stepsHtml = '';
+      let stepCount = 1;
+
+      function formatMatrixRepHTML(mat, vars, constants) {
+        let cols = mat[0].length;
+        let html = `<div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin: 1.5rem 0; flex-wrap: wrap;"><div style="display: flex; flex-direction: column; align-items: center;"><span style="font-weight: 600; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px;">Matrix A</span><div class="display-matrix-wrapper"><div class="display-matrix" style="grid-template-columns: repeat(${cols}, 1fr);">${mat.map(row => row.map(v => `<div>${v}</div>`).join('')).join('')}</div></div></div><div style="font-size: 1.5rem; font-weight: 700; color: var(--navy); font-family: 'Fraunces', serif;">&times;</div><div style="display: flex; flex-direction: column; align-items: center;"><span style="font-weight: 600; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px;">Vector X</span><div class="display-matrix-wrapper"><div class="display-matrix" style="grid-template-columns: 1fr;">${vars.map(v => `<div>${v}</div>`).join('')}</div></div></div><div style="font-size: 1.5rem; font-weight: 700; color: var(--navy); font-family: 'Fraunces', serif;">=</div><div style="display: flex; flex-direction: column; align-items: center;"><span style="font-weight: 600; font-size: 0.85rem; color: var(--muted); margin-bottom: 6px;">Vector B</span><div class="display-matrix-wrapper"><div class="display-matrix" style="grid-template-columns: 1fr;">${constants.map(c => `<div>${c}</div>`).join('')}</div></div></div></div>`;
+        return html;
+      }
+
+      let origEqusHtml = '';
+      for (let i = 0; i < n; i++) {
+        origEqusHtml += `<div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin-bottom: 0.6rem; text-align: center;">Equation ${i + 1}: &nbsp;&nbsp; <strong>${formatEquation(A[i], B[i], n)}</strong></div>`;
+      }
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Original System of Equations</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">The entered linear system of equations corresponds algebraic form as follows:</div><div style="margin: 1.5rem 0;">${origEqusHtml}</div></div></div>`;
+
+      let step2Desc = '';
+      if (rearrangedPerformed) {
+        let beforeRowsHtml = '';
+        for (let i = 0; i < n; i++) { beforeRowsHtml += `<div style="font-family: 'IBM Plex Mono', monospace; margin-bottom: 0.4rem; opacity:0.85;">${formatEquation(A[i], B[i], n)}</div>`; }
+        let afterRowsHtml = '';
+        for (let i = 0; i < n; i++) { afterRowsHtml += `<div style="font-family: 'IBM Plex Mono', monospace; margin-bottom: 0.4rem; color: var(--navy); font-weight: 700;">${formatEquation(finalA[i], finalB[i], n)}</div>`; }
+        step2Desc = `<div class="step-desc">To guarantee the convergence of the Gauss Jacobi method, the system of equations should be <strong>Diagonally Dominant</strong>. The original system is not dominant in its entered order. We automatically rearrange the equations by swapping rows to maximize the diagonal entries:</div><div style="display: flex; gap: 2rem; justify-content: center; flex-wrap: wrap; margin-top: 1.5rem;"><div style="padding: 1.25rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); min-width: 250px; text-align: center;"><div style="font-weight: 700; color: #b91c1c; margin-bottom: 0.75rem; font-size: 0.9rem; text-transform: uppercase;">Original Order</div>${beforeRowsHtml}</div><div style="display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--amber); font-weight: 700;">➔</div><div style="padding: 1.25rem; border: 1px solid rgba(13, 148, 136, 0.2); border-radius: 8px; background: rgba(13, 148, 136, 0.05); min-width: 250px; text-align: center;"><div style="font-weight: 700; color: var(--teal); margin-bottom: 0.75rem; font-size: 0.9rem; text-transform: uppercase;">Rearranged Order</div>${afterRowsHtml}</div></div><div style="margin-top: 1.5rem; font-size: 0.95rem; line-height: 1.5; color: var(--muted); padding: 0.75rem; border-left: 3px solid var(--amber); background: var(--bg2);"><strong>Reasoning:</strong> Sweeping the largest coefficients to the main diagonal ensures that during iterations, we divide by the dominant element. This shrinks convergence error at each step and keeps the iterative process stable.</div>`;
+      } else {
+        step2Desc = `<div class="step-desc">To guarantee convergence, the system must be <strong>Diagonally Dominant</strong>. Let's inspect the arrangement:</div><div style="margin: 1rem 0; text-align: center; padding: 1.25rem; border: 1px dashed var(--border); background: var(--bg); border-radius: 8px; color: var(--navy); font-weight: 600;">The entered system of equations is already optimally arranged. Swapping rows is not required.</div>`;
+      }
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Rearrangement for Diagonal Dominance</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content">${step2Desc}</div></div>`;
+
+      let varsList = [];
+      for (let i = 0; i < n; i++) { varsList.push(getVarName(i, n)); }
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Matrix Representation (AX = B)</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">Using the optimally arranged equations, we write the system in standard matrix form <strong>AX = B</strong>:</div>${formatMatrixRepHTML(finalA, varsList, finalB)}</div></div>`;
+
+      let warningBanner = guaranteed ? `<div style="background: rgba(13, 148, 136, 0.1); border-left: 4px solid var(--teal); padding: 1rem; border-radius: 8px; margin-top: 1.5rem; text-align: left; color: var(--teal); font-weight: 500;">✅ Convergence Guaranteed!<br><span style="font-size: 0.9rem; font-weight: normal; opacity: 0.9;">${isFinalDominant ? "The matrix is strictly Diagonally Dominant." : "The system satisfies the Sassenfeld Criterion."} Gauss-Jacobi iterations will converge.</span></div>` : `<div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; padding: 1rem; border-radius: 8px; margin-top: 1.5rem; text-align: left; color: #b91c1c; font-weight: 500;">⚠️ Warning: Gauss Jacobi may not converge for this system.<br><span style="font-size: 0.9rem; font-weight: normal; opacity: 0.9;">The matrix is neither Diagonally Dominant nor does it satisfy the Sassenfeld Criterion. Iterations might diverge.</span></div>`;
+
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Diagonal Dominance Check</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">We mathematically verify the diagonal dominance:</div><div style="overflow-x: auto; margin-top: 1.5rem;"><table style="width: 100%; border-collapse: collapse; margin-bottom: 1rem; border: 1px solid var(--border);"><thead><tr style="background: var(--bg); border-bottom: 2px solid var(--border);"><th style="padding: 0.75rem; color: var(--navy);">Row</th><th style="padding: 0.75rem; color: var(--navy);">Inequality Check</th><th style="padding: 0.75rem; color: var(--navy);">Simplified Values</th><th style="padding: 0.75rem; color: var(--navy);">Status</th></tr></thead><tbody>${diagDominanceDetails.map(r => `<tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.75rem; text-align: center; font-weight: 600;">Row ${r.row}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">|${finalA[r.row-1][r.row-1]}| &gt; ${r.expr}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${r.diag} &gt; ${r.sum}</td><td style="padding: 0.75rem; text-align: center; font-weight: 700; color: ${r.met ? 'var(--teal)' : '#dc2626'};">${r.met ? 'True' : 'False'}</td></tr>`).join('')}</tbody></table></div><div style="font-weight: 700; color: var(--navy); margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 1rem;">Sassenfeld Criterion Check:</div><div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; margin-bottom: 1rem; border: 1px solid var(--border);"><thead><tr style="background: var(--bg); border-bottom: 2px solid var(--border);"><th style="padding: 0.75rem; color: var(--navy);">Factor</th><th style="padding: 0.75rem; color: var(--navy);">Recursive Sassenfeld Summation</th><th style="padding: 0.75rem; color: var(--navy);">Value (&beta;<sub>i</sub>)</th></tr></thead><tbody>${sassenfeldDetails.map(s => `<tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.75rem; text-align: center; font-weight: 600;">&beta;<sub>${s.row}</sub></td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem;">${s.expr}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: ${s.val < 1 ? 'var(--teal)' : '#d97706'};">${s.val.toFixed(decimals)}</td></tr>`).join('')}</tbody></table></div>${warningBanner}</div></div>`;
+
+      let derivedHtml = '';
+      for (let i = 0; i < n; i++) {
+        let rhsTerms = [];
+        for (let j = 0; j < n; j++) {
+          if (i !== j) {
+            let coef = finalA[i][j];
+            if (coef === 0) continue;
+            let sign = coef >= 0 ? '-' : '+';
+            let absCoef = Math.abs(coef);
+            let absCoefStr = absCoef === 1 ? '' : absCoef;
+            rhsTerms.push(`${sign} ${absCoefStr}${getVarName(j, n)}`);
+          }
+        }
+        let rhsStr = rhsTerms.join(' ');
+        if (rhsStr.startsWith('+ ')) rhsStr = rhsStr.substring(2);
+        derivedHtml += `<div style="margin-bottom: 1.5rem; padding: 1.25rem; border: 1px solid var(--border); border-left: 4px solid var(--teal); background: var(--bg); border-radius: 8px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 1rem; margin-bottom: 0.75rem; color: var(--muted);">From Equation ${i + 1}: &nbsp;&nbsp; <code>${formatEquation(finalA[i], finalB[i], n)}</code></div><div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); display: flex; align-items: center; gap: 0.5rem; padding-left: 1rem;"><span>${getVarName(i, n)}<sup>(k+1)</sup> = </span><span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;"><span style="display: block; border-bottom: 2px solid var(--navy); padding: 0 6px;">${finalB[i]} ${rhsStr}</span><span style="display: block; padding: 2px 0 0 0;">${finalA[i][i]}</span></span></div></div>`;
+      }
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Derivation of Iterative Equations</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">We isolate each dominant diagonal variable on the left-hand side to set up the iterative Jacobi formulas:</div><div style="margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;">${derivedHtml}</div></div></div>`;
+
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Initial Guess Values</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div></div><div class="step-content"><div class="step-desc">We start the Jacobi iteration process using the following initial approximations:</div><div style="display: flex; gap: 2rem; justify-content: center; font-size: 1.25rem; font-family: 'IBM Plex Mono', monospace; color: var(--navy); margin: 1.5rem 0; flex-wrap: wrap;">${X0.map((xv, i) => `<strong>${getVarName(i, n)}<sup>(0)</sup></strong> = ${xv}`).join('&nbsp;&nbsp;&nbsp;&bull;&nbsp;&nbsp;&nbsp;')}</div></div></div>`;
+
+      let X = [...X0];
+      let tableRows = [{ iter: 0, xVals: [...X], error: 0 }];
+      let converged = false;
+      let finalIter = 0;
+
+      for (let k = 1; k <= maxIter; k++) {
+        let X_new = [];
+        let iterSubstitutionsHtml = '';
+        for (let i = 0; i < n; i++) {
+          let sum = 0;
+          let subExprParts = [];
+          for (let j = 0; j < n; j++) {
+            if (i !== j) {
+              sum += finalA[i][j] * X[j];
+              let sign = finalA[i][j] >= 0 ? '-' : '+';
+              let absCoef = Math.abs(finalA[i][j]);
+              subExprParts.push(`${sign} ${absCoef === 1 ? '' : absCoef}(${X[j].toFixed(decimals)})`);
+            }
+          }
+          let calculated = (finalB[i] - sum) / finalA[i][i];
+          X_new.push(calculated);
+          let subExprStr = subExprParts.join(' ');
+          if (subExprStr.startsWith('+ ')) subExprStr = subExprStr.substring(2);
+          iterSubstitutionsHtml += `<div style="padding: 1rem; border: 1px solid var(--border); border-left: 4px solid var(--amber); background: var(--bg); margin-bottom: 0.75rem; border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 1rem;"><span style="font-weight: 700; color: var(--navy);">${getVarName(i, n)}<sup>(${k})</sup></span> = <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 6px;"><span style="display: block; border-bottom: 1px solid var(--navy); padding: 0 4px;">${finalB[i]} ${subExprStr}</span><span style="display: block; padding: 1px 0;">${finalA[i][i]}</span></span> = <strong>${calculated.toFixed(decimals)}</strong></div>`;
+        }
+
+        let err = 0;
+        let diffsList = [];
+        for (let i = 0; i < n; i++) {
+          let diff = Math.abs(X_new[i] - X[i]);
+          if (diff > err) err = diff;
+          diffsList.push(`|${X_new[i].toFixed(decimals)} - ${X[i].toFixed(decimals)}|`);
+        }
+        tableRows.push({ iter: k, xVals: [...X_new], error: err });
+        stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Iteration ${k}</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div></div><div class="step-content" style="display: none;"><div class="step-desc">Substituting variables from iteration ${k-1} into our iterative equations:</div><div style="display: flex; flex-direction: column; gap: 0.25rem; margin-top: 1rem;">${iterSubstitutionsHtml}</div><div style="margin-top: 1.25rem; padding: 1rem; background: var(--bg); border-radius: 8px; font-size: 0.95rem; color: var(--navy); border: 1px solid var(--border);"><div style="font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase; font-size: 0.85rem; letter-spacing:0.05em; color:var(--muted);">Error Calculation:</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1rem; margin-bottom: 0.5rem;">Error = max(${diffsList.join(', ')}) = <strong>${err.toFixed(decimals)}</strong></div><div style="font-weight: 700; border-top: 1px dashed var(--border); padding-top: 0.5rem; margin-top: 0.5rem; font-size: 0.95rem;">Comparison: ${err.toFixed(decimals)} ${err < tolerance ? ` &lt; ${tolerance} (&epsilon;) <span style="color: var(--teal)">&nbsp;&bull;&nbsp; Converged!</span>` : ` &ge; ${tolerance} (&epsilon;)`}</div></div></div></div>`;
+        X = [...X_new];
+        finalIter = k;
+        if (err < tolerance) { converged = true; break; }
+      }
+
+      stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Iteration Summary Table</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div></div><div class="step-content" style="display: none;"><div class="step-desc">A unified view of variable approximations:</div><div style="overflow-x: auto; margin-top: 1.5rem;"><table style="width: 100%; border-collapse: collapse; border: 1px solid var(--border);"><thead><tr style="background: var(--bg); border-bottom: 2px solid var(--border);"><th style="padding: 0.75rem; color: var(--navy); width: 100px;">Iteration</th>${varsList.map(v => `<th style="padding: 0.75rem; color: var(--navy);">${v}</th>`).join('')}<th style="padding: 0.75rem; color: var(--navy);">Max Abs Error</th></tr></thead><tbody>${tableRows.map(row => `<tr style="border-bottom: 1px solid var(--border); ${row.iter === finalIter && converged ? 'background: rgba(13, 148, 136, 0.05); font-weight:600;' : ''}"><td style="padding: 0.75rem; text-align: center; font-weight: 600;">${row.iter}</td>${row.xVals.map(xv => `<td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${xv.toFixed(decimals)}</td>`).join('')}<td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: var(--navy);">${row.iter === 0 ? '-' : row.error.toFixed(decimals)}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+
+      let finalSolutionHtml = X.map((xv, idx) => `<div style="font-family:'IBM Plex Mono',monospace; font-size: 1.3rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">${getVarName(idx, n)} = <span style="color:#ffffff;">${xv.toFixed(decimals)}</span></div>`).join('');
+      stepsHtml += converged ? `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: var(--navy); color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Solution Converged Successfully!</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system converged within tolerance limit (&epsilon; = ${tolerance}) after <strong>${finalIter}</strong> iterations.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Solved Values:</div>${finalSolutionHtml}</div></div>` : `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #991b1b; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">⚠️ Limits Reached Without Convergence</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system did not converge to tolerance (&epsilon; = ${tolerance}) within <strong>${maxIter}</strong> iterations limit.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Last Computed State (Iteration ${finalIter}):</div>${finalSolutionHtml}</div></div>`;
+
+      output.innerHTML = stepsHtml;
       output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
