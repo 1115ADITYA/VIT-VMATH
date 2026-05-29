@@ -447,3 +447,165 @@
       stroke: var(--border2);
       margin-bottom: 1rem;
     }
+
+    /* ==========================================================
+       RESPONSIVE MEDIA QUERIES FOR GET STARTED WORKSPACE
+       ========================================================= */
+
+    /* Global Responsive Class for dynamic columns */
+    .overview-grid {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr) !important;
+    }
+
+    /* Tablet and laptop landscape adjustments (< 1024px) */
+    @media (max-width: 1023px) {
+      body {
+        height: auto !important;
+        overflow-y: auto !important;
+      }
+      .workspace {
+        flex-direction: column !important;
+        overflow-y: auto !important;
+        height: auto !important;
+      }
+      .sidebar {
+        width: 100% !important;
+        height: auto !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--border) !important;
+        flex-shrink: 0 !important;
+        padding: 1.25rem !important;
+      }
+      .calc-list {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+        gap: 0.5rem !important;
+      }
+      .sidebar-section {
+        margin-bottom: 1rem !important;
+      }
+      .main-area {
+        width: 100% !important;
+        padding: 1.5rem 1rem !important;
+        overflow-y: visible !important;
+      }
+      .overview-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+      }
+    }
+
+    /* Mobile devices (< 768px) */
+    @media (max-width: 767px) {
+      /* Header wrapping for logo, semester switcher, and search box */
+      header.app-header {
+        height: auto !important;
+        padding: 1rem !important;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
+        gap: 0.75rem !important;
+      }
+      .sem-nav {
+        width: 100% !important;
+        justify-content: center !important;
+        order: 2 !important;
+        margin-top: 0.25rem;
+      }
+      .header-search {
+        width: 100% !important;
+        margin-left: 0 !important;
+        order: 3 !important;
+      }
+      .header-search input {
+        width: 100% !important;
+      }
+      #theme-toggle {
+        margin-left: auto !important;
+        order: 1 !important;
+      }
+
+      /* Stack Calculator Param Inputs */
+      #newton-input-container > div,
+      #false-position-input-container > div,
+      #jacobi-grid-container > div {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 1rem !important;
+        width: 100% !important;
+      }
+      
+      #newton-input-container div,
+      #false-position-input-container div,
+      #jacobi-grid-container div {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+      }
+
+      #newton-input-container input,
+      #false-position-input-container input,
+      #jacobi-grid-container input {
+        width: 100% !important;
+      }
+
+      /* Overview Grid columns */
+      .overview-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      /* Cards responsive spacing and buttons stacking */
+      .card {
+        padding: 1.5rem !important;
+        border-radius: 12px !important;
+        margin-bottom: 1.5rem !important;
+      }
+      .card-header {
+        margin-bottom: 1.5rem !important;
+        padding-bottom: 1rem !important;
+      }
+      .calc-action {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 0.75rem !important;
+      }
+      .calc-action button,
+      .card-header button {
+        width: 100% !important;
+        justify-content: center !important;
+      }
+
+      /* Heading typography adjustments */
+      .card-title {
+        font-size: 1.5rem !important;
+      }
+      .card-desc {
+        font-size: 0.9rem !important;
+      }
+      .step-title {
+        font-size: 1rem !important;
+      }
+
+      /* Table layout & local scrolls */
+      .step-card table {
+        min-width: 600px !important;
+      }
+      .step-card {
+        padding: 1rem !important;
+      }
+      
+      /* Matrix brackets local scroll safety */
+      .matrix-input-wrapper {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 0 1rem 0.5rem 1rem !important;
+        display: inline-block !important;
+      }
+      .display-matrix-wrapper {
+        max-width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 0 0.75rem 0.5rem 0.75rem !important;
+        display: inline-block !important;
+      }
+    }
