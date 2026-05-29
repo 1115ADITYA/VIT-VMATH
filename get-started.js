@@ -359,6 +359,25 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('matrix-calc-title').innerText = calcName;
         document.getElementById('matrix-calc-ui').classList.add('active');
 
+        let desc = 'Enter the matrix values below to perform the calculation.';
+        if (calcId === 'gauss-jacobi') {
+          desc = 'Enter the system of equations and iteration parameters to solve using the Gauss Jacobi Method.';
+        } else if (calcId === 'gauss-seidel') {
+          desc = 'Enter the system of equations and iteration parameters to solve using the Gauss Seidel Method.';
+        } else if (calcId === 'newton-raphson') {
+          desc = 'Enter the function and initial guess to approximate the root using Newton Raphson.';
+        } else if (calcId === 'false-position') {
+          desc = 'Enter the function and interval bounds to locate the root using the False Position Method.';
+        } else if (calcId === 'trapezoidal') {
+          desc = 'Enter the function, limits, and intervals to perform numerical integration using the Trapezoidal Rule.';
+        } else if (calcId === 'simpson-1-3') {
+          desc = "Enter the function, limits, and intervals to perform numerical integration using Simpson's 1/3 Rule.";
+        } else if (calcId === 'simpson-3-8') {
+          desc = "Enter the function, limits, and intervals to perform numerical integration using Simpson's 3/8 Rule.";
+        }
+        const descEl = document.getElementById('matrix-calc-desc');
+        if (descEl) descEl.innerText = desc;
+
         if(calcId === 'gauss-jacobi' || calcId === 'gauss-seidel') {
           if (jacobiDim) jacobiDim.style.display = 'flex';
           if (jacobiWrapper) jacobiWrapper.style.display = 'flex';
