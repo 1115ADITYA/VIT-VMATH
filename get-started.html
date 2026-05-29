@@ -35,6 +35,8 @@
       padding: 0 2rem;
       flex-shrink: 0;
       gap: 2rem;
+      position: relative;
+      z-index: 200;
     }
 
     .brand-logo {
@@ -92,6 +94,7 @@
       gap: 0.5rem;
       margin-left: auto;
       transition: all 0.2s;
+      position: relative;
     }
     .header-search:focus-within {
       border-color: var(--amber);
@@ -487,7 +490,25 @@
         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
       </svg>
       <input type="text" id="app-search" placeholder="Search calculators..." autocomplete="off" oninput="handleSearch(this.value)">
+      <div id="search-dropdown" style="display: none; position: absolute; top: 120%; right: 0; width: 300px; background: var(--white); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-height: 400px; overflow-y: auto; z-index: 1000; flex-direction: column;"></div>
     </div>
+    
+    <button id="theme-toggle" aria-label="Toggle dark mode" style="margin-left: 1rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text);">
+      <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
   </header>
 
   <!-- Workspace -->
@@ -501,41 +522,49 @@
     <!-- Main Area -->
     <main class="main-area">
       
-      <!-- Placeholder when nothing selected -->
-      <div id="placeholder-ui" class="placeholder-state active">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-        <h3>Select a calculator from the sidebar</h3>
-        <p>Choose a mathematical tool to get started with your calculations.</p>
+      <!-- Overview UI (See All) -->
+      <div id="overview-ui" class="active" style="display: flex; flex-direction: column; width: 100%; max-width: 900px;">
+        <!-- Injected via JS based on Sem -->
       </div>
 
-      <!-- Rank Finder UI -->
-      <div id="rank-finder-ui" class="calc-container">
+      <!-- Generic Calculator UI -->
+      <div id="matrix-calc-ui" class="calc-container">
         <div class="card">
-          <div class="card-header">
-            <h2 class="card-title">Rank Finder</h2>
-            <p class="card-desc">Calculate the rank of a 3x3 matrix using step-by-step Gaussian elimination. Great for understanding the core concepts of linear algebra.</p>
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+              <h2 class="card-title" id="matrix-calc-title">Matrix Calculator</h2>
+              <p class="card-desc" id="matrix-calc-desc">Enter the matrix values below to perform the calculation.</p>
+            </div>
+            <button class="btn-primary" style="background: var(--bg2); color: var(--navy); padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="openCalc('none', null)">
+              Back to See All
+            </button>
           </div>
           
           <div style="text-align: center;">
+            <div style="margin-bottom: 1.5rem; display: flex; justify-content: center; gap: 2rem; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-weight: 600; color: var(--navy); font-size: 0.95rem;">Rows:</span>
+                <button class="btn-primary" style="padding: 0.2rem 0.6rem; background: var(--bg2); color: var(--navy);" onclick="changeDim('rows', -1)">-</button>
+                <span id="dim-rows" style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; width: 20px; text-align: center;">3</span>
+                <button class="btn-primary" style="padding: 0.2rem 0.6rem; background: var(--bg2); color: var(--navy);" onclick="changeDim('rows', 1)">+</button>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-weight: 600; color: var(--navy); font-size: 0.95rem;">Cols:</span>
+                <button class="btn-primary" style="padding: 0.2rem 0.6rem; background: var(--bg2); color: var(--navy);" onclick="changeDim('cols', -1)">-</button>
+                <span id="dim-cols" style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; width: 20px; text-align: center;">3</span>
+                <button class="btn-primary" style="padding: 0.2rem 0.6rem; background: var(--bg2); color: var(--navy);" onclick="changeDim('cols', 1)">+</button>
+              </div>
+            </div>
+
             <div class="matrix-input-wrapper">
-              <div class="matrix-grid">
-                <input type="number" class="matrix-cell" id="m00" value="1">
-                <input type="number" class="matrix-cell" id="m01" value="2">
-                <input type="number" class="matrix-cell" id="m02" value="3">
-                
-                <input type="number" class="matrix-cell" id="m10" value="2">
-                <input type="number" class="matrix-cell" id="m11" value="4">
-                <input type="number" class="matrix-cell" id="m12" value="6">
-                
-                <input type="number" class="matrix-cell" id="m20" value="1">
-                <input type="number" class="matrix-cell" id="m21" value="0">
-                <input type="number" class="matrix-cell" id="m22" value="-1">
+              <div class="matrix-grid" id="matrix-grid-container">
+                <!-- Injected via JS -->
               </div>
             </div>
           </div>
 
           <div class="calc-action">
-            <button class="btn-primary" onclick="calculateRank()">
+            <button class="btn-primary" onclick="calculateMatrix()">
               Calculate Step-by-Step
               <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
@@ -550,43 +579,239 @@
     </main>
   </div>
 
+  <!-- VMATH AI CHATBOT -->
+  <div id="vmath-chatbot-container">
+    <!-- Chatbot Window -->
+    <div id="vmath-chatbot-window" class="hidden">
+      <div id="vmath-chatbot-header">
+        <div id="vmath-chatbot-title">
+          <span class="vmath-bot-icon">✦</span>
+          <div>
+            <div class="vmath-bot-name">VMath AI</div>
+            <div class="vmath-bot-status">Online and ready to solve</div>
+          </div>
+        </div>
+        <button id="vmath-chatbot-close" aria-label="Close Chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      
+      <div id="vmath-chatbot-messages">
+        <div class="vmath-message vmath-message-bot">
+          <div class="vmath-message-avatar">✦</div>
+          <div class="vmath-message-bubble">
+            <p>Hi there! 👋 I'm <strong>VMath AI</strong>.</p>
+            <p>I can help explain engineering mathematics methods, guide you through complex formulas, or show you how to use our calculators.</p>
+            <p>What are you working on today?</p>
+          </div>
+        </div>
+      </div>
+      
+      <div id="vmath-chatbot-input-area">
+        <input type="text" id="vmath-chatbot-input" placeholder="Ask about a math concept..." autocomplete="off">
+        <button id="vmath-chatbot-send" aria-label="Send Message">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button id="vmath-chatbot-fab" aria-label="Open VMath AI">
+      <span class="fab-icon-sparkle">✦</span>
+      <span class="fab-text">Ask VMath</span>
+    </button>
+  </div>
+
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Theme Toggle Logic
+      const themeToggleBtn = document.getElementById('theme-toggle');
+      if(themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', () => {
+          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          if (isDark) {
+            document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+          } else {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+          }
+        });
+      }
+
+      // Search Enter Key Logic
+      const appSearch = document.getElementById('app-search');
+      if (appSearch) {
+        appSearch.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const dropdown = document.getElementById('search-dropdown');
+            if (dropdown && dropdown.style.display !== 'none') {
+              const firstResult = dropdown.querySelector('.search-result-item');
+              if (firstResult) firstResult.click();
+            }
+          }
+        });
+      }
+
+      const chatFab = document.getElementById('vmath-chatbot-fab');
+      const chatWindow = document.getElementById('vmath-chatbot-window');
+      const chatCloseBtn = document.getElementById('vmath-chatbot-close');
+      const chatInput = document.getElementById('vmath-chatbot-input');
+      const chatSendBtn = document.getElementById('vmath-chatbot-send');
+      const chatMessages = document.getElementById('vmath-chatbot-messages');
+
+      if (chatFab && chatWindow && chatCloseBtn) {
+        // Open chat
+        chatFab.addEventListener('click', () => {
+          chatWindow.classList.remove('hidden');
+          chatFab.style.transform = 'scale(0)';
+          chatFab.style.pointerEvents = 'none';
+          chatInput.focus();
+        });
+
+        // Close chat
+        chatCloseBtn.addEventListener('click', () => {
+          chatWindow.classList.add('hidden');
+          chatFab.style.transform = '';
+          chatFab.style.pointerEvents = 'auto';
+        });
+
+        let chatHistory = [
+          { role: "system", content: "You are VMath AI, a helpful engineering mathematics tutor and guide. Provide concise and accurate answers." }
+        ];
+
+        // Send message handler
+        const handleSendMessage = async () => {
+          const text = chatInput.value.trim();
+          if (!text) return;
+
+          // Add user message to UI
+          const userMsg = document.createElement('div');
+          userMsg.className = 'vmath-message vmath-message-user';
+          userMsg.innerHTML = `
+                <div class="vmath-message-avatar">U</div>
+                <div class="vmath-message-bubble"><p>${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p></div>
+              `;
+          chatMessages.appendChild(userMsg);
+          chatInput.value = '';
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+
+          chatHistory.push({ role: "user", content: text });
+
+          // Add bot loading bubble
+          const botMsg = document.createElement('div');
+          botMsg.className = 'vmath-message vmath-message-bot';
+          botMsg.innerHTML = `
+                <div class="vmath-message-avatar">✦</div>
+                <div class="vmath-message-bubble"><p class="typing">Thinking...</p></div>
+              `;
+          chatMessages.appendChild(botMsg);
+          chatMessages.scrollTop = chatMessages.scrollHeight;
+
+          try {
+            const response = await fetch('/api/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                messages: chatHistory
+              })
+            });
+
+            if (!response.ok) {
+              const errData = await response.json().catch(() => ({}));
+              throw new Error(errData.error || `API Error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const botReply = data.choices[0].message.content;
+
+            chatHistory.push({ role: "assistant", content: botReply });
+            // Simple markdown-to-html for line breaks and bold
+            let htmlReply = botReply.replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            botMsg.querySelector('.vmath-message-bubble').innerHTML = `<p>${htmlReply}</p>`;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+          } catch (error) {
+            console.error("Chat error:", error);
+            botMsg.querySelector('.vmath-message-bubble p').innerHTML = "Oops! Something went wrong connecting to the AI. " + error.message;
+            chatHistory.pop(); // Remove user message from history if failed
+          }
+        };
+
+        chatSendBtn.addEventListener('click', handleSendMessage);
+        chatInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSendMessage();
+          }
+        });
+      }
+    });
+
     const data = {
       1: [
         {
-          category: 'Matrices',
+          category: 'Matrix Calculators',
           items: [
-            { id: 'rank', name: 'Rank Finder', icon: 'M4 6h16M4 12h16M4 18h7' },
-            { id: 'det', name: 'Determinant (Soon)', icon: 'M4 4h16v16H4z' },
-            { id: 'inv', name: 'Inverse (Soon)', icon: 'M8 7h8M8 11h8M8 15h8' }
+            { id: 'det', name: 'Determinant Calculator', icon: 'M4 4h16v16H4z' },
+            { id: 'adjoint', name: 'Adjoint Calculator', icon: 'M4 6h16M4 12h16M4 18h7' },
+            { id: 'inv', name: 'Inverse Matrix Calculator', icon: 'M8 7h8M8 11h8M8 15h8' },
+            { id: 'echelon', name: 'Echelon Form Calculator', icon: 'M4 6h16M4 12h10M4 18h4' },
+            { id: 'normal', name: 'Normal Form Calculator', icon: 'M3 3h18v18H3z' },
+            { id: 'eigen', name: 'Eigenvalue & Eigenvector Calculator', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+            { id: 'diag', name: 'Diagonalization Calculator', icon: 'M4 4l16 16M4 20L20 4' },
+            { id: 'matrix-power', name: 'Matrix Power Calculator', icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' }
           ]
         },
         {
-          category: 'Calculus',
+          category: 'Numerical Methods',
           items: [
-            { id: 'diff', name: 'Differentiation (Soon)', icon: 'M3 3v18h18' }
+            { id: 'gauss-jacobi', name: 'Gauss Jacobi Calculator', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
+            { id: 'gauss-seidel', name: 'Gauss Seidel Calculator', icon: 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z' },
+            { id: 'newton-raphson', name: 'Newton Raphson Calculator', icon: 'M13 7h8m0 0v8m0-8l-8 8-4-4-6 6' },
+            { id: 'false-position', name: 'False Position Calculator', icon: 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1v12z' }
+          ]
+        },
+        {
+          category: 'Numerical Integration',
+          items: [
+            { id: 'simpson-1-3', name: 'Simpson\'s 1/3 Rule Calculator', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z' },
+            { id: 'simpson-3-8', name: 'Simpson\'s 3/8 Rule Calculator', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z' },
+            { id: 'trapezoidal', name: 'Trapezoidal Rule Calculator', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z' }
           ]
         }
       ],
       2: [
         {
-          category: 'Vector Spaces',
+          category: 'Partial Differentiation',
           items: [
-            { id: 'basis', name: 'Basis Finder (Soon)', icon: 'M13 10V3L4 14h7v7l9-11h-7z' }
+            { id: 'partial-diff', name: 'Partial Differentiation Calculator', icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
+            { id: 'maxima-minima', name: 'Maxima & Minima of Two Variables Calculator', icon: 'M3 3v18h18M7 16l4-8 4 4 4-8' }
+          ]
+        },
+        {
+          category: 'Differential Equations',
+          items: [
+            { id: 'euler', name: 'Euler Method Calculator', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
+            { id: 'runge-kutta', name: 'Runge Kutta Method Calculator', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10' }
           ]
         }
       ],
       3: [
         {
-          category: 'Probability',
+          category: 'Advanced Mathematics',
           items: [
-            { id: 'bayes', name: 'Bayes Theorem (Soon)', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' }
+            { id: 'adv-math', name: 'Advanced Mathematics Calculator', icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' }
           ]
         }
       ]
     };
 
-    function selectSem(sem, resetUI = true) {
+    function selectSem(sem, resetUI = true, fromHistory = false) {
+      if(typeof currentSem !== 'undefined') currentSem = sem;
       if(resetUI) {
         const searchInput = document.getElementById('app-search');
         if(searchInput) searchInput.value = '';
@@ -602,9 +827,14 @@
       const sidebar = document.getElementById('sidebar-content');
       sidebar.innerHTML = '';
       
+      // Populate Overview UI
+      const overview = document.getElementById('overview-ui');
+      let overviewHtml = `<h2 style="font-family: 'Fraunces', serif; color: var(--navy); margin-bottom: 2rem; font-size: 2rem;">Semester ${sem} Tools</h2>`;
+      
       const semData = data[sem];
       if(semData) {
         semData.forEach(section => {
+          // Populate Sidebar HTML
           const secHtml = `
             <div class="sidebar-section">
               <div class="sidebar-title">${section.category}</div>
@@ -619,111 +849,268 @@
             </div>
           `;
           sidebar.innerHTML += secHtml;
+
+          // Populate Overview HTML
+          overviewHtml += `
+            <div style="margin-bottom: 2.5rem; width: 100%;">
+              <h3 style="color: var(--navy); margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); padding-bottom: 0.75rem; font-size: 1.25rem;">${section.category}</h3>
+              <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;">
+                ${section.items.map(item => `
+                  <div class="card" style="padding: 1.5rem; cursor: pointer; border: 1px solid var(--border); border-radius: 12px; transition: all 0.2s; background: var(--white); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); margin-bottom: 0;" onclick="openCalc('${item.id}', null)" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 15px -3px rgba(0, 0, 0, 0.1)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px -1px rgba(0, 0, 0, 0.05)';">
+                    <svg style="width:32px; height:32px; stroke:var(--amber); margin-bottom:1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}"></path></svg>
+                    <div style="font-weight: 700; color: var(--navy); font-size: 1.1rem; line-height: 1.3;">${item.name}</div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
         });
       }
+      overview.innerHTML = overviewHtml;
 
       if(resetUI) {
-        if(sem === 1) {
-          openCalc('rank', document.querySelector('.calc-item'));
-        } else {
-          openCalc('none', null);
-        }
+        openCalc('none', null, fromHistory);
+      } else if(typeof updateURL !== 'undefined' && !fromHistory) {
+        updateURL(currentSem, currentCalc);
       }
     }
 
     function handleSearch(query) {
       query = query.toLowerCase().trim();
-      const sidebar = document.getElementById('sidebar-content');
-      sidebar.innerHTML = '';
+      const dropdown = document.getElementById('search-dropdown');
+      dropdown.innerHTML = '';
 
       if (!query) {
-        let activeSem = 1;
-        document.querySelectorAll('.sem-btn').forEach((btn, idx) => {
-          if(btn.classList.contains('active')) activeSem = idx + 1;
-        });
-        selectSem(activeSem, false);
+        dropdown.style.display = 'none';
         return;
       }
 
-      document.querySelectorAll('.sem-btn').forEach(btn => btn.classList.remove('active'));
-
-      let resultsHtml = '';
-      let matchCount = 0;
+      let allMatches = [];
 
       Object.values(data).forEach(semData => {
         semData.forEach(section => {
-          const filteredItems = section.items.filter(item => item.name.toLowerCase().includes(query) || section.category.toLowerCase().includes(query));
-          if (filteredItems.length > 0) {
-            resultsHtml += `
-              <div class="sidebar-section">
-                <div class="sidebar-title">${section.category}</div>
-                <div class="calc-list">
-                  ${filteredItems.map(item => `
-                    <div class="calc-item" onclick="openCalc('${item.id}', this)">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}"></path></svg>
-                      ${item.name}
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-            `;
-            matchCount += filteredItems.length;
-          }
+          section.items.forEach(item => {
+            let score = 0;
+            const nameLower = item.name.toLowerCase();
+            const catLower = section.category.toLowerCase();
+            
+            if (nameLower === query) score = 4;
+            else if (nameLower.startsWith(query)) score = 3;
+            else if (nameLower.includes(query)) score = 2;
+            else if (catLower.includes(query)) score = 1;
+
+            if (score > 0) {
+              allMatches.push({ item, category: section.category, score });
+            }
+          });
         });
       });
 
-      if (matchCount === 0) {
-        sidebar.innerHTML = `<div style="padding: 2rem 1rem; color: var(--muted); font-size: 0.95rem; text-align: center;">No calculators found for "${query}"</div>`;
+      // Sort by score descending
+      allMatches.sort((a, b) => b.score - a.score);
+
+      if (allMatches.length === 0) {
+        dropdown.innerHTML = `<div style="padding: 1rem; color: var(--muted); font-size: 0.95rem; text-align: center;">No calculators found for "${query}"</div>`;
       } else {
-        sidebar.innerHTML = resultsHtml;
+        dropdown.innerHTML = allMatches.map(match => `
+          <div class="calc-item search-result-item" style="border-radius: 0; border-bottom: 1px solid var(--border); margin: 0; padding: 1rem;" onclick="openCalc('${match.item.id}', null); document.getElementById('search-dropdown').style.display='none'; document.getElementById('app-search').value='';">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin-right: 8px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${match.item.icon}"></path></svg>
+            <div>
+              <div style="font-weight: 600; color: var(--navy); line-height: 1;">${match.item.name}</div>
+              <div style="font-size: 0.75rem; color: var(--muted); margin-top: 4px;">${match.category}</div>
+            </div>
+          </div>
+        `).join('');
       }
+      dropdown.style.display = 'flex';
     }
 
-    function openCalc(calcId, element) {
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.header-search')) {
+        const dropdown = document.getElementById('search-dropdown');
+        if (dropdown) dropdown.style.display = 'none';
+      }
+    });
+
+    function openCalc(calcId, element, fromHistory = false) {
+      if(typeof currentCalc !== 'undefined') currentCalc = calcId;
       // Update sidebar active state
+      document.querySelectorAll('.calc-item').forEach(el => el.classList.remove('active'));
       if(element) {
-        document.querySelectorAll('.calc-item').forEach(el => el.classList.remove('active'));
         element.classList.add('active');
+      } else if (calcId !== 'none') {
+        // Find element by onclick text
+        document.querySelectorAll('.calc-item').forEach(el => {
+          if(el.getAttribute('onclick') && el.getAttribute('onclick').includes(`'${calcId}'`)) {
+            el.classList.add('active');
+          }
+        });
       }
 
       // Hide all containers
-      document.getElementById('placeholder-ui').style.display = 'none';
-      document.getElementById('rank-finder-ui').classList.remove('active');
+      document.getElementById('overview-ui').style.display = 'none';
+      document.getElementById('matrix-calc-ui').classList.remove('active');
       document.getElementById('steps-output').classList.remove('active');
 
-      if(calcId === 'rank') {
-        document.getElementById('rank-finder-ui').classList.add('active');
+      if(calcId === 'none') {
+        document.getElementById('overview-ui').style.display = 'flex';
       } else {
-        document.getElementById('placeholder-ui').style.display = 'flex';
+        let calcName = 'Calculator';
+        Object.values(data).forEach(semData => {
+          semData.forEach(section => {
+            let item = section.items.find(i => i.id === calcId);
+            if(item) calcName = item.name;
+          });
+        });
+
+        document.getElementById('matrix-calc-title').innerText = calcName;
+        document.getElementById('matrix-calc-ui').classList.add('active');
+        
+        // Scroll down
+        document.querySelector('.main-area').scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      
+      if(typeof updateURL !== 'undefined' && !fromHistory) {
+        updateURL(currentSem, currentCalc);
       }
     }
 
-    // Initialize with Sem 1
-    selectSem(1);
+    // Global State & History Management
+    let currentSem = 1;
+    let currentCalc = 'none';
+
+    function updateURL(sem, calc) {
+      const url = new URL(window.location);
+      url.searchParams.set('sem', sem);
+      if (calc && calc !== 'none') {
+        url.searchParams.set('calc', calc);
+      } else {
+        url.searchParams.delete('calc');
+      }
+      if(window.location.search !== url.search) {
+        window.history.pushState({ sem, calc }, '', url);
+      }
+    }
+
+    window.addEventListener('popstate', (e) => {
+      if(e.state) {
+        selectSem(e.state.sem, false, true);
+        openCalc(e.state.calc || 'none', null, true);
+      }
+    });
+
+    // Initialize from URL or default to Sem 1
+    const initParams = new URLSearchParams(window.location.search);
+    const initSem = parseInt(initParams.get('sem')) || 1;
+    const initCalc = initParams.get('calc') || 'none';
+    
+    // Call without pushing history initially
+    selectSem(initSem, false, true);
+    openCalc(initCalc, null, true);
+    window.history.replaceState({ sem: initSem, calc: initCalc }, '', window.location);
+
+    // Matrix Dimension Logic
+    let currentMatrixRows = 3;
+    let currentMatrixCols = 3;
+
+    function renderMatrixInputs() {
+      const container = document.getElementById('matrix-grid-container');
+      if(!container) return;
+      container.style.gridTemplateColumns = `repeat(${currentMatrixCols}, 1fr)`;
+      let html = '';
+      for(let i=0; i<currentMatrixRows; i++) {
+        for(let j=0; j<currentMatrixCols; j++) {
+          // try to preserve value if element exists
+          let existing = document.getElementById(`m${i}${j}`);
+          let val = existing ? existing.value : (i === j ? 1 : 0);
+          html += `<input type="number" class="matrix-cell" id="m${i}${j}" value="${val}">`;
+        }
+      }
+      container.innerHTML = html;
+      document.getElementById('dim-rows').innerText = currentMatrixRows;
+      document.getElementById('dim-cols').innerText = currentMatrixCols;
+    }
+
+    function changeDim(type, delta) {
+      if(type === 'rows') {
+        currentMatrixRows = Math.max(1, Math.min(6, currentMatrixRows + delta));
+      } else {
+        currentMatrixCols = Math.max(1, Math.min(6, currentMatrixCols + delta));
+      }
+      renderMatrixInputs();
+    }
+
+    // Initialize dimensions
+    renderMatrixInputs();
+
+    // Keyboard Navigation for Matrix Inputs (Enter Key)
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter' && e.target.classList.contains('matrix-cell')) {
+        e.preventDefault();
+        let cells = Array.from(document.querySelectorAll('.matrix-cell'));
+        let index = cells.indexOf(e.target);
+        if(index > -1 && index < cells.length - 1) {
+          cells[index + 1].focus();
+          cells[index + 1].select();
+        } else if (index === cells.length - 1) {
+          // Auto calculate on last cell Enter
+          calculateMatrix();
+        }
+      }
+    });
+
+    // Fraction Helpers
+    function gcd(a, b) {
+      a = Math.abs(a); b = Math.abs(b);
+      return b === 0 ? a : gcd(b, a % b);
+    }
+    function makeFrac(n, d = 1) {
+      if(d === 0) return {n: 0, d: 1};
+      let sign = (n < 0 ? -1 : 1) * (d < 0 ? -1 : 1);
+      n = Math.abs(n); d = Math.abs(d);
+      let g = gcd(n, d);
+      return { n: sign * (n / g), d: d / g };
+    }
+    function addFrac(a, b) { return makeFrac(a.n * b.d + b.n * a.d, a.d * b.d); }
+    function subFrac(a, b) { return makeFrac(a.n * b.d - b.n * a.d, a.d * b.d); }
+    function mulFrac(a, b) { return makeFrac(a.n * b.n, a.d * b.d); }
+    function divFrac(a, b) { return makeFrac(a.n * b.d, a.d * b.n); }
+    function isZeroFrac(a) { return a.n === 0; }
+    function formatFrac(a) { return a.d === 1 ? `${a.n}` : `${a.n}/${a.d}`; }
 
     // Matrix Formatting Helper (HTML Grid with brackets)
     function formatMatrix(m) {
-      let html = '<div class="display-matrix-wrapper"><div class="display-matrix">';
-      for(let i=0; i<3; i++) {
-        for(let j=0; j<3; j++) {
-          html += `<div>${Math.round(m[i][j]*100)/100}</div>`;
+      let rows = m.length;
+      let cols = m[0].length;
+      let html = `<div class="display-matrix-wrapper"><div class="display-matrix" style="grid-template-columns: repeat(${cols}, 1fr);">`;
+      for(let i=0; i<rows; i++) {
+        for(let j=0; j<cols; j++) {
+          let val = m[i][j];
+          if(typeof val === 'object' && val.d !== undefined) {
+            html += `<div>${formatFrac(val)}</div>`;
+          } else {
+            html += `<div>${Math.round(val*100)/100}</div>`;
+          }
         }
       }
       html += '</div></div>';
       return html;
     }
 
-    // Rank Calculation Logic (Dummy Gaussian for 3x3)
-    function calculateRank() {
+    // Rank Calculation Logic
+    function calculateMatrix() {
       const output = document.getElementById('steps-output');
       output.innerHTML = '';
       output.classList.add('active');
       
       // Read values
       let m = [];
-      for(let i=0; i<3; i++) {
+      let rows = currentMatrixRows;
+      let cols = currentMatrixCols;
+      for(let i=0; i<rows; i++) {
         let row = [];
-        for(let j=0; j<3; j++) {
+        for(let j=0; j<cols; j++) {
           row.push(parseFloat(document.getElementById(`m${i}${j}`).value) || 0);
         }
         m.push(row);
@@ -746,13 +1133,138 @@
         `;
       }
 
-      addStep("Initial Matrix", "We start with the given 3x3 matrix.", null, JSON.parse(JSON.stringify(m)));
+      addStep("Initial Matrix", `We start with the given ${rows}x${cols} matrix.`, null, JSON.parse(JSON.stringify(m)));
 
-      // Step 1: Pivot at (0,0)
-      if(Math.abs(m[0][0]) < 1e-9) {
+      // Dispatcher logic
+      if (currentCalc === 'normal') {
+        let r = 0;
+        let fracM = [];
+        for(let i=0; i<rows; i++) {
+          let row = [];
+          for(let j=0; j<cols; j++) {
+            let val = parseFloat(document.getElementById(`m${i}${j}`).value) || 0;
+            let valStr = Math.abs(val).toString();
+            if(valStr.includes('.')) {
+              let dec = valStr.split('.')[1].length;
+              row.push(makeFrac(Math.round(val * Math.pow(10, dec)), Math.pow(10, dec)));
+            } else {
+              row.push(makeFrac(val, 1));
+            }
+          }
+          fracM.push(row);
+        }
+        
+        let mObj = fracM;
+        let limit = Math.min(rows, cols);
+
+        for (let p = 0; p < limit; p++) {
+          // 1. Search for a pivot in the current column p (from row p downwards)
+          let pivotRow = -1;
+          
+          // First, try to find a 1 or -1 to avoid fractions
+          for (let i = p; i < rows; i++) {
+            let val = mObj[i][p];
+            if (val.n !== 0 && val.d === 1 && Math.abs(val.n) === 1) {
+              pivotRow = i;
+              break;
+            }
+          }
+          
+          // If no 1 or -1, find the first non-zero element in column p
+          if (pivotRow === -1) {
+            for (let i = p; i < rows; i++) {
+              if (mObj[i][p].n !== 0) {
+                pivotRow = i;
+                break;
+              }
+            }
+          }
+
+          let pivotCol = p;
+          
+          // If column p is completely zero, search other columns for a non-zero element
+          if (pivotRow === -1) {
+            let found = false;
+            for (let j = p + 1; j < cols; j++) {
+              for (let i = p; i < rows; i++) {
+                if (mObj[i][j].n !== 0) {
+                  pivotRow = i;
+                  pivotCol = j;
+                  found = true;
+                  break;
+                }
+              }
+              if (found) break;
+            }
+            if (!found) break; // Entire remaining submatrix is zero. Rank is found.
+          }
+
+          // Swap Rows if necessary
+          if (pivotRow !== p) {
+            let beforeM = JSON.parse(JSON.stringify(mObj));
+            let temp = mObj[p]; mObj[p] = mObj[pivotRow]; mObj[pivotRow] = temp;
+            addStep("Row Swap", `<b>R${p+1} ↔ R${pivotRow+1}</b>`, beforeM, JSON.parse(JSON.stringify(mObj)));
+          }
+          
+          // Swap Cols if necessary (Only happens if entire column was zero)
+          if (pivotCol !== p) {
+            let beforeM = JSON.parse(JSON.stringify(mObj));
+            for (let i = 0; i < rows; i++) { let temp = mObj[i][p]; mObj[i][p] = mObj[i][pivotCol]; mObj[i][pivotCol] = temp; }
+            addStep("Column Swap", `<b>C${p+1} ↔ C${pivotCol+1}</b>`, beforeM, JSON.parse(JSON.stringify(mObj)));
+          }
+
+          let pivotVal = mObj[p][p];
+          if (pivotVal.n !== 1 || pivotVal.d !== 1) {
+            let beforeM = JSON.parse(JSON.stringify(mObj));
+            for (let j = 0; j < cols; j++) mObj[p][j] = divFrac(mObj[p][j], pivotVal);
+            addStep("Scale Row to Create Leading 1", `<b>R${p+1} = R${p+1} / (${formatFrac(pivotVal)})</b>`, beforeM, JSON.parse(JSON.stringify(mObj)));
+          }
+
+          let eliminatedRow = false;
+          let beforeMRow = JSON.parse(JSON.stringify(mObj));
+          let rowOps = [];
+          for (let i = p + 1; i < rows; i++) {
+            let factor = mObj[i][p];
+            if (!isZeroFrac(factor)) {
+              for (let j = 0; j < cols; j++) mObj[i][j] = subFrac(mObj[i][j], mulFrac(factor, mObj[p][j]));
+              eliminatedRow = true;
+              let opStr = factor.n < 0 ? `+ ${formatFrac(makeFrac(Math.abs(factor.n), factor.d))}` : `- ${formatFrac(factor)}`;
+              rowOps.push(`R${i+1} = R${i+1} ${opStr} * R${p+1}`);
+            }
+          }
+          if (eliminatedRow) {
+            addStep(`Eliminate entries below Leading 1 in C${p+1}`, "<b>" + rowOps.join('<br>') + "</b>", beforeMRow, JSON.parse(JSON.stringify(mObj)));
+          }
+
+          let eliminatedCol = false;
+          let beforeMCol = JSON.parse(JSON.stringify(mObj));
+          let colOps = [];
+          for (let j = p + 1; j < cols; j++) {
+            let factor = mObj[p][j];
+            if (!isZeroFrac(factor)) {
+              for (let i = 0; i < rows; i++) mObj[i][j] = subFrac(mObj[i][j], mulFrac(factor, mObj[i][p]));
+              eliminatedCol = true;
+              let opStr = factor.n < 0 ? `+ ${formatFrac(makeFrac(Math.abs(factor.n), factor.d))}` : `- ${formatFrac(factor)}`;
+              colOps.push(`C${j+1} = C${j+1} ${opStr} * C${p+1}`);
+            }
+          }
+          if (eliminatedCol) {
+            addStep(`Eliminate entries to the right in R${p+1}`, "<b>" + colOps.join('<br>') + "</b>", beforeMCol, JSON.parse(JSON.stringify(mObj)));
+          }
+          r++;
+        }
+        stepsHtml += `<div class="final-result">The Matrix is in Normal Form. Rank = <span>${r}</span></div>`;
+        output.innerHTML = stepsHtml;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      // Default logic (Gaussian for Rank)
+      // Step 1: Pivot at (0,0) (Generic logic - Note: currently only built for 3x3)
+      if(Math.abs(m[0][0]) < 1e-9 && rows > 0 && cols > 0) {
         let beforeM = JSON.parse(JSON.stringify(m));
         // Swap with row 1 or 2
-        if(Math.abs(m[1][0]) > 1e-9) {
+        if(rows > 1 && Math.abs(m[1][0]) > 1e-9) {
           let temp = m[0]; m[0] = m[1]; m[1] = temp;
           addStep("Row Swap", "<b>R1 ↔ R2</b>", beforeM, JSON.parse(JSON.stringify(m)));
         } else if(Math.abs(m[2][0]) > 1e-9) {
