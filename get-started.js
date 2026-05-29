@@ -335,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const jacobiWrapper = document.getElementById('jacobi-grid-container');
       const newtonWrapper = document.getElementById('newton-input-container');
       const falsePositionWrapper = document.getElementById('false-position-input-container');
+      const integrationWrapper = document.getElementById('integration-input-container');
 
       if (standardDim) standardDim.style.display = 'none';
       if (jacobiDim) jacobiDim.style.display = 'none';
@@ -342,6 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (jacobiWrapper) jacobiWrapper.style.display = 'none';
       if (newtonWrapper) newtonWrapper.style.display = 'none';
       if (falsePositionWrapper) falsePositionWrapper.style.display = 'none';
+      if (integrationWrapper) integrationWrapper.style.display = 'none';
 
       if(calcId === 'none') {
         document.getElementById('overview-ui').style.display = 'flex';
@@ -365,6 +367,18 @@ document.addEventListener('DOMContentLoaded', () => {
           if (newtonWrapper) newtonWrapper.style.display = 'flex';
         } else if (calcId === 'false-position') {
           if (falsePositionWrapper) falsePositionWrapper.style.display = 'flex';
+        } else if (calcId === 'trapezoidal' || calcId === 'simpson-1-3' || calcId === 'simpson-3-8') {
+          if (integrationWrapper) integrationWrapper.style.display = 'flex';
+          const reqNote = document.getElementById('integration-requirement-note');
+          if (reqNote) {
+            if (calcId === 'simpson-1-3') {
+              reqNote.innerHTML = `<span style="color: #d97706; display: flex; align-items: center; gap: 4px;">⚠️ Simpson's 1/3 Rule requires an even number of intervals (n).</span>`;
+            } else if (calcId === 'simpson-3-8') {
+              reqNote.innerHTML = `<span style="color: #d97706; display: flex; align-items: center; gap: 4px;">⚠️ Simpson's 3/8 Rule requires intervals (n) to be a multiple of 3.</span>`;
+            } else {
+              reqNote.innerHTML = `<span style="color: var(--teal); display: flex; align-items: center; gap: 4px;">✓ Trapezoidal Rule works with any interval count (n).</span>`;
+            }
+          }
         } else {
           if (standardDim) standardDim.style.display = 'flex';
           if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -564,6 +578,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       } else if (currentCalc === 'false-position') {
         calculateFalsePosition();
+        return;
+      } else if (currentCalc === 'trapezoidal' || currentCalc === 'simpson-1-3' || currentCalc === 'simpson-3-8') {
+        calculateIntegration();
         return;
       }
       const output = document.getElementById('steps-output');
@@ -2223,6 +2240,456 @@ document.addEventListener('DOMContentLoaded', () => {
 
         stepsHtml += `<div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;"><div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Method Characteristics</div><div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">False Position Method combines interval bracketing with interpolation, making it generally faster than the Bisection Method while maintaining guaranteed bracketing of the root.</div></div>`;
       }
+
+      output.innerHTML = stepsHtml;
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function calculateIntegration() {
+      const output = document.getElementById('steps-output');
+      if(!output) return;
+      output.innerHTML = '';
+      output.classList.add('active');
+
+      // 1. Read input values
+      const expr = document.getElementById('integration-function').value.trim();
+      const initA = parseFloat(document.getElementById('integration-a').value);
+      const initB = parseFloat(document.getElementById('integration-b').value);
+      const intervalsN = parseInt(document.getElementById('integration-n').value);
+      const decimals = parseInt(document.getElementById('integration-decimals').value);
+
+      // 2. Validate inputs
+      if (!expr) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Empty Function</div></div><div class="step-desc">Please enter a valid mathematical function f(x).</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (isNaN(initA) || isNaN(initB)) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Limits</div></div><div class="step-desc">Please enter valid numerical lower and upper integration limits (a and b).</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (initA === initB) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Matching Limits</div></div><div class="step-desc">The lower limit (a) and upper limit (b) cannot be equal. The integral over a single point is zero.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (isNaN(intervalsN) || intervalsN < 1) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Intervals</div></div><div class="step-desc">The number of intervals (n) must be an integer greater than or equal to 1.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (isNaN(decimals) || decimals < 0 || decimals > 15) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Precision</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      // Check method specific constraints
+      if (currentCalc === 'simpson-1-3' && intervalsN % 2 !== 0) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626; font-size: 1.25rem;">Simpson's 1/3 Rule Constraint Error</div></div><div class="step-desc" style="font-size: 1.05rem;">
+          Evaluating interval check:<br>
+          Entered n = <strong>${intervalsN}</strong><br><br>
+          <span style="font-weight:700; color: #dc2626; display: block; text-align: center; margin-top: 0.5rem; font-size: 1.1rem;">Simpson's 1/3 Rule requires an even number of intervals (n).</span>
+        </div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (currentCalc === 'simpson-3-8' && intervalsN % 3 !== 0) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626; font-size: 1.25rem;">Simpson's 3/8 Rule Constraint Error</div></div><div class="step-desc" style="font-size: 1.05rem;">
+          Evaluating interval check:<br>
+          Entered n = <strong>${intervalsN}</strong><br><br>
+          <span style="font-weight:700; color: #dc2626; display: block; text-align: center; margin-top: 0.5rem; font-size: 1.1rem;">Simpson's 3/8 Rule requires intervals (n) to be a multiple of 3.</span>
+        </div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      // Test parser evaluation at limits
+      let f_testA = evaluateMath(expr, initA);
+      if (isNaN(f_testA)) {
+        output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Evaluation Failure</div></div><div class="step-desc">The function could not be evaluated at lower limit a = ${initA}. Please check your math function syntax.</div></div>`;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      // 3. Setup core variables
+      let stepsHtml = '';
+      let stepCount = 1;
+
+      // Compute step size
+      const h = (initB - initA) / intervalsN;
+
+      // Generate nodes and evaluate function values
+      let nodes = [];
+      for (let i = 0; i <= intervalsN; i++) {
+        let xi = initA + i * h;
+        // Fix potential floating point issues on boundary values
+        if (i === 0) xi = initA;
+        if (i === intervalsN) xi = initB;
+        
+        let yi = evaluateMath(expr, xi);
+        if (isNaN(yi)) {
+          output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Evaluation Failure</div></div><div class="step-desc">The function failed to evaluate at coordinate x<sub>${i}</sub> = ${xi.toFixed(decimals)}. Check for out-of-domain terms (like log of negative, division by zero).</div></div>`;
+          output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+        nodes.push({ i: i, x: xi, y: yi });
+      }
+
+      // Step 1: Given Parameters & Step Size
+      stepsHtml += `
+        <div class="step-card">
+          <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">Given Parameters & Step Size (h)</div>
+            </div>
+            <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+          </div>
+          <div class="step-content">
+            <div class="step-desc">We extract the given integration bounds, intervals, and compute the step size <b>h</b>:</div>
+            <div style="padding: 1.25rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; display: flex; flex-direction: column; gap: 0.5rem; max-width: 500px; margin: 1.5rem auto;">
+              <div>&bull; Function to Integrate f(x) = <b>${expr}</b></div>
+              <div>&bull; Lower Limit (a) = <b>${initA.toFixed(decimals)}</b></div>
+              <div>&bull; Upper Limit (b) = <b>${initB.toFixed(decimals)}</b></div>
+              <div>&bull; Number of Intervals (n) = <b>${intervalsN}</b></div>
+            </div>
+            <div class="step-desc">The step size formula is:</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+              <span>h = </span>
+              <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+                <span style="display: block; border-bottom: 2px solid var(--navy); padding: 0 8px;">b - a</span>
+                <span style="display: block; padding: 2px 0 0 0;">n</span>
+              </span>
+            </div>
+            <div class="step-desc">Substituting our bounds:</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; color: var(--navy); text-align: center; margin: 1rem 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+              <span>h = </span>
+              <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+                <span style="display: block; border-bottom: 1px dashed var(--navy); padding: 0 4px;">${initB.toFixed(decimals)} - ${initA.toFixed(decimals)}</span>
+                <span style="display: block; padding: 1px 0;">${intervalsN}</span>
+              </span>
+              <span> = <strong>${h.toFixed(decimals)}</strong></span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Step 2: Table of Values
+      let tableRowsHtml = nodes.map(node => `
+        <tr style="border-bottom: 1px solid var(--border);">
+          <td style="padding: 0.75rem; text-align: center; font-weight: 600;">i = ${node.i}</td>
+          <td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">x<sub>${node.i}</sub> = ${node.x.toFixed(decimals)}</td>
+          <td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: var(--navy);">y<sub>${node.i}</sub> = ${node.y.toFixed(decimals)}</td>
+        </tr>
+      `).join('');
+
+      stepsHtml += `
+        <div class="step-card">
+          <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">Discrete Value Table</div>
+            </div>
+            <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div>
+          </div>
+          <div class="step-content" style="display: none;">
+            <div class="step-desc">We construct a table by evaluating the function at each coordinate step x<sub>i</sub> = a + i &bull; h:</div>
+            <div style="overflow-x: auto; margin-top: 1.5rem;">
+              <table style="width: 100%; border-collapse: collapse; border: 1px solid var(--border); margin: 0 auto; max-width: 600px;">
+                <thead>
+                  <tr style="background: var(--bg); border-bottom: 2px solid var(--border);">
+                    <th style="padding: 0.75rem; color: var(--navy); width: 80px;">Node Index</th>
+                    <th style="padding: 0.75rem; color: var(--navy);">Coordinate (x)</th>
+                    <th style="padding: 0.75rem; color: var(--navy);">Function Value y = f(x)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${tableRowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 4. Calculate Integral based on rule
+      let resultVal = 0;
+      let ruleFormulaHtml = '';
+      let groupDetailsHtml = '';
+      let substitutionMathHtml = '';
+      let methodNoteText = '';
+
+      // Boundary sum is always common: y_0 + y_n
+      const y0 = nodes[0].y;
+      const yn = nodes[intervalsN].y;
+      const boundarySum = y0 + yn;
+
+      if (currentCalc === 'trapezoidal') {
+        // Group remaining sum
+        let remainingNodes = nodes.slice(1, intervalsN);
+        let sumRemaining = remainingNodes.reduce((acc, curr) => acc + curr.y, 0);
+        resultVal = (h / 2) * (boundarySum + 2 * sumRemaining);
+
+        ruleFormulaHtml = `
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            <span>I &approx; </span>
+            <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+              <span style="display: block; border-bottom: 2px solid var(--navy); padding: 0 4px;">h</span>
+              <span style="display: block; padding: 2px 0 0 0;">2</span>
+            </span>
+            <span>[ (y<sub>0</sub> + y<sub>n</sub>) + 2(y<sub>1</sub> + y<sub>2</sub> + &hellip; + y<sub>n-1</sub>) ]</span>
+          </div>
+        `;
+
+        groupDetailsHtml = `
+          <div style="padding: 1.25rem; border: 1px solid var(--border); border-left: 4px solid var(--amber); background: var(--bg); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing:0.05em; color:var(--muted); margin-bottom: 0.25rem;">Node Term Groupings:</div>
+            <div>&bull; Boundary Sum (y<sub>0</sub> + y<sub>${intervalsN}</sub>): <br>
+              <span style="padding-left: 1rem; color: var(--navy); font-weight:600;">${y0.toFixed(decimals)} + ${yn.toFixed(decimals)} = ${boundarySum.toFixed(decimals)}</span>
+            </div>
+            <div>&bull; Remaining Middle Nodes Sum (y<sub>1</sub> + &hellip; + y<sub>${intervalsN-1}</sub>): <br>
+              <span style="padding-left: 1rem; color: var(--navy); font-weight:600; word-break: break-all;">
+                (${remainingNodes.map(n => n.y.toFixed(decimals)).join(' + ')}) = ${sumRemaining.toFixed(decimals)}
+              </span>
+            </div>
+          </div>
+        `;
+
+        substitutionMathHtml = `
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); padding-left: 1rem; display: flex; flex-direction: column; gap: 0.75rem; border-top: 1px dashed var(--border); padding-top: 1rem;">
+            <div>&bull; Substitution:</div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <span>I &approx; </span>
+              <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+                <span style="display: block; border-bottom: 1px dashed var(--navy); padding: 0 4px;">${h.toFixed(decimals)}</span>
+                <span style="display: block; padding: 1px 0;">2</span>
+              </span>
+              <span>[ ${boundarySum.toFixed(decimals)} + 2(${sumRemaining.toFixed(decimals)}) ]</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+              <span>I &approx; </span>
+              <span>${(h / 2).toFixed(decimals)} &bull; [ ${boundarySum.toFixed(decimals)} + ${(2 * sumRemaining).toFixed(decimals)} ]</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+              <span>I &approx; </span>
+              <span>${(h / 2).toFixed(decimals)} &bull; [ ${(boundarySum + 2 * sumRemaining).toFixed(decimals)} ]</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 1.3rem; color: var(--amber); font-weight: 700;">
+              <span>I &approx; </span>
+              <span>${resultVal.toFixed(decimals)}</span>
+            </div>
+          </div>
+        `;
+
+        methodNoteText = "Trapezoidal Rule approximates the area under the curve by summing up linear trapezoidal slices. It is a first-order Newton-Cotes integration formula.";
+
+      } else if (currentCalc === 'simpson-1-3') {
+        // Group odd index terms (y1, y3, ...)
+        let oddNodes = [];
+        let evenNodes = [];
+        for (let i = 1; i < intervalsN; i++) {
+          if (i % 2 !== 0) oddNodes.push(nodes[i]);
+          else evenNodes.push(nodes[i]);
+        }
+        let oddSum = oddNodes.reduce((acc, curr) => acc + curr.y, 0);
+        let evenSum = evenNodes.reduce((acc, curr) => acc + curr.y, 0);
+        resultVal = (h / 3) * (boundarySum + 4 * oddSum + 2 * evenSum);
+
+        ruleFormulaHtml = `
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            <span>I &approx; </span>
+            <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+              <span style="display: block; border-bottom: 2px solid var(--navy); padding: 0 4px;">h</span>
+              <span style="display: block; padding: 2px 0 0 0;">3</span>
+            </span>
+            <span>[ (y<sub>0</sub> + y<sub>n</sub>) + 4&bull;&sum;(odd y<sub>i</sub>) + 2&bull;&sum;(even y<sub>i</sub>) ]</span>
+          </div>
+        `;
+
+        groupDetailsHtml = `
+          <div style="padding: 1.25rem; border: 1px solid var(--border); border-left: 4px solid var(--amber); background: var(--bg); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing:0.05em; color:var(--muted); margin-bottom: 0.25rem;">Node Term Groupings:</div>
+            <div>&bull; Boundary Sum (y<sub>0</sub> + y<sub>${intervalsN}</sub>): <br>
+              <span style="padding-left: 1rem; color: var(--navy); font-weight:600;">${y0.toFixed(decimals)} + ${yn.toFixed(decimals)} = ${boundarySum.toFixed(decimals)}</span>
+            </div>
+            <div>&bull; Sum of Odd Node Terms (y<sub>1</sub> + y<sub>3</sub> + &hellip;): <br>
+              <span style="padding-left: 1rem; color: var(--navy); font-weight:600; word-break: break-all;">
+                (${oddNodes.map(n => n.y.toFixed(decimals)).join(' + ')}) = ${oddSum.toFixed(decimals)}
+              </span>
+            </div>
+            <div>&bull; Sum of Even Node Terms (y<sub>2</sub> + y<sub>4</sub> + &hellip;): <br>
+              <span style="padding-left: 1rem; color: var(--navy); font-weight:600; word-break: break-all;">
+                (${evenNodes.length > 0 ? evenNodes.map(n => n.y.toFixed(decimals)).join(' + ') : '0.0000'}) = ${evenSum.toFixed(decimals)}
+              </span>
+            </div>
+          </div>
+        `;
+
+        substitutionMathHtml = `
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); padding-left: 1rem; display: flex; flex-direction: column; gap: 0.75rem; border-top: 1px dashed var(--border); padding-top: 1rem;">
+            <div>&bull; Substitution:</div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <span>I &approx; </span>
+              <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+                <span style="display: block; border-bottom: 1px dashed var(--navy); padding: 0 4px;">${h.toFixed(decimals)}</span>
+                <span style="display: block; padding: 1px 0;">3</span>
+              </span>
+              <span>[ ${boundarySum.toFixed(decimals)} + 4(${oddSum.toFixed(decimals)}) + 2(${evenSum.toFixed(decimals)}) ]</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+              <span>I &approx; </span>
+              <span>${(h / 3).toFixed(decimals)} &bull; [ ${boundarySum.toFixed(decimals)} + ${(4 * oddSum).toFixed(decimals)} + ${(2 * evenSum).toFixed(decimals)} ]</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+              <span>I &approx; </span>
+              <span>${(h / 3).toFixed(decimals)} &bull; [ ${(boundarySum + 4 * oddSum + 2 * evenSum).toFixed(decimals)} ]</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 1.3rem; color: var(--amber); font-weight: 700;">
+              <span>I &approx; </span>
+              <span>${resultVal.toFixed(decimals)}</span>
+            </div>
+          </div>
+        `;
+
+        methodNoteText = "Simpson's 1/3 Rule fits quadratic parabolas over pairs of sub-intervals. It achieves a third-order accuracy and requires the interval count (n) to be strictly even.";
+
+      } else if (currentCalc === 'simpson-3-8') {
+        // Group multiples of 3, and others
+        let mult3Nodes = [];
+        let otherNodes = [];
+        for (let i = 1; i < intervalsN; i++) {
+          if (i % 3 === 0) mult3Nodes.push(nodes[i]);
+          else otherNodes.push(nodes[i]);
+        }
+        let mult3Sum = mult3Nodes.reduce((acc, curr) => acc + curr.y, 0);
+        let otherSum = otherNodes.reduce((acc, curr) => acc + curr.y, 0);
+        resultVal = ((3 * h) / 8) * (boundarySum + 3 * otherSum + 2 * mult3Sum);
+
+        ruleFormulaHtml = `
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+            <span>I &approx; </span>
+            <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+              <span style="display: block; border-bottom: 2px solid var(--navy); padding: 0 4px;">3h</span>
+              <span style="display: block; padding: 2px 0 0 0;">8</span>
+            </span>
+            <span>[ (y<sub>0</sub> + y<sub>n</sub>) + 3&bull;&sum;(y<sub>i</sub> &ne; 3j) + 2&bull;&sum;(y<sub>3j</sub>) ]</span>
+          </div>
+        `;
+
+        groupDetailsHtml = `
+          <div style="padding: 1.25rem; border: 1px solid var(--border); border-left: 4px solid var(--amber); background: var(--bg); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing:0.05em; color:var(--muted); margin-bottom: 0.25rem;">Node Term Groupings:</div>
+            <div>&bull; Boundary Sum (y<sub>0</sub> + y<sub>${intervalsN}</sub>): <br>
+              <span style="padding-left: 1rem; color: var(--navy); font-weight:600;">${y0.toFixed(decimals)} + ${yn.toFixed(decimals)} = ${boundarySum.toFixed(decimals)}</span>
+            </div>
+            <div>&bull; Sum of Non-Multiples of 3 Node Terms (y<sub>1</sub> + y<sub>2</sub> + y<sub>4</sub> + &hellip;): <br>
+              <span style="padding-left: 1rem; color: var(--navy); font-weight:600; word-break: break-all;">
+                (${otherNodes.map(n => n.y.toFixed(decimals)).join(' + ')}) = ${otherSum.toFixed(decimals)}
+              </span>
+            </div>
+            <div>&bull; Sum of Multiples of 3 Node Terms (y<sub>3</sub> + y<sub>6</sub> + &hellip;): <br>
+              <span style="padding-left: 1rem; color: var(--navy); font-weight:600; word-break: break-all;">
+                (${mult3Nodes.length > 0 ? mult3Nodes.map(n => n.y.toFixed(decimals)).join(' + ') : '0.0000'}) = ${mult3Sum.toFixed(decimals)}
+              </span>
+            </div>
+          </div>
+        `;
+
+        substitutionMathHtml = `
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); padding-left: 1rem; display: flex; flex-direction: column; gap: 0.75rem; border-top: 1px dashed var(--border); padding-top: 1rem;">
+            <div>&bull; Substitution:</div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <span>I &approx; </span>
+              <span style="display: inline-block; vertical-align: middle; text-align: center; margin: 0 4px;">
+                <span style="display: block; border-bottom: 1px dashed var(--navy); padding: 0 4px;">3(${h.toFixed(decimals)})</span>
+                <span style="display: block; padding: 1px 0;">8</span>
+              </span>
+              <span>[ ${boundarySum.toFixed(decimals)} + 3(${otherSum.toFixed(decimals)}) + 2(${mult3Sum.toFixed(decimals)}) ]</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+              <span>I &approx; </span>
+              <span>${((3 * h) / 8).toFixed(decimals)} &bull; [ ${boundarySum.toFixed(decimals)} + ${(3 * otherSum).toFixed(decimals)} + ${(2 * mult3Sum).toFixed(decimals)} ]</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+              <span>I &approx; </span>
+              <span>${((3 * h) / 8).toFixed(decimals)} &bull; [ ${(boundarySum + 3 * otherSum + 2 * mult3Sum).toFixed(decimals)} ]</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem; font-size: 1.3rem; color: var(--amber); font-weight: 700;">
+              <span>I &approx; </span>
+              <span>${resultVal.toFixed(decimals)}</span>
+            </div>
+          </div>
+        `;
+
+        methodNoteText = "Simpson's 3/8 Rule fits cubic polynomials over sets of three sub-intervals. It requires the interval count (n) to be a multiple of 3.";
+      }
+
+      // Step 3: Rule Formula
+      let ruleTitle = currentCalc === 'trapezoidal' ? 'Trapezoidal Rule Formula' : (currentCalc === 'simpson-1-3' ? "Simpson's 1/3 Rule Formula" : "Simpson's 3/8 Rule Formula");
+      stepsHtml += `
+        <div class="step-card">
+          <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">${ruleTitle}</div>
+            </div>
+            <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div>
+          </div>
+          <div class="step-content" style="display: none;">
+            <div class="step-desc">The mathematical approximation formula is defined as:</div>
+            ${ruleFormulaHtml}
+          </div>
+        </div>
+      `;
+
+      // Step 4: Step-by-Step Substitution
+      stepsHtml += `
+        <div class="step-card">
+          <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">Textbook Substitution & Calculations</div>
+            </div>
+            <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+          </div>
+          <div class="step-content">
+            <div class="step-desc">Substituting evaluated node values into our equation terms:</div>
+            <div style="margin-top: 1rem;">${groupDetailsHtml}</div>
+            <div style="margin-top: 1.5rem;">${substitutionMathHtml}</div>
+          </div>
+        </div>
+      `;
+
+      // Success Banner Defined Result Card
+      stepsHtml += `
+        <div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: var(--navy); color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Integration Definite Solved!</div>
+          <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Definite integral value calculated over boundary interval bounds [${initA}, ${initB}] using step spacing.</div>
+          <div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;">
+            <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Definite Integral Value:</div>
+            <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">
+              &int;<sub>${initA}</sub><sup>${initB}</sup> f(x) dx &approx; <span style="color:#ffffff;">${resultVal.toFixed(decimals)}</span>
+            </div>
+            <div style="font-size: 0.9rem; opacity:0.8; margin-top: 0.5rem;">Step Size h = <strong>${h.toFixed(decimals)}</strong></div>
+            <div style="font-size: 0.9rem; opacity:0.8;">Sub-Intervals n = <strong>${intervalsN}</strong></div>
+          </div>
+        </div>
+      `;
+
+      // Educational Note Footer Card
+      stepsHtml += `
+        <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
+          <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Method Characteristics</div>
+          <div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">${methodNoteText}</div>
+        </div>
+      `;
 
       output.innerHTML = stepsHtml;
       output.scrollIntoView({ behavior: 'smooth', block: 'start' });

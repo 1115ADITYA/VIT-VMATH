@@ -248,7 +248,49 @@
                 </div>
               </div>
             </div>
+
+            <!-- Numerical Integration Inputs Container -->
+            <div id="integration-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+              <div style="display: flex; gap: 1.5rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: flex-start;">
+                
+                <!-- Function f(x) -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 280px; flex-grow: 1; max-width: 400px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Function f(x)</span>
+                  <input type="text" id="integration-function" value="1 / (1 + x^2)" placeholder="e.g. 1 / (1 + x^2)" style="width: 100%; padding: 0.6rem 1rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+
+                <!-- Lower Limit a -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 120px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Lower Limit (a)</span>
+                  <input type="number" id="integration-a" value="0" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+
+                <!-- Upper Limit b -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 120px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Upper Limit (b)</span>
+                  <input type="number" id="integration-b" value="6" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+
+                <!-- Number of Intervals n -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 120px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Intervals (n)</span>
+                  <input type="number" id="integration-n" value="6" step="1" min="1" max="1000" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+              </div>
+
+              <!-- Precision Control & Option Info -->
+              <div style="display: flex; gap: 2rem; justify-content: center; margin-top: 1rem; width: 100%; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-weight: 600; color: var(--navy); font-size: 0.95rem;">Decimal Places:</span>
+                  <input type="number" id="integration-decimals" value="4" step="1" min="0" max="15" style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; background: var(--bg);">
+                </div>
+                <div id="integration-requirement-note" style="font-size: 0.9rem; font-weight: 600; color: var(--muted); font-family: 'Figtree', sans-serif;">
+                  <!-- Dynamic validation note, e.g. "Simpson's 1/3 Rule requires n to be even" -->
+                </div>
+              </div>
+            </div>
           </div>
+
 
           <div class="calc-action">
             <button class="btn-primary" onclick="calculateMatrix()">
