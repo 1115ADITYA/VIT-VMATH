@@ -336,6 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const newtonWrapper = document.getElementById('newton-input-container');
       const falsePositionWrapper = document.getElementById('false-position-input-container');
       const integrationWrapper = document.getElementById('integration-input-container');
+      const matrixPowerWrapper = document.getElementById('matrix-power-input-container');
 
       if (standardDim) standardDim.style.display = 'none';
       if (jacobiDim) jacobiDim.style.display = 'none';
@@ -344,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (newtonWrapper) newtonWrapper.style.display = 'none';
       if (falsePositionWrapper) falsePositionWrapper.style.display = 'none';
       if (integrationWrapper) integrationWrapper.style.display = 'none';
+      if (matrixPowerWrapper) matrixPowerWrapper.style.display = 'none';
 
       if(calcId === 'none') {
         document.getElementById('overview-ui').style.display = 'flex';
@@ -374,6 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
           desc = "Enter the function, limits, and intervals to perform numerical integration using Simpson's 1/3 Rule.";
         } else if (calcId === 'simpson-3-8') {
           desc = "Enter the function, limits, and intervals to perform numerical integration using Simpson's 3/8 Rule.";
+        } else if (calcId === 'matrix-power') {
+          desc = "Enter the matrix and exponent below to calculate its power.";
         }
         const descEl = document.getElementById('matrix-calc-desc');
         if (descEl) descEl.innerText = desc;
@@ -401,6 +405,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           if (standardDim) standardDim.style.display = 'flex';
           if (standardWrapper) standardWrapper.style.display = 'inline-block';
+          if (calcId === 'matrix-power' && matrixPowerWrapper) {
+            matrixPowerWrapper.style.display = 'flex';
+          }
           renderMatrixInputs();
         }
         
@@ -603,6 +610,199 @@ document.addEventListener('DOMContentLoaded', () => {
     function isZeroFrac(a) { return a.n === 0; }
     function formatFrac(a) { return a.d === 1 ? `${a.n}` : `${a.n}/${a.d}`; }
 
+    // Generic Matrix Math Helpers
+    function identityMatrix(n) {
+      let m = [];
+      for(let i=0; i<n; i++) {
+        let row = [];
+        for(let j=0; j<n; j++) row.push(i === j ? 1 : 0);
+        m.push(row);
+      }
+      return m;
+    }
+    function multiplyMatrix(A, B) {
+      let rA = A.length, cA = A[0].length, cB = B[0].length;
+      let m = [];
+      for(let i=0; i<rA; i++) {
+        let row = [];
+        for(let j=0; j<cB; j++) {
+          let sum = 0;
+          for(let k=0; k<cA; k++) sum += A[i][k] * B[k][j];
+          row.push(sum);
+        }
+        m.push(row);
+      }
+      return m;
+    }
+    function addMatrix(A, B) {
+      return A.map((r, i) => r.map((val, j) => val + B[i][j]));
+    }
+    function subMatrix(A, B) {
+      return A.map((r, i) => r.map((val, j) => val - B[i][j]));
+    }
+    function scaleMatrix(A, scalar) {
+      return A.map(r => r.map(val => val * scalar));
+    }
+    function copyMatrix(A) {
+      return A.map(r => [...r]);
+    }
+    function traceMatrix(A) {
+      let sum = 0;
+      for(let i=0; i<A.length; i++) sum += A[i][i];
+      return sum;
+    }
+    function determinant(m) {
+      if(m.length === 1) return m[0][0];
+      if(m.length === 2) return m[0][0]*m[1][1] - m[0][1]*m[1][0];
+      if(m.length === 3) {
+        return m[0][0]*(m[1][1]*m[2][2] - m[1][2]*m[2][1])
+             - m[0][1]*(m[1][0]*m[2][2] - m[1][2]*m[2][0])
+             + m[0][2]*(m[1][0]*m[2][1] - m[1][1]*m[2][0]);
+      }
+      // For > 3x3, use basic expansion (slow but works for small sizes)
+      let det = 0;
+      for(let j=0; j<m[0].length; j++) {
+        let sub = m.slice(1).map(row => row.filter((_, colIdx) => colIdx !== j));
+        det += (j%2 === 0 ? 1 : -1) * m[0][j] * determinant(sub);
+      }
+      return det;
+    }
+    function inverseMatrix(m) {
+      let n = m.length;
+      let det = determinant(m);
+      if(Math.abs(det) < 1e-9) return null;
+      if(n === 1) return [[1/det]];
+      if(n === 2) return [
+        [m[1][1]/det, -m[0][1]/det],
+        [-m[1][0]/det, m[0][0]/det]
+      ];
+      if(n === 3) {
+        let inv = [];
+        for(let i=0; i<3; i++) {
+          let row = [];
+          for(let j=0; j<3; j++) {
+            let sub = [];
+            for(let a=0; a<3; a++) {
+              if(a===i) continue;
+              let srow = [];
+              for(let b=0; b<3; b++) {
+                if(b===j) continue;
+                srow.push(m[a][b]);
+              }
+              sub.push(srow);
+            }
+            let cofactor = ((i+j)%2 === 0 ? 1 : -1) * determinant(sub);
+            row.push(cofactor / det);
+          }
+          inv.push(row);
+        }
+        // transpose cofactor matrix
+        return [
+          [inv[0][0], inv[1][0], inv[2][0]],
+          [inv[0][1], inv[1][1], inv[2][1]],
+          [inv[0][2], inv[1][2], inv[2][2]]
+        ];
+      }
+      return null; // Not implemented for > 3
+    }
+    function solveCubic(a, b, c, d) {
+      // Find roots of ax^3 + bx^2 + cx + d = 0
+      if (Math.abs(a) < 1e-9) { // Quadratic
+        if (Math.abs(b) < 1e-9) return [-d/c];
+        let disc = c*c - 4*b*d;
+        if (disc < 0) return [];
+        return [(-c + Math.sqrt(disc))/(2*b), (-c - Math.sqrt(disc))/(2*b)];
+      }
+      // Normalize
+      b /= a; c /= a; d /= a;
+      let p = c - b*b/3;
+      let q = 2*b*b*b/27 - b*c/3 + d;
+      let disc = q*q/4 + p*p*p/27;
+      
+      let roots = [];
+      if (disc > 1e-9) { // One real root
+        let u = Math.cbrt(-q/2 + Math.sqrt(disc));
+        let v = Math.cbrt(-q/2 - Math.sqrt(disc));
+        roots.push(u + v - b/3);
+      } else if (disc < -1e-9) { // Three real roots
+        let r = Math.sqrt(-p*p*p/27);
+        let phi = Math.acos(-q/(2*r));
+        let rr = 2 * Math.cbrt(r);
+        roots.push(rr * Math.cos(phi/3) - b/3);
+        roots.push(rr * Math.cos((phi + 2*Math.PI)/3) - b/3);
+        roots.push(rr * Math.cos((phi + 4*Math.PI)/3) - b/3);
+      } else { // Multiple real roots (disc == 0)
+        let u = Math.cbrt(-q/2);
+        roots.push(2*u - b/3);
+        roots.push(-u - b/3);
+      }
+      return roots.sort((x, y) => x - y);
+    }
+    function characteristicPolynomial(A) {
+      let n = A.length;
+      if(n === 2) {
+        let tr = traceMatrix(A);
+        let det = determinant(A);
+        return [1, -tr, det]; // x^2 - tr*x + det
+      }
+      if(n === 3) {
+        let tr = traceMatrix(A);
+        let m11 = A[1][1]*A[2][2] - A[1][2]*A[2][1];
+        let m22 = A[0][0]*A[2][2] - A[0][2]*A[2][0];
+        let m33 = A[0][0]*A[1][1] - A[0][1]*A[1][0];
+        let c2 = m11 + m22 + m33;
+        let det = determinant(A);
+        return [1, -tr, c2, -det]; // x^3 - tr*x^2 + c2*x - det
+      }
+      return null;
+    }
+    function findEigenvectors(A, lambda) {
+      let n = A.length;
+      let B = subMatrix(A, scaleMatrix(identityMatrix(n), lambda));
+      // For 2x2
+      if (n === 2) {
+        if (Math.abs(B[0][0]) > 1e-9 || Math.abs(B[0][1]) > 1e-9) return [-B[0][1], B[0][0]];
+        if (Math.abs(B[1][0]) > 1e-9 || Math.abs(B[1][1]) > 1e-9) return [-B[1][1], B[1][0]];
+        return [1, 0];
+      }
+      // For 3x3 - cross product of two non-collinear rows
+      if (n === 3) {
+        let r0 = B[0], r1 = B[1], r2 = B[2];
+        let cross1 = [r0[1]*r1[2] - r0[2]*r1[1], r0[2]*r1[0] - r0[0]*r1[2], r0[0]*r1[1] - r0[1]*r1[0]];
+        let cross2 = [r1[1]*r2[2] - r1[2]*r2[1], r1[2]*r2[0] - r1[0]*r2[2], r1[0]*r2[1] - r1[1]*r2[0]];
+        let cross3 = [r0[1]*r2[2] - r0[2]*r2[1], r0[2]*r2[0] - r0[0]*r2[2], r0[0]*r2[1] - r0[1]*r2[0]];
+        let mags = [
+          cross1.reduce((s, x) => s + x*x, 0),
+          cross2.reduce((s, x) => s + x*x, 0),
+          cross3.reduce((s, x) => s + x*x, 0)
+        ];
+        let maxMag = Math.max(...mags);
+        if (maxMag > 1e-9) {
+          if (mags[0] === maxMag) return cross1;
+          if (mags[1] === maxMag) return cross2;
+          return cross3;
+        }
+        // If all cross products are zero, rank is <= 1
+        // We need 2 eigenvectors
+        let evs = [];
+        if (Math.abs(r0[0]) > 1e-9 || Math.abs(r0[1]) > 1e-9 || Math.abs(r0[2]) > 1e-9) {
+          if (Math.abs(r0[0]) > 1e-9) {
+            evs.push([-r0[1]/r0[0], 1, 0]);
+            evs.push([-r0[2]/r0[0], 0, 1]);
+          } else if (Math.abs(r0[1]) > 1e-9) {
+            evs.push([1, -r0[0]/r0[1], 0]);
+            evs.push([0, -r0[2]/r0[1], 1]);
+          } else {
+            evs.push([1, 0, -r0[0]/r0[2]]);
+            evs.push([0, 1, -r0[1]/r0[2]]);
+          }
+          return evs[0]; // Simplified for now
+        }
+        return [1, 0, 0]; // Identity case
+      }
+      return null;
+    }
+
     // Matrix Formatting Helper (HTML Grid with brackets)
     function formatMatrix(m) {
       let rows = m.length;
@@ -638,6 +838,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       } else if (currentCalc === 'trapezoidal' || currentCalc === 'simpson-1-3' || currentCalc === 'simpson-3-8') {
         calculateIntegration();
+        return;
+      } else if (currentCalc === 'matrix-power') {
+        calculateMatrixPower();
         return;
       }
       const output = document.getElementById('steps-output');
@@ -884,6 +1087,207 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Scroll to steps
       output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ==========================================
+    // MATRIX POWER ENGINE
+    // ==========================================
+    
+    window.currentPowerMethod = 'direct';
+
+    function calculateMatrixPower() {
+      const output = document.getElementById('steps-output');
+      output.innerHTML = '';
+      output.classList.add('active');
+
+      let n = parseInt(document.getElementById('matrix-power-n').value) || 2;
+      let m = [];
+      for(let i=0; i<currentMatrixRows; i++) {
+        let row = [];
+        for(let j=0; j<currentMatrixCols; j++) {
+          row.push(parseFloat(document.getElementById(`m${i}${j}`).value) || 0);
+        }
+        m.push(row);
+      }
+      
+      if(currentMatrixRows !== currentMatrixCols) {
+        output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center;">Matrix must be square to calculate powers.</div>';
+        return;
+      }
+
+      // Read method from the HTML selector
+      let methodSelect = document.getElementById('matrix-power-method-select');
+      let method = methodSelect ? methodSelect.value : 'direct';
+
+      let stepsHtml = '';
+      let stepCount = 1;
+      function addStep(title, desc, matrix) {
+        stepsHtml += `
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">${title}</div>
+            </div>
+            ${desc ? `<div class="step-desc" style="text-align: center; font-size: 1.05rem; margin-bottom: 1.5rem;">${desc}</div>` : ''}
+            <div style="text-align: center; margin-top: 1rem;">${formatMatrix(matrix)}</div>
+          </div>
+        `;
+      }
+      function addTextStep(title, desc) {
+        stepsHtml += `
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">${title}</div>
+            </div>
+            <div class="step-desc" style="text-align: left; font-size: 1.05rem;">${desc}</div>
+          </div>
+        `;
+      }
+
+      if (method === 'direct') {
+        addStep("Initial Matrix A", `Power to calculate: ${n}`, m);
+        let curr = copyMatrix(m);
+        for(let i=2; i<=n; i++) {
+          curr = multiplyMatrix(curr, m);
+          addStep(`Compute A^${i}`, `Multiply A^${i-1} * A`, curr);
+        }
+        stepsHtml += `<div class="final-result">A^${n} Computed via Direct Multiplication</div>`;
+      } else if (method === 'fast') {
+        addStep("Initial Matrix A", `Power to calculate: ${n}`, m);
+        let bin = n.toString(2);
+        addTextStep("Binary Representation", `n = ${n} = ${bin}₂`);
+        
+        let res = identityMatrix(m.length);
+        let base = copyMatrix(m);
+        let pow = 1;
+        let pown = n;
+        
+        while(pown > 0) {
+          if (pown % 2 === 1) {
+             res = multiplyMatrix(res, base);
+             addStep(`Multiply Result by Base`, `Current Result`, res);
+          }
+          pown = Math.floor(pown / 2);
+          if (pown > 0) {
+            base = multiplyMatrix(base, base);
+            pow *= 2;
+            addStep(`Square the Base`, `Current Base (A^${pow})`, base);
+          }
+        }
+        stepsHtml += `<div class="final-result">Fast Exponentiation Complete</div>`;
+      } else if (method === 'diagonalization') {
+        if(m.length > 3) {
+           addTextStep("Error", "<div style='color:red'>Diagonalization method is only supported for 2x2 and 3x3 matrices in this calculator.</div>");
+        } else {
+           addStep("Initial Matrix A", `Power to calculate: ${n}`, m);
+           let poly = characteristicPolynomial(m);
+           let evals = m.length === 2 ? solveCubic(0, poly[0], poly[1], poly[2]) : solveCubic(poly[0], poly[1], poly[2], poly[3]);
+           if(!evals || evals.length === 0) {
+             addTextStep("Error", "<div style='color:red'>Could not find real eigenvalues or matrix is not diagonalizable over Reals.</div>");
+           } else {
+             // Basic Eigenvalue Output
+             let evText = evals.map((e,i) => `λ${i+1} = ${Math.round(e*1000)/1000}`).join(', ');
+             addTextStep("1. Find Eigenvalues", `Characteristic roots: ${evText}`);
+             
+             let P = [];
+             for(let i=0; i<m.length; i++) P.push([]);
+             let isDiagonalizable = true;
+             
+             for(let i=0; i<evals.length; i++) {
+               let v = findEigenvectors(m, evals[i]);
+               if(!v || v.length === 0) { isDiagonalizable = false; break; }
+               for(let r=0; r<m.length; r++) P[r][i] = v[r];
+             }
+             
+             if(!isDiagonalizable) {
+               addTextStep("Error", "<div style='color:red'>Matrix is defective (not diagonalizable). Cannot form full basis of eigenvectors. Try another method.</div>");
+             } else {
+               addStep("2. Form Eigenvector Matrix (P)", "Columns are eigenvectors", P);
+               
+               let D = identityMatrix(m.length);
+               for(let i=0; i<m.length; i++) D[i][i] = evals[i];
+               addStep("3. Form Diagonal Matrix (D)", "Diagonal entries are eigenvalues", D);
+               
+               let Pinv = inverseMatrix(P);
+               if(!Pinv) {
+                 addTextStep("Error", "<div style='color:red'>Matrix P is singular. Matrix may be defective.</div>");
+               } else {
+                 addStep("4. Find P⁻¹", "Inverse of P", Pinv);
+                 
+                 let Dn = identityMatrix(m.length);
+                 for(let i=0; i<m.length; i++) Dn[i][i] = Math.pow(D[i][i], n);
+                 addStep(`5. Calculate D^${n}`, "Simply raise diagonal entries to power n", Dn);
+                 
+                 let PDn = multiplyMatrix(P, Dn);
+                 let finalA = multiplyMatrix(PDn, Pinv);
+                 addStep(`6. Compute P * D^${n} * P⁻¹`, `Final Answer A^${n}`, finalA);
+                 stepsHtml += `<div class="final-result">Diagonalization Complete</div>`;
+               }
+             }
+           }
+        }
+      } else if (method === 'cayley') {
+         if(m.length > 3) {
+            addTextStep("Error", "<div style='color:red'>Cayley-Hamilton method is only supported for 2x2 and 3x3 matrices in this calculator.</div>");
+         } else {
+            addStep("Initial Matrix A", `Power to calculate: ${n}`, m);
+            let poly = characteristicPolynomial(m);
+            if (m.length === 2) {
+              addTextStep("1. Characteristic Equation", `P(λ) = λ² ${poly[1] < 0 ? '-' : '+'} ${Math.abs(poly[1])}λ ${poly[2] < 0 ? '-' : '+'} ${Math.abs(poly[2])} = 0<br>By Cayley-Hamilton Theorem: A² = ${-poly[1]}A ${poly[2] < 0 ? '+' : '-'} ${Math.abs(poly[2])}I`);
+              
+              let c1 = 1, c0 = 0; 
+              if(n === 0) { c1 = 0; c0 = 1; }
+              else if(n === 1) { c1 = 1; c0 = 0; }
+              else {
+                let p1 = -poly[1], p0 = -poly[2];
+                c1 = p1; c0 = p0;
+                for(let k=3; k<=n; k++) {
+                   let next_c1 = c1*p1 + c0;
+                   let next_c0 = c1*p0;
+                   c1 = next_c1; c0 = next_c0;
+                }
+              }
+              
+              addTextStep("2. Reduce Power", `A^${n} is reduced to:<br>A^${n} = ${c1}A + ${c0}I`);
+              let partA = scaleMatrix(m, c1);
+              let partI = scaleMatrix(identityMatrix(2), c0);
+              let finalA = addMatrix(partA, partI);
+              addStep(`3. Final Evaluation`, `${c1}A + ${c0}I`, finalA);
+            } else if (m.length === 3) {
+              addTextStep("1. Characteristic Equation", `P(λ) = λ³ ${poly[1] < 0 ? '-' : '+'} ${Math.abs(poly[1])}λ² ${poly[2] < 0 ? '-' : '+'} ${Math.abs(poly[2])}λ ${poly[3] < 0 ? '-' : '+'} ${Math.abs(poly[3])} = 0<br>By Cayley-Hamilton Theorem: A³ = ${-poly[1]}A² + ${-poly[2]}A + ${-poly[3]}I`);
+              
+              let c2 = 0, c1 = 1, c0 = 0;
+              if(n===0) { c2=0; c1=0; c0=1; }
+              else if(n===1) { c2=0; c1=1; c0=0; }
+              else if(n===2) { c2=1; c1=0; c0=0; }
+              else {
+                let p2 = -poly[1], p1 = -poly[2], p0 = -poly[3];
+                c2 = p2; c1 = p1; c0 = p0; 
+                for(let k=4; k<=n; k++) {
+                   let next_c2 = c2*p2 + c1;
+                   let next_c1 = c2*p1 + c0;
+                   let next_c0 = c2*p0;
+                   c2 = next_c2; c1 = next_c1; c0 = next_c0;
+                }
+              }
+              
+              addTextStep("2. Reduce Power", `A^${n} is reduced to:<br>A^${n} = ${c2}A² + ${c1}A + ${c0}I`);
+              let m2 = multiplyMatrix(m, m);
+              let partA2 = scaleMatrix(m2, c2);
+              let partA = scaleMatrix(m, c1);
+              let partI = scaleMatrix(identityMatrix(3), c0);
+              let finalA = addMatrix(addMatrix(partA2, partA), partI);
+              addStep(`3. Final Evaluation`, `${c2}A² + ${c1}A + ${c0}I`, finalA);
+            }
+         }
+      }
+
+      output.innerHTML = stepsHtml;
+      // Scroll to steps (avoid scrolling aggressively if they just changed the dropdown)
+      if (!window.event || window.event.type !== 'change') {
+         output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
 
     // ==========================================
