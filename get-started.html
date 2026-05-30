@@ -131,11 +131,22 @@
               </div>
               <div style="display: flex; flex-direction: column; align-items: center;">
                 <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Solution Method</span>
-                <select id="matrix-power-method-select" style="padding: 0.6rem 1.2rem; border-radius: 8px; border: 1px solid var(--border); font-family: 'IBM Plex Sans', sans-serif; font-size: 1rem; background: var(--bg); color: var(--navy); font-weight: 600; outline: none;" onchange="calculateMatrix()">
+                <select id="matrix-power-method-select" style="padding: 0.6rem 1.2rem; border-radius: 8px; border: 1px solid var(--border); font-family: 'IBM Plex Sans', sans-serif; font-size: 1rem; background: var(--bg); color: var(--navy); font-weight: 600; outline: none;">
                   <option value="direct">Direct Multiplication</option>
                   <option value="fast">Fast Exponentiation</option>
                   <option value="diagonalization">Diagonalization</option>
                   <option value="cayley">Cayley-Hamilton Theorem</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Diagonalization Input Container -->
+            <div id="diag-input-container" style="display: none; justify-content: center; margin-top: 1.5rem; width: 100%; gap: 2rem; flex-wrap: wrap;">
+              <div style="display: flex; flex-direction: column; align-items: center;">
+                <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Solution Method</span>
+                <select id="diag-method-select" style="padding: 0.6rem 1.2rem; border-radius: 8px; border: 1px solid var(--border); font-family: 'IBM Plex Sans', sans-serif; font-size: 1rem; background: var(--bg); color: var(--navy); font-weight: 600; outline: none;">
+                  <option value="standard">Eigenvalue Decomposition (P D P⁻¹)</option>
+                  <option value="orthogonal">Orthogonal Diagonalization (Symmetric only)</option>
                 </select>
               </div>
             </div>

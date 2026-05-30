@@ -337,6 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const falsePositionWrapper = document.getElementById('false-position-input-container');
       const integrationWrapper = document.getElementById('integration-input-container');
       const matrixPowerWrapper = document.getElementById('matrix-power-input-container');
+      const diagWrapper = document.getElementById('diag-input-container');
 
       if (standardDim) standardDim.style.display = 'none';
       if (jacobiDim) jacobiDim.style.display = 'none';
@@ -346,6 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (falsePositionWrapper) falsePositionWrapper.style.display = 'none';
       if (integrationWrapper) integrationWrapper.style.display = 'none';
       if (matrixPowerWrapper) matrixPowerWrapper.style.display = 'none';
+      if (diagWrapper) diagWrapper.style.display = 'none';
 
       if(calcId === 'none') {
         document.getElementById('overview-ui').style.display = 'flex';
@@ -378,6 +380,8 @@ document.addEventListener('DOMContentLoaded', () => {
           desc = "Enter the function, limits, and intervals to perform numerical integration using Simpson's 3/8 Rule.";
         } else if (calcId === 'matrix-power') {
           desc = "Enter the matrix and exponent below to calculate its power.";
+        } else if (calcId === 'diag') {
+          desc = "Select a method and enter the matrix values below to diagonalize it.";
         }
         const descEl = document.getElementById('matrix-calc-desc');
         if (descEl) descEl.innerText = desc;
@@ -407,6 +411,9 @@ document.addEventListener('DOMContentLoaded', () => {
           if (standardWrapper) standardWrapper.style.display = 'inline-block';
           if (calcId === 'matrix-power' && matrixPowerWrapper) {
             matrixPowerWrapper.style.display = 'flex';
+          }
+          if (calcId === 'diag' && diagWrapper) {
+            diagWrapper.style.display = 'flex';
           }
           renderMatrixInputs();
         }
@@ -735,6 +742,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let u = Math.cbrt(-q/2);
         roots.push(2*u - b/3);
         roots.push(-u - b/3);
+        roots.push(-u - b/3); // Multiplicity 2 for this root
       }
       return roots.sort((x, y) => x - y);
     }
@@ -761,9 +769,9 @@ document.addEventListener('DOMContentLoaded', () => {
       let B = subMatrix(A, scaleMatrix(identityMatrix(n), lambda));
       // For 2x2
       if (n === 2) {
-        if (Math.abs(B[0][0]) > 1e-9 || Math.abs(B[0][1]) > 1e-9) return [-B[0][1], B[0][0]];
-        if (Math.abs(B[1][0]) > 1e-9 || Math.abs(B[1][1]) > 1e-9) return [-B[1][1], B[1][0]];
-        return [1, 0];
+        if (Math.abs(B[0][0]) > 1e-9 || Math.abs(B[0][1]) > 1e-9) return [[-B[0][1], B[0][0]]];
+        if (Math.abs(B[1][0]) > 1e-9 || Math.abs(B[1][1]) > 1e-9) return [[-B[1][1], B[1][0]]];
+        return [[1, 0], [0, 1]];
       }
       // For 3x3 - cross product of two non-collinear rows
       if (n === 3) {
@@ -778,9 +786,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
         let maxMag = Math.max(...mags);
         if (maxMag > 1e-9) {
-          if (mags[0] === maxMag) return cross1;
-          if (mags[1] === maxMag) return cross2;
-          return cross3;
+          if (mags[0] === maxMag) return [cross1];
+          if (mags[1] === maxMag) return [cross2];
+          return [cross3];
         }
         // If all cross products are zero, rank is <= 1
         // We need 2 eigenvectors
@@ -796,9 +804,9 @@ document.addEventListener('DOMContentLoaded', () => {
             evs.push([1, 0, -r0[0]/r0[2]]);
             evs.push([0, 1, -r0[1]/r0[2]]);
           }
-          return evs[0]; // Simplified for now
+          return evs; 
         }
-        return [1, 0, 0]; // Identity case
+        return [[1, 0, 0], [0, 1, 0], [0, 0, 1]]; // Identity case
       }
       return null;
     }
@@ -841,6 +849,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       } else if (currentCalc === 'matrix-power') {
         calculateMatrixPower();
+        return;
+      } else if (currentCalc === 'diag') {
+        calculateDiagonalization();
         return;
       }
       const output = document.getElementById('steps-output');
@@ -1194,9 +1205,18 @@ document.addEventListener('DOMContentLoaded', () => {
              for(let i=0; i<m.length; i++) P.push([]);
              let isDiagonalizable = true;
              
+             let eigenBasis = {};
              for(let i=0; i<evals.length; i++) {
-               let v = findEigenvectors(m, evals[i]);
-               if(!v || v.length === 0) { isDiagonalizable = false; break; }
+               let e = evals[i];
+               let key = Math.round(e * 1000) / 1000;
+               if (!eigenBasis[key]) {
+                 eigenBasis[key] = findEigenvectors(m, e);
+               }
+               let basis = eigenBasis[key];
+               if (!basis || basis.length === 0) { isDiagonalizable = false; break; }
+               let v = basis.shift();
+               if (!v) { isDiagonalizable = false; break; }
+               
                for(let r=0; r<m.length; r++) P[r][i] = v[r];
              }
              
@@ -1288,6 +1308,157 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!window.event || window.event.type !== 'change') {
          output.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+    }
+
+    // ==========================================
+    // DIAGONALIZATION ENGINE
+    // ==========================================
+    
+    function calculateDiagonalization() {
+      const output = document.getElementById('steps-output');
+      output.innerHTML = '';
+      output.classList.add('active');
+
+      let m = [];
+      for(let i=0; i<currentMatrixRows; i++) {
+        let row = [];
+        for(let j=0; j<currentMatrixCols; j++) {
+          row.push(parseFloat(document.getElementById(`m${i}${j}`).value) || 0);
+        }
+        m.push(row);
+      }
+      
+      if(currentMatrixRows !== currentMatrixCols) {
+        output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center;">Matrix must be square to be diagonalizable.</div>';
+        return;
+      }
+
+      let methodSelect = document.getElementById('diag-method-select');
+      let method = methodSelect ? methodSelect.value : 'standard';
+
+      let stepsHtml = '';
+      let stepCount = 1;
+      function addStep(title, desc, matrix) {
+        stepsHtml += `
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">${title}</div>
+            </div>
+            ${desc ? `<div class="step-desc" style="text-align: center; font-size: 1.05rem; margin-bottom: 1.5rem;">${desc}</div>` : ''}
+            <div style="text-align: center; margin-top: 1rem;">${formatMatrix(matrix)}</div>
+          </div>
+        `;
+      }
+      function addTextStep(title, desc) {
+        stepsHtml += `
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">${title}</div>
+            </div>
+            <div class="step-desc" style="text-align: left; font-size: 1.05rem;">${desc}</div>
+          </div>
+        `;
+      }
+
+      if(m.length > 3) {
+         addTextStep("Error", "<div style='color:red'>Diagonalization is only supported for 2x2 and 3x3 matrices in this calculator.</div>");
+         output.innerHTML = stepsHtml;
+         return;
+      }
+
+      if (method === 'orthogonal') {
+         // Check if symmetric
+         let isSym = true;
+         for(let i=0; i<m.length; i++) {
+           for(let j=0; j<m.length; j++) {
+             if(Math.abs(m[i][j] - m[j][i]) > 1e-9) isSym = false;
+           }
+         }
+         if(!isSym) {
+            addTextStep("Error", "<div style='color:red'>Matrix is not symmetric. Orthogonal diagonalization requires a symmetric matrix.</div>");
+            output.innerHTML = stepsHtml;
+            return;
+         }
+      }
+
+      addStep("Initial Matrix A", ``, m);
+      let poly = characteristicPolynomial(m);
+      let evals = m.length === 2 ? solveCubic(0, poly[0], poly[1], poly[2]) : solveCubic(poly[0], poly[1], poly[2], poly[3]);
+      
+      if(!evals || evals.length === 0) {
+        addTextStep("Error", "<div style='color:red'>Could not find real eigenvalues or matrix is not diagonalizable over Reals.</div>");
+      } else {
+        let evText = evals.map((e,i) => `λ${i+1} = ${Math.round(e*1000)/1000}`).join(', ');
+        addTextStep("1. Find Eigenvalues", `Characteristic roots: ${evText}`);
+        
+        let P = [];
+        for(let i=0; i<m.length; i++) P.push([]);
+        let isDiagonalizable = true;
+        
+        let eigenBasis = {};
+        for(let i=0; i<evals.length; i++) {
+          let e = evals[i];
+          let key = Math.round(e * 1000) / 1000;
+          if (!eigenBasis[key]) {
+             let basis = findEigenvectors(m, e);
+             
+             // Apply Gram-Schmidt for Orthogonal Diagonalization if basis has multiple vectors
+             if (method === 'orthogonal' && basis.length > 1) {
+                let orthoBasis = [];
+                for(let b of basis) {
+                   let u = [...b];
+                   for(let ob of orthoBasis) {
+                      let dot = u.reduce((s, x, idx) => s + x*ob[idx], 0);
+                      let obMag2 = ob.reduce((s, x) => s + x*x, 0);
+                      u = u.map((x, idx) => x - (dot/obMag2)*ob[idx]);
+                   }
+                   orthoBasis.push(u);
+                }
+                basis = orthoBasis;
+             }
+             eigenBasis[key] = basis;
+          }
+          
+          let basis = eigenBasis[key];
+          if(!basis || basis.length === 0) { isDiagonalizable = false; break; }
+          let v = basis.shift();
+          if(!v) { isDiagonalizable = false; break; }
+          
+          if(method === 'orthogonal') {
+            let mag = Math.sqrt(v.reduce((s, x) => s + x*x, 0));
+            if(mag > 0) v = v.map(x => x / mag);
+          }
+          
+          for(let r=0; r<m.length; r++) P[r][i] = v[r];
+        }
+        
+        if(!isDiagonalizable) {
+          addTextStep("Error", "<div style='color:red'>Matrix is defective (not diagonalizable). Cannot form a full basis of eigenvectors.</div>");
+        } else {
+          addStep("2. Form Eigenvector Matrix (P)", method === 'orthogonal' ? "Columns are normalized orthogonal eigenvectors" : "Columns are eigenvectors", P);
+          
+          let D = identityMatrix(m.length);
+          for(let i=0; i<m.length; i++) D[i][i] = evals[i];
+          addStep("3. Form Diagonal Matrix (D)", "Diagonal entries are eigenvalues", D);
+          
+          let Pinv = method === 'orthogonal' ? 
+            P[0].map((_, colIndex) => P.map(row => row[colIndex])) : 
+            inverseMatrix(P);
+
+          if(!Pinv && method !== 'orthogonal') {
+            addTextStep("Error", "<div style='color:red'>Matrix P is singular. Matrix may be defective.</div>");
+          } else {
+            addStep("4. Find P⁻¹", method === 'orthogonal' ? "Since P is orthogonal, P⁻¹ = Pᵀ" : "Inverse of P", Pinv);
+            
+            stepsHtml += `<div class="final-result">${method === 'orthogonal' ? 'Orthogonal ' : ''}Diagonalization Complete<br><span>A = P D P⁻¹</span></div>`;
+          }
+        }
+      }
+
+      output.innerHTML = stepsHtml;
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     // ==========================================
