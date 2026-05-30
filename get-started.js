@@ -832,6 +832,10 @@ function formatMatrix(m) {
 
 // Rank Calculation Logic
 function calculateMatrix() {
+  if (currentCalc === 'det') {
+    calculateDeterminantMatrix();
+    return;
+  }
   if (currentCalc === 'adjoint') {
     calculateAdjointMatrix();
     return;
@@ -5527,4 +5531,701 @@ function matrixToHtmlEchelon(matrix, pivotRow, pivotCol) {
         </div>
       `;
 }
+
+// ==========================================
+// EDUCATIONAL DETERMINANT CALCULATOR ENGINE
+// ==========================================
+
+function calculateDeterminantMatrix() {
+  const output = document.getElementById('steps-output');
+  if (!output) return;
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let rows = currentMatrixRows;
+  let cols = currentMatrixCols;
+
+  if (rows !== cols) {
+    output.innerHTML = `
+          <div class="step-card" style="border-left-color: #dc2626;">
+            <div class="step-header">
+              <div class="step-title" style="color: #dc2626; font-size: 1.25rem;">Error: Non-Square Matrix</div>
+            </div>
+            <div class="step-desc" style="font-size: 1rem;">
+              The Determinant is only defined for square matrices. The entered matrix size is <strong>${rows}x${cols}</strong>. Please ensure the number of Rows equals the number of Columns.
+            </div>
+          </div>
+        `;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let A = [];
+  let hasEmpty = false;
+  let hasInvalid = false;
+
+  for (let i = 0; i < rows; i++) {
+    let row = [];
+    for (let j = 0; j < cols; j++) {
+      let cellId = `m${i}${j}`;
+      let cellEl = document.getElementById(cellId);
+      if (!cellEl) continue;
+      let valStr = cellEl.value.trim();
+      if (valStr === '') hasEmpty = true;
+      let val = parseFloat(valStr);
+      if (isNaN(val) || !isFinite(val)) hasInvalid = true;
+      row.push(val);
+    }
+    A.push(row);
+  }
+
+  if (hasEmpty || hasInvalid) {
+    output.innerHTML = `
+          <div class="step-card" style="border-left-color: #dc2626;">
+            <div class="step-header">
+              <div class="step-title" style="color: #dc2626; font-size: 1.25rem;">Error: Invalid Matrix Entries</div>
+            </div>
+            <div class="step-desc" style="font-size: 1rem;">
+              Please ensure all cells in the matrix grid are filled with valid numeric values.
+            </div>
+          </div>
+        `;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let stepsHtml = `
+    <h2 style="font-family: 'Fraunces', serif; color: var(--navy); margin-top: 1rem; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid var(--amber); padding-bottom: 0.5rem; font-size: 1.5rem;">Cofactor Expansion Method</h2>
+  `;
+
+  let methodSteps = generateCofactorExpansionSteps(A);
+  stepsHtml += renderStepsListHTML(methodSteps);
+
+  let finalDet = determinant(A);
+
+  stepsHtml += `
+        <div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: var(--navy); color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2.5rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Determinant Successfully Calculated!</div>
+          <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The matrix determinant has been computed using Laplace Cofactor Expansion.</div>
+          
+          <div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px; box-sizing: border-box; width: 100%; max-width: 600px;">
+            <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Result:</div>
+            <div style="margin-top: 1rem; text-align: center; font-size: 2.5rem; font-weight: 800; font-family: 'IBM Plex Mono', monospace; color: var(--amber);">
+              det(A) = ${formatValueSimple(finalDet)}
+            </div>
+            
+            ${renderDeterminantInterpretation(finalDet)}
+          </div>
+        </div>
+      `;
+
+  output.innerHTML = stepsHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderStepsListHTML(steps) {
+  let stepCount = 1;
+  let html = "";
+  steps.forEach(step => {
+    let collapseAttr = step.isCollapsed ? 'style="display: none;"' : '';
+    let rotateAttr = step.isCollapsed ? 'style="transform: rotate(-90deg);"' : '';
+    html += `
+          <div class="step-card">
+            <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="step-number">${stepCount++}</div>
+                <div class="step-title">${step.title}</div>
+              </div>
+              <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);" ${rotateAttr}>▼</div>
+            </div>
+            <div class="step-content" ${collapseAttr}>
+              ${step.content}
+            </div>
+          </div>
+        `;
+  });
+  return html;
+}
+
+function getMinor(matrix, r, c) {
+  return matrix.filter((_, rowIdx) => rowIdx !== r)
+               .map(row => row.filter((_, colIdx) => colIdx !== c));
+}
+
+function renderDeterminantInterpretation(det) {
+  let isSingular = Math.abs(det) < 1e-9;
+  let textTitle = isSingular ? "Singular Matrix (det = 0)" : "Non-Singular Matrix (det ≠ 0)";
+  let caseColor = isSingular ? "#d97706" : "var(--teal)";
+
+  return `
+    <div style="margin-top: 1.5rem; padding: 1.25rem; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.02); box-sizing: border-box; width: 100%;">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+        <span style="font-weight: 700; color: var(--navy); font-size: 1.1rem; font-family: 'Fraunces', serif;">Educational Interpretation</span>
+        <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">Purple: Final Result</span>
+      </div>
+      
+      <div style="font-weight: 700; color: ${caseColor}; font-size: 1.15rem; margin-bottom: 0.75rem;">
+        ${textTitle}
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.95rem; color: var(--text); line-height: 1.5;">
+        ${isSingular ? `
+          <div style="display: flex; align-items: flex-start; gap: 6px;">
+            <span style="color: #dc2626; font-weight: bold;">✕</span>
+            <div><strong>Matrix Singular:</strong> The determinant equals exactly zero.</div>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 6px;">
+            <span style="color: #dc2626; font-weight: bold;">✕</span>
+            <div><strong>Inverse Does Not Exist:</strong> A matrix has a defined inverse matrix (A<sup>-1</sup>) if and only if its determinant is non-zero. Since det(A) = 0, this matrix is non-invertible.</div>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 6px;">
+            <span style="color: #d97706; font-weight: bold;">⚠</span>
+            <div><strong>Linear Dependence:</strong> The rows (and columns) of this matrix are linearly dependent, meaning at least one row can be written as a linear combination of the others.</div>
+          </div>
+        ` : `
+          <div style="display: flex; align-items: flex-start; gap: 6px;">
+            <span style="color: var(--teal); font-weight: bold;">✓</span>
+            <div><strong>Matrix Non-Singular:</strong> The determinant is non-zero (${formatValueSimple(det)}).</div>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 6px;">
+            <span style="color: var(--teal); font-weight: bold;">✓</span>
+            <div><strong>Inverse Exists:</strong> Since det(A) &ne; 0, the matrix inverse A<sup>-1</sup> is guaranteed to exist and can be computed.</div>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 6px;">
+            <span style="color: var(--teal); font-weight: bold;">✓</span>
+            <div><strong>Linear Independence:</strong> The row vectors (and column vectors) are completely linearly independent. No row can be formed by combining the other rows.</div>
+          </div>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function generateCofactorExpansionSteps(A) {
+  let n = A.length;
+  let steps = [];
+
+  // Step 1: Original Matrix
+  steps.push({
+    title: "Original Matrix",
+    isCollapsed: false,
+    content: `
+      <div class="step-desc" style="margin-bottom: 0.5rem;">We start with the given ${n}x${n} matrix A:</div>
+      <div style="text-align: center; margin: 1rem 0;">
+        ${matrixToHtml(A)}
+      </div>
+    `
+  });
+
+  if (n === 1) {
+    let det = A[0][0];
+    steps.push({
+      title: "Direct Calculation",
+      isCollapsed: false,
+      content: `
+        <div class="step-desc" style="margin-bottom: 0.5rem;">For a 1x1 matrix, the determinant is simply the single entry itself:</div>
+        <div style="font-family: 'Fraunces', serif; font-size: 1.35rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+          Det(A) = ${formatValueSimple(det)}
+        </div>
+      `
+    });
+    return steps;
+  }
+
+  if (n === 2) {
+    let a = A[0][0], b = A[0][1], c = A[1][0], d = A[1][1];
+    let p1 = a * d, p2 = b * c;
+    let det = p1 - p2;
+    steps.push({
+      title: "Direct Formula Application",
+      isCollapsed: false,
+      content: `
+        <div class="step-desc" style="margin-bottom: 0.75rem;">For a 2x2 matrix, we use the standard cross-multiplication formula:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin-bottom: 1rem; text-align: center;">
+          Det(A) = a<sub>11</sub>a<sub>22</sub> - a<sub>12</sub>a<sub>21</sub>
+        </div>
+        <div class="step-desc" style="margin-bottom: 0.75rem;">Substituting the entries into the formula:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+          Det(A) = (${formatValueSimple(a)} × ${formatValueSimple(d)}) - (${formatValueSimple(b)} × ${formatValueSimple(c)})
+        </div>
+        <div class="step-desc" style="margin-bottom: 0.75rem;">Showing intermediate products:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+          Det(A) = ${formatValueSimple(p1)} - (${formatValueSimple(p2)})
+        </div>
+        <div class="step-desc" style="margin-bottom: 0.75rem;">Performing the final subtraction:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.35rem; color: var(--teal); font-weight: 700; text-align: center; margin: 1.5rem 0;">
+          Det(A) = ${formatValueSimple(det)}
+        </div>
+      `
+    });
+    return steps;
+  }
+
+  // For N >= 3
+  // Step 2: Choose Row 1
+  steps.push({
+    title: "Select Expansion Row",
+    isCollapsed: false,
+    content: `
+      <div class="step-desc" style="margin-bottom: 0.5rem;">We will expand along the **first row** of the matrix (standard Laplace cofactor expansion):</div>
+      <div style="display: flex; gap: 1.5rem; justify-content: center; align-items: center; margin: 1rem 0; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); flex-wrap: wrap;">
+        ${A[0].map((val, idx) => `
+          <div style="padding: 0.5rem 1rem; border: 2px solid var(--amber); border-radius: 8px; background: var(--bg); text-align: center; min-width: 80px;">
+            a<sub>1,${idx+1}</sub> = <strong>${formatValueSimple(val)}</strong>
+          </div>
+        `).join('')}
+      </div>
+    `
+  });
+
+  // Step 3: Minor Calculations
+  let minorCalculationsHtml = "";
+  let minorDets = [];
+
+  for (let j = 0; j < n; j++) {
+    let sub = getMinor(A, 0, j);
+    let detVal = determinant(sub);
+    minorDets.push(detVal);
+
+    let minorDetStepHtml = "";
+    if (n === 3) {
+      // 2x2 minor
+      let ma = sub[0][0], mb = sub[0][1], mc = sub[1][0], md = sub[1][1];
+      let mp1 = ma * md, mp2 = mb * mc;
+      minorDetStepHtml = `
+        <div style="margin-top: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem;">
+          det(M<sub>1,${j+1}</sub>) = (${formatValueSimple(ma)} × ${formatValueSimple(md)}) - (${formatValueSimple(mb)} × ${formatValueSimple(mc)})<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${formatValueSimple(mp1)} - (${formatValueSimple(mp2)})<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <strong>${formatValueSimple(detVal)}</strong>
+        </div>
+      `;
+    } else {
+      // Larger minor, recursively get det
+      minorDetStepHtml = `
+        <div style="margin-top: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem;">
+          det(M<sub>1,${j+1}</sub>) = <strong>${formatValueSimple(detVal)}</strong> (calculated via further cofactor expansion)
+        </div>
+      `;
+    }
+
+    minorCalculationsHtml += `
+      <div style="padding: 1.25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--white); margin-bottom: 1.5rem; box-sizing: border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.01); width: 100%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+          <span style="font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--navy); font-size: 1.05rem;">Term a<sub>1,${j+1}</sub> = ${formatValueSimple(A[0][j])}</span>
+          <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: rgba(59, 130, 246, 0.1); color: #3b82f6;">Blue: Minor Calculation</span>
+        </div>
+        <div class="step-desc" style="font-size: 0.9rem; margin-bottom: 0.5rem;">Remove **Row 1** and **Column ${j+1}** to find the minor matrix **M<sub>1,${j+1}</sub>**:</div>
+        <div style="text-align: center; margin: 0.75rem 0;">
+          ${matrixToHtml(sub)}
+        </div>
+        <div class="step-desc" style="font-size: 0.9rem; margin-bottom: 0.25rem; font-weight: 600; color: var(--navy);">Compute the determinant of the minor:</div>
+        ${minorDetStepHtml}
+      </div>
+    `;
+  }
+
+  steps.push({
+    title: "Calculate Every Minor Determinant",
+    isCollapsed: false,
+    content: `
+      <div class="step-desc" style="margin-bottom: 1rem;">We extract the minor submatrices and solve their determinants one by one:</div>
+      <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+        ${minorCalculationsHtml}
+      </div>
+    `
+  });
+
+  // Step 4: Apply Cofactor Signs
+  let signMatrixHtml = "";
+  if (n === 3) {
+    signMatrixHtml = `
+      <div style="display: inline-flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 0.75rem 0;">
+        <span style="font-size: 4rem; font-weight: 200; margin-right: 0.35rem; color: var(--navy); transform: scaleY(1.15);">&lbrack;</span>
+        <div style="display: inline-flex; flex-direction: column; text-align: center; gap: 0.4rem; padding: 0 0.15rem; font-weight: 700;">
+          <div>+ &nbsp; - &nbsp; +</div>
+          <div>- &nbsp; + &nbsp; -</div>
+          <div>+ &nbsp; - &nbsp; +</div>
+        </div>
+        <span style="font-size: 4rem; font-weight: 200; margin-left: 0.35rem; color: var(--navy); transform: scaleY(1.15);">&rbrack;</span>
+      </div>
+    `;
+  } else {
+    let signsRow = [];
+    for (let j = 0; j < n; j++) {
+      signsRow.push((j % 2 === 0) ? "+" : "-");
+    }
+    signMatrixHtml = `
+      <div style="display: inline-flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 0.75rem 0; font-weight: 700;">
+        First Row Signs: &lbrack; ${signsRow.join(' , ')} &rbrack;
+      </div>
+    `;
+  }
+
+  steps.push({
+    title: "Apply Cofactor Signs",
+    isCollapsed: false,
+    content: `
+      <div class="step-desc" style="margin-bottom: 0.75rem;">Cofactors use a checkerboard sign overlay, where each element is multiplied by (-1)<sup>i+j</sup>:</div>
+      <div style="text-align: center; margin: 1rem 0;">
+        ${signMatrixHtml}
+      </div>
+      <div class="step-desc" style="margin-bottom: 0.5rem;">For expanding along Row 1, the sign multipliers are:</div>
+      <div style="display: flex; flex-direction: column; gap: 0.4rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; color: var(--navy); padding-left: 1rem; border-left: 2px solid var(--amber);">
+        ${A[0].map((val, idx) => {
+          let s = (idx % 2 === 0) ? 1 : -1;
+          let sChar = s === 1 ? "+" : "-";
+          return `<div>Term a<sub>1,${idx+1}</sub> = ${formatValueSimple(val)} &rarr; Sign multiplier: (-1)<sup>1+${idx+1}</sup> = <strong>${sChar}1</strong></div>`;
+        }).join('')}
+      </div>
+    `
+  });
+
+  // Step 5: Substitute values
+  let terms = [];
+  let substitutedExpr = "";
+  let substitutedNumbers = "";
+  for (let j = 0; j < n; j++) {
+    let sign = (j % 2 === 0) ? 1 : -1;
+    let cellVal = A[0][j];
+    let mDet = minorDets[j];
+    let termVal = sign * cellVal * mDet;
+    terms.push(termVal);
+
+    let prefix = (j === 0) ? "" : ((sign === 1) ? " + " : " - ");
+    substitutedExpr += `${prefix}a<sub>1,${j+1}</sub>(det(M<sub>1,${j+1}</sub>))`;
+    
+    let subNumPrefix = (j === 0) ? "" : ((sign === 1) ? " + " : " - ");
+    substitutedNumbers += `${subNumPrefix}${formatValueSimple(cellVal)}(${formatValueSimple(mDet)})`;
+  }
+
+  steps.push({
+    title: "Substitute and Expand Formula",
+    isCollapsed: false,
+    content: `
+      <div class="step-desc" style="margin-bottom: 0.75rem;">We now assemble the determinant formula:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); text-align: center; margin: 1rem 0;">
+        Det(A) = ${substitutedExpr}
+      </div>
+      <div class="step-desc" style="margin-bottom: 0.75rem;">Substituting our calculated minor determinants and entries:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        Det(A) = ${substitutedNumbers}
+      </div>
+    `
+  });
+
+  // Step 6: Arithmetic Simplification
+  let cleanTerms = [];
+  for (let j = 0; j < n; j++) {
+    let sign = (j % 2 === 0) ? 1 : -1;
+    let tVal = sign * A[0][j] * minorDets[j];
+    cleanTerms.push(tVal);
+  }
+
+  let stepArithmeticHtml = `
+    <div class="step-desc" style="margin-bottom: 0.75rem;">Calculate the individual products for each term:</div>
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1rem 0;">
+      Det(A) = ${cleanTerms.map(val => formatValueSimple(val)).join(' + ').replace(/\+ -/g, '- ')}
+    </div>
+  `;
+
+  let currentSum = cleanTerms[0];
+  let runningArithmeticHtml = "";
+  for (let j = 1; j < n; j++) {
+    let nextVal = cleanTerms[j];
+    let prevSum = currentSum;
+    currentSum += nextVal;
+    
+    let remaining = cleanTerms.slice(j + 1);
+    let remainingStr = remaining.length > 0 ? " + " + remaining.map(v => formatValueSimple(v)).join(' + ') : "";
+    remainingStr = remainingStr.replace(/\+ -/g, '- ');
+
+    runningArithmeticHtml += `
+      <div class="step-desc" style="margin-bottom: 0.5rem;">Evaluate: **${formatValueSimple(prevSum)} + (${formatValueSimple(nextVal)})**</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 0.75rem 0;">
+        Det(A) = ${formatValueSimple(currentSum)}${remainingStr}
+      </div>
+    `;
+  }
+
+  steps.push({
+    title: "Arithmetic Simplification",
+    isCollapsed: false,
+    content: `
+      ${stepArithmeticHtml}
+      ${runningArithmeticHtml}
+    `
+  });
+
+  return steps;
+}
+
+function generateRowReductionSteps(A) {
+  let n = A.length;
+  let steps = [];
+  let M = copyMatrix(A);
+  
+  steps.push({
+    title: "Original Matrix",
+    isCollapsed: false,
+    content: `
+      <div class="step-desc" style="margin-bottom: 0.5rem;">We start with the given matrix A:</div>
+      <div style="text-align: center; margin: 1rem 0;">
+        ${matrixToHtml(M)}
+      </div>
+    `
+  });
+
+  let signFactor = 1;
+  let swapCount = 0;
+
+  for (let c = 0; c < n; c++) {
+    let pivotRow = -1;
+    for (let i = c; i < n; i++) {
+      if (Math.abs(M[i][c]) > 1e-9) {
+        pivotRow = i;
+        break;
+      }
+    }
+
+    if (pivotRow === -1) {
+      steps.push({
+        title: `Zero Pivot in Column ${c+1}`,
+        isCollapsed: false,
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.75rem; color: #dc2626;">
+            Column ${c+1} has no non-zero entries at or below row ${c+1}.
+          </div>
+          <div class="step-desc" style="margin-bottom: 0.5rem;">
+            This means the matrix is singular, and we cannot complete row reduction. Any upper triangular form will have a zero on the diagonal, so:
+          </div>
+          <div style="font-family: 'Fraunces', serif; font-size: 1.35rem; color: #dc2626; text-align: center; margin: 1.5rem 0;">
+            Det(A) = 0
+          </div>
+        `
+      });
+      return { steps, determinant: 0 };
+    }
+
+    if (pivotRow !== c) {
+      let beforeM = copyMatrix(M);
+      let temp = M[c];
+      M[c] = M[pivotRow];
+      M[pivotRow] = temp;
+      signFactor *= -1;
+      swapCount++;
+
+      steps.push({
+        title: `Row Swap: R${c+1} ↔ R${pivotRow+1}`,
+        isCollapsed: false,
+        content: `
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+            <span style="font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--navy); font-size: 1.05rem;">R<sub>${c+1}</sub> &harr; R<sub>${pivotRow+1}</sub></span>
+            <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: rgba(249, 115, 22, 0.1); color: #f97316;">Orange: Row Swap</span>
+          </div>
+          <div class="step-desc" style="margin-bottom: 0.75rem;">
+            We swap Row ${c+1} and Row ${pivotRow+1} to position a non-zero pivot element **${formatValueSimple(M[c][c])}** on the diagonal.
+          </div>
+          <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600; color: #f97316;">
+            ⚠️ Crucial Rule: Swapping two rows changes the sign of the determinant!
+          </div>
+          <div style="display: flex; gap: 1rem; justify-content: center; align-items: center; margin: 1rem 0; flex-wrap: wrap;">
+            <div>${matrixToHtml(beforeM)}</div>
+            <div style="font-size: 1.5rem; color: var(--muted);">&rarr;</div>
+            <div>${matrixToHtml(M)}</div>
+          </div>
+          <div class="step-desc" style="margin-top: 0.5rem; font-size: 0.95rem;">
+            Accumulated determinant sign factor: **${signFactor}** (from ${swapCount} row swap${swapCount > 1 ? "s" : ""})
+          </div>
+        `
+      });
+    }
+
+    let pivot = M[c][c];
+    let rowOps = [];
+    let beforeElimM = copyMatrix(M);
+    let eliminated = false;
+
+    for (let i = c + 1; i < n; i++) {
+      if (Math.abs(M[i][c]) > 1e-9) {
+        let factor = M[i][c] / pivot;
+        for (let j = c; j < n; j++) {
+          M[i][j] -= factor * M[c][j];
+          if (Math.abs(M[i][j]) < 1e-9) M[i][j] = 0;
+        }
+        eliminated = true;
+
+        let opSign = factor < 0 ? "+" : "-";
+        let absFactorStr = formatValueSimple(Math.abs(factor));
+        let opDesc = `R<sub>${i+1}</sub> &rarr; R<sub>${i+1}</sub> ${opSign} ${absFactorStr === "1" ? "" : absFactorStr + " "}R<sub>${c+1}</sub>`;
+        rowOps.push(opDesc);
+      }
+    }
+
+    if (eliminated) {
+      steps.push({
+        title: `Eliminate Column ${c+1} entries below diagonal`,
+        isCollapsed: false,
+        content: `
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+            <span style="font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--navy); font-size: 1.05rem;">Row Operations</span>
+            <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: rgba(16, 185, 129, 0.1); color: #10b981;">Green: Row Operation</span>
+          </div>
+          <div class="step-desc" style="margin-bottom: 0.75rem;">
+            We eliminate all entries below the diagonal in column ${c+1} using row operations. Row additions/subtractions **do not** alter the determinant.
+          </div>
+          <div style="margin-left: 1rem; border-left: 2px solid var(--teal); padding-left: 1rem; margin-bottom: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; color: var(--navy); display: flex; flex-direction: column; gap: 0.4rem;">
+            ${rowOps.map(op => `<div>${op}</div>`).join('')}
+          </div>
+          <div style="display: flex; gap: 1rem; justify-content: center; align-items: center; margin: 1rem 0; flex-wrap: wrap;">
+            <div>${matrixToHtml(beforeElimM)}</div>
+            <div style="font-size: 1.5rem; color: var(--muted);">&rarr;</div>
+            <div>${matrixToHtml(M)}</div>
+          </div>
+        `
+      });
+    }
+  }
+
+  let diagProduct = 1;
+  let diagFormula = "";
+  let diagSubstitutes = [];
+  for (let i = 0; i < n; i++) {
+    diagProduct *= M[i][i];
+    diagSubstitutes.push(M[i][i]);
+    diagFormula += (i === 0 ? "" : " × ") + `u<sub>${i+1},${i+1}</sub>`;
+  }
+  let finalDet = signFactor * diagProduct;
+
+  steps.push({
+    title: "Multiply Diagonal Elements",
+    isCollapsed: false,
+    content: `
+      <div class="step-desc" style="margin-bottom: 0.5rem;">
+        The matrix is now in **upper triangular form**. The determinant of an upper triangular matrix is the product of its diagonal elements:
+      </div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); text-align: center; margin: 1rem 0;">
+        Det(Triangular) = ${diagFormula}
+      </div>
+      <div class="step-desc" style="margin-bottom: 0.5rem;">Substituting the main diagonal elements:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        Det(Triangular) = ${diagSubstitutes.map(val => formatValueSimple(val)).join(' × ')}
+      </div>
+      <div class="step-desc" style="margin-bottom: 0.5rem;">Product evaluation:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        Det(Triangular) = <strong>${formatValueSimple(diagProduct)}</strong>
+      </div>
+    `
+  });
+
+  steps.push({
+    title: "Apply Sign Corrections",
+    isCollapsed: false,
+    content: `
+      <div class="step-desc" style="margin-bottom: 0.5rem;">
+        We scale the upper triangular determinant by our accumulated row swap sign factor (S = ${signFactor}):
+      </div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        Det(A) = Sign Factor (S) × Det(Triangular)
+      </div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.35rem; color: var(--teal); font-weight: 700; text-align: center; margin: 1.5rem 0;">
+        Det(A) = (${signFactor}) × ${formatValueSimple(diagProduct)} = ${formatValueSimple(finalDet)}
+      </div>
+    `
+  });
+
+  return { steps, determinant: finalDet };
+}
+
+function generateTriangularShortcutSteps(A) {
+  let n = A.length;
+  let steps = [];
+
+  steps.push({
+    title: "Original Matrix",
+    isCollapsed: false,
+    content: `
+      <div class="step-desc" style="margin-bottom: 0.5rem;">We start with the given matrix A:</div>
+      <div style="text-align: center; margin: 1rem 0;">
+        ${matrixToHtml(A)}
+      </div>
+    `
+  });
+
+  let isUpper = isUpperTriangular(A);
+  let isLower = isLowerTriangular(A);
+
+  if (isUpper || isLower) {
+    let diagProduct = 1;
+    let diagSubstitutes = [];
+    let diagFormula = "";
+    for (let i = 0; i < n; i++) {
+      diagProduct *= A[i][i];
+      diagSubstitutes.push(A[i][i]);
+      diagFormula += (i === 0 ? "" : " × ") + `a<sub>${i+1},${i+1}</sub>`;
+    }
+
+    steps.push({
+      title: "Confirm Triangular Form",
+      isCollapsed: false,
+      content: `
+        <div class="step-desc" style="margin-bottom: 0.75rem; color: var(--teal); font-weight: 600;">
+          ✓ Verified! The matrix is already ${isUpper ? "Upper" : "Lower"} Triangular.
+        </div>
+        <div class="step-desc" style="font-size: 0.95rem;">
+          In a triangular matrix, all entries ${isUpper ? "below" : "above"} the main diagonal are zero. 
+          Therefore, the determinant is simply the product of the main diagonal entries.
+        </div>
+      `
+    });
+
+    steps.push({
+      title: "Multiply Diagonal Elements",
+      isCollapsed: false,
+      content: `
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); text-align: center; margin: 1rem 0;">
+          Det(A) = ${diagFormula}
+        </div>
+        <div class="step-desc" style="margin-bottom: 0.5rem;">Substituting the diagonal values:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+          Det(A) = ${diagSubstitutes.map(val => formatValueSimple(val)).join(' × ')}
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.35rem; color: var(--teal); font-weight: 700; text-align: center; margin: 1.5rem 0;">
+          Det(A) = ${formatValueSimple(diagProduct)}
+        </div>
+      `
+    });
+
+    return { steps, applicable: true, determinant: diagProduct };
+  } else {
+    steps.push({
+      title: "Shortcut Not Applicable",
+      isCollapsed: false,
+      content: `
+        <div class="step-card" style="border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.02); padding: 1.5rem; margin-bottom: 1.5rem; box-sizing: border-box;">
+          <div style="font-size: 1.15rem; font-weight: 700; color: #d97706; margin-bottom: 0.5rem;">
+            ⚠️ Triangular Shortcut Not Applicable
+          </div>
+          <div style="font-size: 0.95rem; line-height: 1.5; color: var(--text);">
+            This matrix is **not** triangular. It has non-zero elements both **above** and **below** the main diagonal.
+            The diagonal shortcut is only defined for matrices that have zeros everywhere on one side of the main diagonal.
+          </div>
+        </div>
+        <div class="step-desc" style="font-weight: 600; margin-bottom: 1rem; color: var(--navy);">
+          Please select one of the following methods to solve this matrix step-by-step:
+        </div>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; margin-top: 1rem;">
+          <button class="btn-primary" style="padding: 0.75rem 1.25rem; font-size: 0.95rem; background: var(--bg2); color: var(--navy); border: 1px solid var(--border);" onclick="window.selectDeterminantMethod('cofactor')">
+            Switch to Cofactor Expansion
+          </button>
+          <button class="btn-primary" style="padding: 0.75rem 1.25rem; font-size: 0.95rem; background: var(--bg2); color: var(--navy); border: 1px solid var(--border);" onclick="window.selectDeterminantMethod('row-reduction')">
+            Switch to Row Reduction
+          </button>
+        </div>
+      `
+    });
+
+    return { steps, applicable: false, determinant: determinant(A) };
+  }
+}
+
 
