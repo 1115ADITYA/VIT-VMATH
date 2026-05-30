@@ -840,6 +840,10 @@ function calculateMatrix() {
     calculateInverseMatrix();
     return;
   }
+  if (currentCalc === 'echelon') {
+    calculateEchelonMatrix();
+    return;
+  }
   if (currentCalc === 'gauss-jacobi') {
     calculateGaussIterative('jacobi');
     return;
@@ -5016,3 +5020,511 @@ function generateInverseERTMethod(A) {
 
   return steps;
 }
+
+// ==========================================
+// EDUCATIONAL ECHELON FORM CALCULATOR ENGINE
+// ==========================================
+
+function calculateEchelonMatrix() {
+  const output = document.getElementById('steps-output');
+  if (!output) return;
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let rows = currentMatrixRows;
+  let cols = currentMatrixCols;
+
+  let A = [];
+  let hasEmpty = false;
+  let hasInvalid = false;
+
+  for (let i = 0; i < rows; i++) {
+    let row = [];
+    for (let j = 0; j < cols; j++) {
+      let cellId = `m${i}${j}`;
+      let cellEl = document.getElementById(cellId);
+      if (!cellEl) continue;
+      let valStr = cellEl.value.trim();
+      if (valStr === '') hasEmpty = true;
+      let val = parseFloat(valStr);
+      if (isNaN(val) || !isFinite(val)) hasInvalid = true;
+      row.push(val);
+    }
+    A.push(row);
+  }
+
+  if (hasEmpty || hasInvalid) {
+    output.innerHTML = `
+          <div class="step-card" style="border-left-color: #dc2626;">
+            <div class="step-header">
+              <div class="step-title" style="color: #dc2626; font-size: 1.25rem;">Error: Invalid Matrix Entries</div>
+            </div>
+            <div class="step-desc" style="font-size: 1rem;">
+              Please ensure all cells in the matrix grid are filled with valid numeric values.
+            </div>
+          </div>
+        `;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  window.echelonInputMatrix = A;
+  output.innerHTML = renderEchelonMethodSelectionUI();
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderEchelonMethodSelectionUI() {
+  return `
+        <div class="method-selector-card card animate-fade-in" style="padding: 2rem; margin-bottom: 2rem; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); box-sizing: border-box; width: 100%;">
+          <h3 style="color: var(--navy); margin-bottom: 0.5rem; font-family: 'Fraunces', serif; font-size: 1.6rem; text-align: center;">
+            Choose Solution Method
+          </h3>
+          <p style="color: var(--muted); text-align: center; font-size: 0.95rem; margin-bottom: 2rem;">
+            Select one of the educational Echelon reduction pathways below to view its complete step-by-step derivation.
+          </p>
+          
+          <div class="method-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem;">
+            <!-- Card A -->
+            <div class="method-card" style="padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.25s ease; background: var(--white); box-shadow: 0 4px 6px rgba(0,0,0,0.02); box-sizing: border-box;" onclick="window.selectEchelonMethod('ref')" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.05)'; this.style.borderColor='var(--amber)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.02)'; this.style.borderColor='var(--border)';">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <span style="font-weight: 700; font-size: 1.15rem; color: var(--navy);">Row Echelon Form (REF)</span>
+                <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: rgba(13, 148, 136, 0.1); color: var(--teal);">REF</span>
+              </div>
+              <p style="font-size: 0.85rem; line-height: 1.5; color: var(--muted);">Reduce the matrix to row echelon form systematically using forward elimination. Identifies pivots, swaps rows, and zeroes out values below pivots.</p>
+            </div>
+
+            <!-- Card B -->
+            <div class="method-card" style="padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.25s ease; background: var(--white); box-shadow: 0 4px 6px rgba(0,0,0,0.02); box-sizing: border-box;" onclick="window.selectEchelonMethod('rref')" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.05)'; this.style.borderColor='var(--amber)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.02)'; this.style.borderColor='var(--border)';">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <span style="font-weight: 700; font-size: 1.15rem; color: var(--navy);">Reduced Row Echelon Form (RREF)</span>
+                <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: rgba(13, 148, 136, 0.1); color: var(--teal);">RREF</span>
+              </div>
+              <p style="font-size: 0.85rem; line-height: 1.5; color: var(--muted);">Solve fully to Reduced Row Echelon Form (Gauss-Jordan). Normalizes pivots to exactly 1 and clears all elements above and below pivots.</p>
+            </div>
+
+            <!-- Card C -->
+            <div class="method-card" style="padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.25s ease; background: var(--white); box-shadow: 0 4px 6px rgba(0,0,0,0.02); box-sizing: border-box;" onclick="window.selectEchelonMethod('both')" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.05)'; this.style.borderColor='var(--amber)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.02)'; this.style.borderColor='var(--border)';">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <span style="font-weight: 700; font-size: 1.15rem; color: var(--navy);">Show Both Forms</span>
+                <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: rgba(13, 148, 136, 0.1); color: var(--teal);">REF & RREF</span>
+              </div>
+              <p style="font-size: 0.85rem; line-height: 1.5; color: var(--muted);">Compare both reductions side-by-step. Shows the forward elimination (REF) and subsequent back-substitution (RREF) in one continuous layout.</p>
+            </div>
+          </div>
+        </div>
+      `;
+}
+
+window.selectEchelonMethod = function (methodId) {
+  let A = window.echelonInputMatrix;
+  if (!A) return;
+
+  let stepsHtml = `
+        <button class="btn-primary" style="background: var(--bg2); color: var(--navy); padding: 0.5rem 1rem; font-size: 0.9rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border);" onclick="window.backToEchelonMethodSelection()">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="stroke: var(--navy);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          Back to Method Selection
+        </button>
+      `;
+
+  if (methodId === 'both') {
+    stepsHtml += `
+          <h2 style="font-family: 'Fraunces', serif; color: var(--navy); margin-top: 1rem; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid var(--amber); padding-bottom: 0.5rem; font-size: 1.5rem;">Part 1: Row Echelon Form (REF)</h2>
+        `;
+    let refResult = solveEchelonDetailed(A, 'ref');
+    stepsHtml += renderEchelonMethodSteps(refResult.steps);
+    stepsHtml += renderEchelonSummaryCard(refResult.matrix, refResult.pivots);
+
+    stepsHtml += `
+          <h2 style="font-family: 'Fraunces', serif; color: var(--navy); margin-top: 3rem; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid var(--amber); padding-bottom: 0.5rem; font-size: 1.5rem;">Part 2: Reduced Row Echelon Form (RREF)</h2>
+        `;
+    let rrefResult = solveEchelonDetailed(A, 'rref');
+    stepsHtml += renderEchelonMethodSteps(rrefResult.steps);
+    stepsHtml += renderEchelonSummaryCard(rrefResult.matrix, rrefResult.pivots);
+  } else {
+    let result = solveEchelonDetailed(A, methodId);
+    stepsHtml += renderEchelonMethodSteps(result.steps);
+    stepsHtml += renderEchelonSummaryCard(result.matrix, result.pivots);
+  }
+
+  const output = document.getElementById('steps-output');
+  output.innerHTML = stepsHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+window.backToEchelonMethodSelection = function () {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = renderEchelonMethodSelectionUI();
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+function renderEchelonMethodSteps(steps) {
+  let html = "";
+  let stepCount = 1;
+
+  steps.forEach(step => {
+    let badgeColorStyle = "";
+    if (step.badgeColor === "blue") badgeColorStyle = "background: #3b82f6; color: #ffffff;";
+    else if (step.badgeColor === "orange") badgeColorStyle = "background: #f97316; color: #ffffff;";
+    else if (step.badgeColor === "green") badgeColorStyle = "background: #10b981; color: #ffffff;";
+    else if (step.badgeColor === "purple") badgeColorStyle = "background: #8b5cf6; color: #ffffff;";
+
+    let badgeHtml = `
+          <span style="display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-left: 0.75rem; letter-spacing: 0.5px; ${badgeColorStyle}">
+            ${step.badgeText}
+          </span>
+        `;
+
+    let contentHtml = `
+          <div class="step-desc" style="font-size: 1rem; color: var(--navy); margin-bottom: 1rem;">${step.explanation}</div>
+        `;
+
+    if (step.operation) {
+      contentHtml += `
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; font-weight: 700; color: var(--amber); margin-bottom: 1rem; padding: 0.4rem 0.8rem; background: var(--bg2); border-left: 4px solid var(--amber); width: fit-content; border-radius: 0 6px 6px 0;">
+              Operation: ${step.operation}
+            </div>
+          `;
+    }
+
+    if (step.matrixBefore && step.matrixAfter) {
+      let pr = step.pivotPos ? step.pivotPos.r : -1;
+      let pc = step.pivotPos ? step.pivotPos.c : -1;
+      contentHtml += `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 1.5rem; flex-wrap: wrap; margin: 1.25rem 0;">
+              <div style="display: flex; flex-direction: column; align-items: center;">
+                <div style="font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 0.25rem;">Before:</div>
+                ${matrixToHtmlEchelon(step.matrixBefore, pr, pc)}
+              </div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: var(--muted); margin-top: 1rem;">&rarr;</div>
+              <div style="display: flex; flex-direction: column; align-items: center;">
+                <div style="font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 0.25rem;">After:</div>
+                ${matrixToHtmlEchelon(step.matrixAfter, pr, pc)}
+              </div>
+            </div>
+          `;
+    } else if (step.matrixAfter) {
+      let pr = step.pivotPos ? step.pivotPos.r : -1;
+      let pc = step.pivotPos ? step.pivotPos.c : -1;
+      contentHtml += `
+            <div style="text-align: center; margin: 1.25rem 0;">
+              ${matrixToHtmlEchelon(step.matrixAfter, pr, pc)}
+            </div>
+          `;
+    }
+
+    if (step.mathDetail) {
+      contentHtml += `
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; padding: 0.75rem; background: var(--bg); border: 1px dashed var(--border); border-radius: 8px; margin-bottom: 1rem; color: var(--navy); line-height: 1.6; max-height: 150px; overflow-y: auto; box-sizing: border-box;">
+              <div style="font-weight: 700; color: var(--teal); margin-bottom: 0.4rem; font-size: 0.8rem; border-bottom: 1px dashed var(--border); padding-bottom: 0.25rem;">Arithmetic breakdown:</div>
+              ${step.mathDetail}
+            </div>
+          `;
+    }
+
+    let isCollapsed = false;
+    let collapseAttr = isCollapsed ? 'style="display: none;"' : '';
+    let rotateAttr = isCollapsed ? 'style="transform: rotate(-90deg);"' : '';
+
+    html += `
+          <div class="step-card animate-fade-in" style="box-sizing: border-box; width: 100%;">
+            <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+              <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+                <div class="step-number">${stepCount++}</div>
+                <div class="step-title" style="color: var(--navy); font-weight: 700;">${step.title}</div>
+                ${badgeHtml}
+              </div>
+              <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);" ${rotateAttr}>▼</div>
+            </div>
+            <div class="step-content" ${collapseAttr}>
+              ${contentHtml}
+            </div>
+          </div>
+        `;
+  });
+
+  return html;
+}
+
+function renderEchelonSummaryCard(matrix, pivots) {
+  let rows = matrix.length;
+  let cols = matrix[0].length;
+
+  let rank = 0;
+  for (let i = 0; i < rows; i++) {
+    let isNonZero = false;
+    for (let j = 0; j < cols; j++) {
+      if (Math.abs(matrix[i][j]) > 1e-9) {
+        isNonZero = true;
+        break;
+      }
+    }
+    if (isNonZero) rank++;
+  }
+
+  let fullRankVal = Math.min(rows, cols);
+  let isFullRank = (rank === fullRankVal);
+  let rankStatusHtml = isFullRank ? 
+    `<span style="color: #10b981; font-weight: 700;">✓ Full Rank Matrix</span>` : 
+    `<span style="color: #ea580c; font-weight: 700;">⚠️ Rank Deficient / Defective Rank</span>`;
+
+  let pivotPointsText = pivots.map(p => `(${p.r + 1}, ${p.c + 1})`).join(', ');
+  if (pivots.length === 0) pivotPointsText = "None";
+
+  return `
+        <div class="final-result animate-fade-in" style="padding: 2.5rem; background: var(--navy); color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem; box-sizing: border-box; width: 100%;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif; text-align: center;">✅ Reduction Successfully Completed!</div>
+          <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 2rem; text-align: center;">The matrix has been completely reduced and analyzed.</div>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; text-align: left; box-sizing: border-box;">
+            <div style="padding: 1.25rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); box-sizing: border-box;">
+              <div style="font-size:0.85rem; font-weight:600; color: rgba(255,255,255,0.6); text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.4rem; margin-bottom: 0.6rem;">Echelon Form Matrix:</div>
+              <div style="text-align: center; overflow-x: auto;">
+                ${matrixToHtml(matrix)}
+              </div>
+            </div>
+
+            <div style="padding: 1.25rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: center; box-sizing: border-box;">
+              <div style="font-size: 0.95rem; margin-bottom: 0.5rem;"><strong>Rank of Matrix:</strong> <span style="font-size: 1.2rem; font-weight: 700; color: var(--amber); font-family: 'IBM Plex Mono', monospace; margin-left: 0.25rem;">${rank}</span></div>
+              <div style="font-size: 0.95rem; margin-bottom: 0.5rem;"><strong>Non-Zero Rows Count:</strong> <span style="font-size: 1.05rem; font-weight: 700; color: #ffffff; font-family: 'IBM Plex Mono', monospace;">${rank}</span></div>
+              <div style="font-size: 0.95rem; margin-bottom: 0.5rem;"><strong>Pivot Positions:</strong> <span style="font-size: 0.95rem; font-weight: 700; color: #ffffff; font-family: 'IBM Plex Mono', monospace;">${pivotPointsText}</span></div>
+              <div style="font-size: 0.95rem; margin-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.75rem;">
+                <strong>Rank Completeness:</strong><br>${rankStatusHtml}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+}
+
+function solveEchelonDetailed(A, targetType) {
+  let rows = A.length;
+  let cols = A[0].length;
+  let M = A.map(row => [...row]);
+  let steps = [];
+  let pivots = [];
+
+  steps.push({
+    type: "pivot_found",
+    title: "Starting Matrix",
+    badgeText: "Starting State",
+    badgeColor: "blue",
+    explanation: `We begin the echelon reduction of our ${rows}x${cols} starting matrix:`,
+    matrixAfter: M.map(r => [...r])
+  });
+
+  let r = 0;
+  let c = 0;
+
+  while (r < rows && c < cols) {
+    let maxVal = -1;
+    let maxRow = -1;
+    for (let i = r; i < rows; i++) {
+      if (Math.abs(M[i][c]) > maxVal) {
+        maxVal = Math.abs(M[i][c]);
+        maxRow = i;
+      }
+    }
+
+    if (maxVal < 1e-9) {
+      c++;
+      continue;
+    }
+
+    if (maxRow !== r) {
+      let before = M.map(row => [...row]);
+      let temp = M[r];
+      M[r] = M[maxRow];
+      M[maxRow] = temp;
+
+      steps.push({
+        type: "swap",
+        title: `Swap Row ${r + 1} and Row ${maxRow + 1}`,
+        badgeText: "Row Swap",
+        badgeColor: "orange",
+        explanation: `Swap Row ${r + 1} and Row ${maxRow + 1} to bring a non-zero element to diagonal pivot position at Column ${c + 1}.`,
+        operation: `R<sub>${r + 1}</sub> &harr; R<sub>${maxRow + 1}</sub>`,
+        pivotPos: { r: r, c: c },
+        matrixBefore: before,
+        matrixAfter: M.map(row => [...row])
+      });
+    }
+
+    pivots.push({ r: r, c: c });
+    steps.push({
+      type: "pivot_found",
+      title: `Identify Pivot at Row ${r + 1}, Column ${c + 1}`,
+      badgeText: "Pivot Found",
+      badgeColor: "blue",
+      explanation: `A pivot of value <strong>${formatValueSimple(M[r][c])}</strong> is identified at Row ${r + 1}, Column ${c + 1}. We will eliminate all entries underneath this pivot position.`,
+      pivotPos: { r: r, c: c },
+      matrixAfter: M.map(row => [...row])
+    });
+
+    for (let i = r + 1; i < rows; i++) {
+      let factor = M[i][c] / M[r][c];
+      if (Math.abs(factor) > 1e-9) {
+        let before = M.map(row => [...row]);
+        let originalRowI = [...M[i]];
+        let pivotRow = [...M[r]];
+        let mathLines = [];
+
+        for (let j = 0; j < cols; j++) {
+          M[i][j] -= factor * M[r][j];
+          if (Math.abs(M[i][j]) < 1e-9) M[i][j] = 0;
+
+          let product = factor * pivotRow[j];
+          mathLines.push(`Col ${j + 1}: ${formatValueSimple(originalRowI[j])} - (${formatValueSimple(factor)} × ${formatValueSimple(pivotRow[j])}) = ${formatValueSimple(originalRowI[j])} - ${formatValueSimple(product)} = <strong>${formatValueSimple(M[i][j])}</strong>`);
+        }
+
+        let opSign = factor < 0 ? "+" : "-";
+        let factorText = Math.abs(factor) === 1 ? "" : ` ${formatValueSimple(Math.abs(factor))}`;
+
+        steps.push({
+          type: "eliminate",
+          title: `Zero out Row ${i + 1}, Column ${c + 1}`,
+          badgeText: "Row Operation",
+          badgeColor: "green",
+          explanation: `Eliminate element below the pivot in Column ${c + 1} by performing:`,
+          operation: `R<sub>${i + 1}</sub> &larr; R<sub>${i + 1}</sub> ${opSign}${factorText}R<sub>${r + 1}</sub>`,
+          pivotPos: { r: r, c: c },
+          matrixBefore: before,
+          matrixAfter: M.map(row => [...row]),
+          mathDetail: mathLines.join('<br>')
+        });
+      }
+    }
+
+    r++;
+    c++;
+  }
+
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      if (Math.abs(M[i][j]) < 1e-9) M[i][j] = 0;
+    }
+  }
+
+  if (targetType === 'ref') {
+    steps.push({
+      type: "final_result",
+      title: "Row Echelon Form (REF) Achieved",
+      badgeText: "Final Result",
+      badgeColor: "purple",
+      explanation: `All values under the pivot positions are now reduced to zero. Row Echelon Form is fully achieved:`,
+      matrixAfter: M.map(row => [...row])
+    });
+    return { matrix: M, steps: steps, pivots: pivots };
+  }
+
+  for (let p = pivots.length - 1; p >= 0; p--) {
+    let pr = pivots[p].r;
+    let pc = pivots[p].c;
+    let pivot = M[pr][pc];
+
+    if (Math.abs(pivot - 1) > 1e-9) {
+      let before = M.map(row => [...row]);
+      let originalRow = [...M[pr]];
+      let mathLines = [];
+
+      for (let j = 0; j < cols; j++) {
+        M[pr][j] /= pivot;
+        if (Math.abs(M[pr][j]) < 1e-9) M[pr][j] = 0;
+        mathLines.push(`Col ${j + 1}: ${formatValueSimple(originalRow[j])} / ${formatValueSimple(pivot)} = <strong>${formatValueSimple(M[pr][j])}</strong>`);
+      }
+
+      steps.push({
+        type: "scale",
+        title: `Normalize Row ${pr + 1} Pivot to 1`,
+        badgeText: "Row Operation",
+        badgeColor: "green",
+        explanation: `Divide Row ${pr + 1} by the leading coefficient pivot value <strong>${formatValueSimple(pivot)}</strong>:`,
+        operation: `R<sub>${pr + 1}</sub> &larr; R<sub>${pr + 1}</sub> / ${formatValueSimple(pivot)}`,
+        pivotPos: { r: pr, c: pc },
+        matrixBefore: before,
+        matrixAfter: M.map(row => [...row]),
+        mathDetail: mathLines.join('<br>')
+      });
+    }
+
+    for (let i = pr - 1; i >= 0; i--) {
+      let factor = M[i][pc];
+      if (Math.abs(factor) > 1e-9) {
+        let before = M.map(row => [...row]);
+        let originalRowI = [...M[i]];
+        let pivotRow = [...M[pr]];
+        let mathLines = [];
+
+        for (let j = 0; j < cols; j++) {
+          M[i][j] -= factor * M[pr][j];
+          if (Math.abs(M[i][j]) < 1e-9) M[i][j] = 0;
+
+          let product = factor * pivotRow[j];
+          mathLines.push(`Col ${j + 1}: ${formatValueSimple(originalRowI[j])} - (${formatValueSimple(factor)} × ${formatValueSimple(pivotRow[j])}) = ${formatValueSimple(originalRowI[j])} - ${formatValueSimple(product)} = <strong>${formatValueSimple(M[i][j])}</strong>`);
+        }
+
+        let opSign = factor < 0 ? "+" : "-";
+        let factorText = Math.abs(factor) === 1 ? "" : ` ${formatValueSimple(Math.abs(factor))}`;
+
+        steps.push({
+          type: "eliminate",
+          title: `Zero out Row ${i + 1}, Column ${pc + 1}`,
+          badgeText: "Row Operation",
+          badgeColor: "green",
+          explanation: `Eliminate element above the pivot at Row ${pr + 1}, Column ${pc + 1} by performing:`,
+          operation: `R<sub>${i + 1}</sub> &larr; R<sub>${i + 1}</sub> ${opSign}${factorText}R<sub>${pr + 1}</sub>`,
+          pivotPos: { r: pr, c: pc },
+          matrixBefore: before,
+          matrixAfter: M.map(row => [...row]),
+          mathDetail: mathLines.join('<br>')
+        });
+      }
+    }
+  }
+
+  for (let i = 0; i < rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      if (Math.abs(M[i][j]) < 1e-9) M[i][j] = 0;
+    }
+  }
+
+  steps.push({
+    type: "final_result",
+    title: "Reduced Row Echelon Form (RREF) Achieved",
+    badgeText: "Final Result",
+    badgeColor: "purple",
+    explanation: `All pivot elements are now scaled to exactly 1, and all values above and below pivots have been zeroed out:`,
+    matrixAfter: M.map(row => [...row])
+  });
+
+  return { matrix: M, steps: steps, pivots: pivots };
+}
+
+function matrixToHtmlEchelon(matrix, pivotRow, pivotCol) {
+  let rows = matrix.length;
+  let cols = matrix[0].length;
+
+  let formattedRows = matrix.map((row, r) => {
+    return `<div style="display: flex; gap: 1rem; justify-content: center; align-items: center; min-height: 24px;">` +
+      row.map((v, c) => {
+        let isPivot = (r === pivotRow && c === pivotCol);
+        let style = isPivot ? 
+          `min-width: 32px; text-align: center; display: inline-block; background: var(--amber); color: #ffffff; border-radius: 4px; padding: 2px 6px; font-weight: 700;` : 
+          `min-width: 32px; text-align: center; display: inline-block; padding: 2px 6px;`;
+        return `<span style="${style}">${formatValueSimple(v)}</span>`;
+      }).join('') +
+      `</div>`;
+  }).join('');
+
+  return `
+        <div style="display: inline-flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 0.75rem 0; line-height: 1.2; user-select: none;">
+          <span style="font-size: ${rows * 1.3}rem; font-weight: 200; margin-right: 0.35rem; color: var(--navy); line-height: 1; transform: scaleY(1.15);">&lbrack;</span>
+          <div style="display: inline-flex; flex-direction: column; text-align: center; gap: 0.4rem; padding: 0 0.15rem;">
+            ${formattedRows}
+          </div>
+          <span style="font-size: ${rows * 1.3}rem; font-weight: 200; margin-left: 0.35rem; color: var(--navy); line-height: 1; transform: scaleY(1.15);">&rbrack;</span>
+        </div>
+      `;
+}
+
