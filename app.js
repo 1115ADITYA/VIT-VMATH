@@ -16,6 +16,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const panel = item.querySelector('.nav-preview-panel');
     if (!panel) return;
 
+    if (!panel.querySelector('.npp-redirect-btn')) {
+      const btn = document.createElement('a');
+      btn.href = 'get-started.html';
+      btn.className = 'npp-redirect-btn';
+      btn.innerHTML = 'Try it now &rarr;';
+      btn.style.display = 'block';
+      btn.style.marginTop = '12px';
+      btn.style.padding = '8px 12px';
+      btn.style.backgroundColor = 'var(--teal)';
+      btn.style.color = 'var(--bg)';
+      btn.style.textAlign = 'center';
+      btn.style.borderRadius = '6px';
+      btn.style.textDecoration = 'none';
+      btn.style.fontWeight = '600';
+      btn.style.fontSize = '13px';
+      panel.appendChild(btn);
+    }
+
     item.addEventListener('mouseenter', () => {
       if (window.innerWidth < 1024) return; // Only run on desktop
 
@@ -122,47 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
-      // Filter tools
-      toolRows.forEach(row => {
-        const rowCat = row.querySelector('.tool-i-cat').textContent.trim();
-        if (catId === 'all') {
-          row.style.display = 'flex';
-        } else {
-          let match = false;
-          if (catId === 'matrices' || catId === 'echelon') {
-            match = (rowCat === 'matrices');
-          } else if (catId === 'eigen' || catId === 'diag') {
-            match = (rowCat === 'eigen_analysis');
-          } else if (catId === 'numerical') {
-            match = (rowCat === 'numerical_methods' || rowCat === 'root_finding');
-          } else if (catId === 'integration') {
-            match = (rowCat === 'integration');
-          } else if (catId === 'ode') {
-            match = (rowCat === 'ode_methods');
-          } else if (catId === 'partial') {
-            match = (rowCat === 'partial_diff');
-          } else if (catId === 'stats') {
-            match = (rowCat === 'statistics');
-          } else if (catId === 'graph') {
-            match = (rowCat === 'graph_plotter');
-          }
-          row.style.display = match ? 'flex' : 'none';
-        }
-      });
-
-      // Hide or show parent tool-big cards based on visible items
-      const toolCards = document.querySelectorAll('.tool-big');
-      toolCards.forEach(card => {
-        const visibleRows = Array.from(card.querySelectorAll('.tool-i')).filter(row => row.style.display !== 'none');
-        card.style.display = visibleRows.length > 0 ? 'block' : 'none';
-      });
-
-      // Hide or show the entire popular tools section if there are no visible tools at all
-      const toolsSection = document.getElementById('tools-section');
-      if (toolsSection) {
-        const visibleToolsCount = Array.from(toolRows).filter(row => row.style.display !== 'none').length;
-        toolsSection.style.display = visibleToolsCount > 0 ? 'block' : 'none';
-      }
+      // Filter tools disabled per user request
     });
   });
 
