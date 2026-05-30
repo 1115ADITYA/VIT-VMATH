@@ -503,13 +503,13 @@ document.addEventListener('DOMContentLoaded', () => {
         for(let j=0; j<currentJacobiDim; j++) {
           let existing = document.getElementById(`ja_${i}_${j}`);
           let val = existing ? existing.value : (i === j ? 10 : 1);
-          htmlA += `<input type="number" class="matrix-cell" id="ja_${i}_${j}" value="${val}">`;
+          htmlA += `<input type="number" class="matrix-cell" id="ja_${i}_${j}" value="${val}" oninput="updateJacobiEquationsPreview()">`;
         }
 
         // Vector B
         let existingB = document.getElementById(`jb_${i}`);
         let valB = existingB ? existingB.value : (10 + i * 2);
-        htmlB += `<input type="number" class="matrix-cell" id="jb_${i}" value="${valB}">`;
+        htmlB += `<input type="number" class="matrix-cell" id="jb_${i}" value="${valB}" oninput="updateJacobiEquationsPreview()">`;
 
         // Vector X0
         let existingX0 = document.getElementById(`jx0_${i}`);
@@ -523,12 +523,46 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const dimLabel = document.getElementById('dim-jacobi');
       if (dimLabel) dimLabel.innerText = currentJacobiDim;
+      
+      updateJacobiEquationsPreview();
     }
 
     function changeDimJacobi(delta) {
       currentJacobiDim = Math.max(2, Math.min(10, currentJacobiDim + delta));
       renderJacobiInputs();
     }
+
+    function updateJacobiEquationsPreview() {
+      const container = document.getElementById('jacobi-equations-content');
+      if (!container) return;
+      
+      let html = '';
+      const vars = ['x₁', 'x₂', 'x₃', 'x₄', 'x₅', 'x₆', 'x₇', 'x₈', 'x₉', 'x₁₀'];
+      for(let i=0; i<currentJacobiDim; i++) {
+        let eq = '';
+        for(let j=0; j<currentJacobiDim; j++) {
+          let aInput = document.getElementById(`ja_${i}_${j}`);
+          let val = aInput ? (parseFloat(aInput.value) || 0) : 0;
+          let varName = vars[j] || `x${j+1}`;
+          
+          if (j === 0) {
+            eq += `<span style="color:var(--amber);font-weight:700;">${val}</span><span style="color:var(--navy);font-weight:600;">${varName}</span>`;
+          } else {
+            if (val >= 0) {
+              eq += ` + <span style="color:var(--amber);font-weight:700;">${val}</span><span style="color:var(--navy);font-weight:600;">${varName}</span>`;
+            } else {
+              eq += ` - <span style="color:var(--amber);font-weight:700;">${Math.abs(val)}</span><span style="color:var(--navy);font-weight:600;">${varName}</span>`;
+            }
+          }
+        }
+        let bInput = document.getElementById(`jb_${i}`);
+        let bVal = bInput ? (parseFloat(bInput.value) || 0) : 0;
+        eq += ` = <span style="color:var(--teal);font-weight:700;">${bVal}</span>`;
+        html += `<div>${eq}</div>`;
+      }
+      container.innerHTML = html;
+    }
+    window.updateJacobiEquationsPreview = updateJacobiEquationsPreview;
 
     // Keyboard Navigation for Matrix Inputs (Enter Key)
     document.addEventListener('keydown', (e) => {
