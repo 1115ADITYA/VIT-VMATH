@@ -824,6 +824,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Rank Calculation Logic
     function calculateMatrix() {
+      if (currentCalc === 'adjoint') {
+        calculateAdjointMatrix();
+        return;
+      }
       if (currentCalc === 'gauss-jacobi') {
         calculateGaussIterative('jacobi');
         return;
@@ -3155,3 +3159,903 @@ document.addEventListener('DOMContentLoaded', () => {
       output.innerHTML = stepsHtml;
       output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    // ==========================================
+    // EDUCATIONAL ADJOINT CALCULATOR ENGINE
+    // ==========================================
+
+    // Textbook LaTeX Formatting Helpers
+    function formatValueSimple(val) {
+      if (Math.abs(val - Math.round(val)) < 1e-9) {
+        return `${Math.round(val)}`;
+      }
+      let sign = val < 0 ? "-" : "";
+      let x = Math.abs(val);
+      for (let d = 1; d <= 100; d++) {
+        let n = Math.round(x * d);
+        if (Math.abs(x - n / d) < 1e-7) {
+          return `${sign}${n}/${d}`;
+        }
+      }
+      return `${sign}${Number(x.toFixed(3))}`;
+    }
+
+    function matrixToHtml(matrix) {
+      let rows = matrix.length;
+      let cols = matrix[0].length;
+      
+      let formattedRows = matrix.map(row => {
+        return `<div style="display: flex; gap: 1rem; justify-content: center; align-items: center; min-height: 24px;">` + 
+          row.map(v => `<span style="min-width: 32px; text-align: center; display: inline-block;">${formatValueSimple(v)}</span>`).join('') + 
+          `</div>`;
+      }).join('');
+
+      return `
+        <div style="display: inline-flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 0.75rem 0; line-height: 1.2; user-select: none;">
+          <span style="font-size: ${rows * 1.3}rem; font-weight: 200; margin-right: 0.35rem; color: var(--navy); line-height: 1; transform: scaleY(1.15);">&lbrack;</span>
+          <div style="display: inline-flex; flex-direction: column; text-align: center; gap: 0.4rem; padding: 0 0.15rem;">
+            ${formattedRows}
+          </div>
+          <span style="font-size: ${rows * 1.3}rem; font-weight: 200; margin-left: 0.35rem; color: var(--navy); line-height: 1; transform: scaleY(1.15);">&rbrack;</span>
+        </div>
+      `;
+    }
+
+    function augmentedMatrixToHtml(A, B) {
+      let rows = A.length;
+      
+      let formattedRowsA = A.map(row => {
+        return `<div style="display: flex; gap: 1rem; justify-content: center; align-items: center; min-height: 24px;">` + 
+          row.map(v => `<span style="min-width: 32px; text-align: center; display: inline-block;">${formatValueSimple(v)}</span>`).join('') + 
+          `</div>`;
+      }).join('');
+      
+      let formattedRowsB = B.map(row => {
+        return `<div style="display: flex; gap: 1rem; justify-content: center; align-items: center; min-height: 24px;">` + 
+          row.map(v => `<span style="min-width: 32px; text-align: center; display: inline-block;">${formatValueSimple(v)}</span>`).join('') + 
+          `</div>`;
+      }).join('');
+
+      return `
+        <div style="display: inline-flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 0.75rem 0; line-height: 1.2; user-select: none;">
+          <span style="font-size: ${rows * 1.3}rem; font-weight: 200; margin-right: 0.35rem; color: var(--navy); line-height: 1; transform: scaleY(1.15);">&lbrack;</span>
+          <div style="display: inline-flex; flex-direction: column; text-align: center; gap: 0.4rem; padding: 0 0.15rem;">
+            ${formattedRowsA}
+          </div>
+          <span style="font-size: ${rows * 1.3}rem; font-weight: 200; margin: 0 0.75rem; color: var(--border); height: 100%; border-right: 2px solid var(--border); display: inline-block; min-height: ${rows * 26}px;"></span>
+          <div style="display: inline-flex; flex-direction: column; text-align: center; gap: 0.4rem; padding: 0 0.15rem;">
+            ${formattedRowsB}
+          </div>
+          <span style="font-size: ${rows * 1.3}rem; font-weight: 200; margin-left: 0.35rem; color: var(--navy); line-height: 1; transform: scaleY(1.15);">&rbrack;</span>
+        </div>
+      `;
+    }
+
+    // Pure Mathematical Matrix Operations
+    function getDeterminantPure(m) {
+      let n = m.length;
+      if (n === 1) return m[0][0];
+      if (n === 2) return m[0][0]*m[1][1] - m[0][1]*m[1][0];
+      let det = 0;
+      for (let j = 0; j < n; j++) {
+        let sub = m.slice(1).map(row => row.filter((_, colIdx) => colIdx !== j));
+        det += (j % 2 === 0 ? 1 : -1) * m[0][j] * getDeterminantPure(sub);
+      }
+      return det;
+    }
+
+    function getMinorMatrixPure(m, r, c) {
+      return m.filter((_, rowIdx) => rowIdx !== r)
+              .map(row => row.filter((_, colIdx) => colIdx !== c));
+    }
+
+    function getCofactorPure(m, r, c) {
+      let sub = getMinorMatrixPure(m, r, c);
+      let detVal = getDeterminantPure(sub);
+      let sign = ((r + c) % 2 === 0) ? 1 : -1;
+      return sign * detVal;
+    }
+
+    function getCofactorMatrix(m) {
+      let n = m.length;
+      let cofactors = [];
+      for (let i = 0; i < n; i++) {
+        let row = [];
+        for (let j = 0; j < n; j++) {
+          row.push(getCofactorPure(m, i, j));
+        }
+        cofactors.push(row);
+      }
+      return cofactors;
+    }
+
+    function transpose(m) {
+      let rows = m.length;
+      let cols = m[0].length;
+      let transposed = [];
+      for (let j = 0; j < cols; j++) {
+        let row = [];
+        for (let i = 0; i < rows; i++) {
+          row.push(m[i][j]);
+        }
+        transposed.push(row);
+      }
+      return transposed;
+    }
+
+    function solveGaussJordanInverseDetailed(A) {
+      let n = A.length;
+      let M = [];
+      for (let i = 0; i < n; i++) {
+        let row = [];
+        for (let j = 0; j < n; j++) row.push(A[i][j]);
+        for (let j = 0; j < n; j++) row.push(i === j ? 1 : 0);
+        M.push(row);
+      }
+      
+      let steps = [];
+      function recordStep(title, explanation, mathDetail = "") {
+        let clonedM = M.map(r => [...r]);
+        let A_state = clonedM.map(r => r.slice(0, n));
+        let I_state = clonedM.map(r => r.slice(n));
+        steps.push({
+          title: title,
+          explanation: explanation,
+          mathDetail: mathDetail,
+          matrixHtml: augmentedMatrixToHtml(A_state, I_state)
+        });
+      }
+      
+      recordStep("Augmented Matrix", "Place the identity matrix on the right side of our starting matrix:");
+      
+      for (let p = 0; p < n; p++) {
+        if (Math.abs(M[p][p]) < 1e-9) {
+          let swapRow = -1;
+          for (let i = p + 1; i < n; i++) {
+            if (Math.abs(M[i][p]) > 1e-9) {
+              swapRow = i;
+              break;
+            }
+          }
+          if (swapRow === -1) {
+            return { inverse: null, steps: steps, error: "Matrix is singular." };
+          }
+          let temp = M[p];
+          M[p] = M[swapRow];
+          M[swapRow] = temp;
+          recordStep("Swap Rows", `Swap Row ${p+1} and Row ${swapRow+1} to get a non-zero number at the diagonal position:`);
+        }
+        
+        let pivot = M[p][p];
+        if (Math.abs(pivot - 1) > 1e-9) {
+          let originalRow = [...M[p]];
+          let mathLines = [];
+          for (let j = 0; j < 2*n; j++) {
+            M[p][j] /= pivot;
+            mathLines.push(`Col ${j+1}: ${formatValueSimple(originalRow[j])} / ${formatValueSimple(pivot)} = ${formatValueSimple(M[p][j])}`);
+          }
+          recordStep(
+            `Divide Row ${p+1}`, 
+            `Divide all elements of Row ${p+1} by ${formatValueSimple(pivot)} to make the diagonal element 1:`,
+            mathLines.join('<br>')
+          );
+        }
+        
+        for (let i = 0; i < n; i++) {
+          if (i === p) continue;
+          let factor = M[i][p];
+          if (Math.abs(factor) > 1e-9) {
+            let originalRowI = [...M[i]];
+            let rowP = [...M[p]];
+            let mathLines = [];
+            for (let j = 0; j < 2*n; j++) {
+              M[i][j] -= factor * M[p][j];
+              let product = factor * rowP[j];
+              mathLines.push(`Col ${j+1}: ${formatValueSimple(originalRowI[j])} - (${formatValueSimple(factor)} × ${formatValueSimple(rowP[j])}) = ${formatValueSimple(originalRowI[j])} - ${formatValueSimple(product)} = ${formatValueSimple(M[i][j])}`);
+            }
+            recordStep(
+              `Eliminate element in Row ${i+1}, Column ${p+1}`, 
+              `Subtract ${formatValueSimple(factor)} times Row ${p+1} from Row ${i+1} to create a zero:`,
+              mathLines.join('<br>')
+            );
+          }
+        }
+      }
+      
+      let inverse = [];
+      for (let i = 0; i < n; i++) {
+        inverse.push(M[i].slice(n));
+      }
+      return { inverse: inverse, steps: steps };
+    }
+
+    // Method Steps Generators
+    function generateCofactorMethod(A) {
+      let n = A.length;
+      let steps = [];
+      
+      steps.push({
+        title: "Starting Matrix",
+        content: `
+          <div class="step-desc" style="font-size: 1rem; color: var(--navy); margin-bottom: 0.5rem;">We start with the matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(A)}
+          </div>
+        `
+      });
+      
+      let cofactorMatrix = [];
+      let calculationsHtml = "";
+      
+      for (let i = 0; i < n; i++) {
+        let cofactorRow = [];
+        for (let j = 0; j < n; j++) {
+          let minorMat = getMinorMatrixPure(A, i, j);
+          let detVal;
+          let detExplanation = "";
+          
+          if (n === 2) {
+            detVal = minorMat[0][0];
+            detExplanation = `${formatValueSimple(detVal)}`;
+          } else {
+            let a = minorMat[0][0];
+            let b = minorMat[0][1];
+            let c_val = minorMat[1][0];
+            let d = minorMat[1][1];
+            detVal = a * d - b * c_val;
+            
+            let p1 = a * d;
+            let p2 = b * c_val;
+            
+            detExplanation = `(${formatValueSimple(a)} × ${formatValueSimple(d)}) - (${formatValueSimple(b)} × ${formatValueSimple(c_val)})<br>= ${formatValueSimple(p1)} - ${formatValueSimple(p2)}<br>= ${formatValueSimple(detVal)}`;
+          }
+          
+          let signFactor = ((i + j) % 2 === 0) ? 1 : -1;
+          let signChar = signFactor > 0 ? "+" : "-";
+          let cofactorVal = signFactor * detVal;
+          let formattedCofactor = (cofactorVal >= 0 && signFactor > 0) ? `+${formatValueSimple(cofactorVal)}` : `${formatValueSimple(cofactorVal)}`;
+          if (cofactorVal === 0) formattedCofactor = "0";
+
+          cofactorRow.push(cofactorVal);
+          
+          calculationsHtml += `
+            <div style="padding: 1.25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); margin-bottom: 1.5rem; font-family: 'IBM Plex Mono', monospace; line-height: 1.6; color: var(--navy); box-sizing: border-box;">
+              <div style="font-weight: 700; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem; font-size: 1.1rem; color: var(--amber);">
+                C${i+1}${j+1}:
+              </div>
+              <div>Remove row ${i+1} and column ${j+1}</div>
+              <div style="text-align: center; margin: 0.5rem 0;">
+                ${matrixToHtml(minorMat)}
+              </div>
+              <div style="margin-top: 0.75rem; font-weight: 600;">Determinant:</div>
+              <div style="padding-left: 1rem; border-left: 2px solid var(--teal); margin: 0.5rem 0;">
+                ${detExplanation}
+              </div>
+              <div style="margin-top: 0.75rem; font-weight: 600;">Sign:</div>
+              <div style="padding-left: 1rem; border-left: 2px solid var(--teal); margin: 0.5rem 0;">
+                (-1)<sup>(${i+1}+${j+1})</sup> = ${signChar}
+              </div>
+              <div style="margin-top: 0.75rem; font-weight: 700; color: var(--teal);">Therefore:</div>
+              <div style="padding-left: 1rem; font-weight: 700; font-size: 1.05rem; color: var(--amber);">
+                C${i+1}${j+1} = ${formattedCofactor}
+              </div>
+            </div>
+          `;
+        }
+        cofactorMatrix.push(cofactorRow);
+      }
+      
+      steps.push({
+        title: "Calculate Every Cofactor",
+        isCollapsed: false,
+        content: `
+          <div class="step-desc" style="margin-bottom: 1rem;">We calculate the cofactor value for each position step-by-step:</div>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${calculationsHtml}
+          </div>
+        `
+      });
+      
+      steps.push({
+        title: "Assemble Cofactor Matrix",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.5rem;">We place all the calculated cofactor values into their positions:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(cofactorMatrix)}
+          </div>
+        `
+      });
+      
+      let adjointMatrix = transpose(cofactorMatrix);
+      steps.push({
+        title: "Transpose the Cofactor Matrix",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.5rem;">We swap the rows and columns of the cofactor matrix to find the final adjoint matrix:</div>
+          <div style="margin-bottom: 1rem; font-family: 'IBM Plex Mono', monospace; color: var(--navy); line-height: 1.5;">
+            Row 1 becomes Column 1<br>
+            Row 2 becomes Column 2<br>
+            ${n === 3 ? 'Row 3 becomes Column 3<br>' : ''}
+          </div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(adjointMatrix)}
+          </div>
+        `
+      });
+      
+      return steps;
+    }
+
+    function generateMinorCofactorMethod(A) {
+      let n = A.length;
+      let steps = [];
+      
+      steps.push({
+        title: "Starting Matrix",
+        content: `
+          <div class="step-desc" style="font-size: 1rem; color: var(--navy); margin-bottom: 0.5rem;">We start with the matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(A)}
+          </div>
+        `
+      });
+      
+      let minorMatrix = [];
+      let minorCalculationsHtml = "";
+      
+      for (let i = 0; i < n; i++) {
+        let minorRow = [];
+        for (let j = 0; j < n; j++) {
+          let sub = getMinorMatrixPure(A, i, j);
+          let detVal;
+          let detExplanation = "";
+          
+          if (n === 2) {
+            detVal = sub[0][0];
+            detExplanation = `${formatValueSimple(detVal)}`;
+          } else {
+            let a = sub[0][0];
+            let b = sub[0][1];
+            let c_val = sub[1][0];
+            let d = sub[1][1];
+            detVal = a * d - b * c_val;
+            let p1 = a * d;
+            let p2 = b * c_val;
+            detExplanation = `(${formatValueSimple(a)} × ${formatValueSimple(d)}) - (${formatValueSimple(b)} × ${formatValueSimple(c_val)}) = ${formatValueSimple(p1)} - ${formatValueSimple(p2)} = ${formatValueSimple(detVal)}`;
+          }
+          
+          minorRow.push(detVal);
+          
+          minorCalculationsHtml += `
+            <div style="margin-bottom: 1.25rem; border-bottom: 1px dashed var(--border); padding-bottom: 1rem;">
+              <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.4rem;">Position Row ${i+1}, Col ${j+1}:</div>
+              <div>Remove Row ${i+1} and Col ${j+1}:</div>
+              <div style="text-align: center; margin: 0.5rem 0;">
+                ${matrixToHtml(sub)}
+              </div>
+              <div style="margin-top: 0.5rem;">Determinant Calculation:</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; color: var(--teal); font-weight: 600; padding-left: 1rem; margin-top: 0.25rem;">
+                ${detExplanation}
+              </div>
+            </div>
+          `;
+        }
+        minorMatrix.push(minorRow);
+      }
+      
+      steps.push({
+        title: "Calculate All Minor Determinants",
+        isCollapsed: false,
+        content: `
+          <div class="step-desc" style="margin-bottom: 1rem;">We calculate the determinant of the minor matrix for each position:</div>
+          <div style="padding: 1.25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); font-family: 'IBM Plex Mono', monospace; line-height: 1.5; color: var(--navy); box-sizing: border-box;">
+            ${minorCalculationsHtml}
+          </div>
+          <div class="step-desc" style="margin-top: 1.5rem; margin-bottom: 0.5rem;">We assemble these calculated determinants into the minor matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(minorMatrix)}
+          </div>
+        `
+      });
+      
+      let cofactorMatrix = getCofactorMatrix(A);
+      let signTextRow = [];
+      let multiplicationLines = [];
+      
+      for (let i = 0; i < n; i++) {
+        let signRow = [];
+        for (let j = 0; j < n; j++) {
+          let signFactor = ((i + j) % 2 === 0) ? 1 : -1;
+          let signChar = signFactor > 0 ? "+" : "-";
+          signRow.push(signChar);
+          
+          let minorVal = minorMatrix[i][j];
+          let cofactorVal = cofactorMatrix[i][j];
+          multiplicationLines.push(`Row ${i+1}, Col ${j+1}: ${formatValueSimple(minorVal)} × (${signChar}1) = ${formatValueSimple(cofactorVal)}`);
+        }
+        signTextRow.push(signRow);
+      }
+      
+      let signMatrixHtml = `
+        <div style="display: inline-flex; align-items: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); margin: 0.75rem 0; line-height: 1.2; user-select: none;">
+          <span style="font-size: ${n * 1.3}rem; font-weight: 200; margin-right: 0.35rem; color: var(--navy); line-height: 1; transform: scaleY(1.15);">&lbrack;</span>
+          <div style="display: inline-flex; flex-direction: column; text-align: center; gap: 0.4rem; padding: 0 0.15rem;">
+            ${signTextRow.map(row => `<div style="display: flex; gap: 1.5rem; justify-content: center; align-items: center; min-height: 24px;">` + row.map(s => `<span style="min-width: 20px; text-align: center; font-weight: 700;">${s}</span>`).join('') + `</div>`).join('')}
+          </div>
+          <span style="font-size: ${n * 1.3}rem; font-weight: 200; margin-left: 0.35rem; color: var(--navy); line-height: 1; transform: scaleY(1.15);">&rbrack;</span>
+        </div>
+      `;
+
+      steps.push({
+        title: "Apply Position Signs",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.5rem;">We apply the position signs (+ or -) to each position of the minor matrix. The signs for each position are:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${signMatrixHtml}
+          </div>
+          <div class="step-desc" style="margin-bottom: 0.75rem;">We multiply each minor determinant by its position sign:</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; padding: 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1.25rem; color: var(--navy); line-height: 1.6;">
+            ${multiplicationLines.join('<br>')}
+          </div>
+          <div class="step-desc" style="margin-bottom: 0.5rem;">This gives the cofactor matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(cofactorMatrix)}
+          </div>
+        `
+      });
+      
+      let adjointMatrix = transpose(cofactorMatrix);
+      steps.push({
+        title: "Transpose to Adjoint Matrix",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.5rem;">We swap the rows and columns of the cofactor matrix to get the adjoint matrix:</div>
+          <div style="margin-bottom: 1rem; font-family: 'IBM Plex Mono', monospace; color: var(--navy); line-height: 1.5;">
+            Row 1 becomes Column 1<br>
+            Row 2 becomes Column 2<br>
+            ${n === 3 ? 'Row 3 becomes Column 3<br>' : ''}
+          </div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(adjointMatrix)}
+          </div>
+        `
+      });
+      
+      return steps;
+    }
+
+    function generateInverseFormulaMethod(A) {
+      let n = A.length;
+      let det = getDeterminantPure(A);
+      let steps = [];
+      
+      steps.push({
+        title: "Starting Matrix",
+        content: `
+          <div class="step-desc" style="font-size: 1rem; color: var(--navy); margin-bottom: 0.5rem;">We start with the matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(A)}
+          </div>
+        `
+      });
+      
+      let detExplanation = "";
+      if (n === 2) {
+        let a = A[0][0];
+        let b = A[0][1];
+        let c_val = A[1][0];
+        let d = A[1][1];
+        detExplanation = `Determinant = (${formatValueSimple(a)} × ${formatValueSimple(d)}) - (${formatValueSimple(b)} × ${formatValueSimple(c_val)}) = ${formatValueSimple(a*d)} - ${formatValueSimple(b*c_val)} = ${formatValueSimple(det)}`;
+      } else {
+        let a = A[0][0], b = A[0][1], c = A[0][2];
+        let sub0 = [[A[1][1], A[1][2]], [A[2][1], A[2][2]]];
+        let sub1 = [[A[1][0], A[1][2]], [A[2][0], A[2][2]]];
+        let sub2 = [[A[1][0], A[1][1]], [A[2][0], A[2][1]]];
+        
+        let det0 = sub0[0][0]*sub0[1][1] - sub0[0][1]*sub0[1][0];
+        let det1 = sub1[0][0]*sub1[1][1] - sub1[0][1]*sub1[1][0];
+        let det2 = sub2[0][0]*sub2[1][1] - sub2[0][1]*sub2[1][0];
+        
+        detExplanation = `
+          We expand along the first row:
+          <br><br>
+          1. Multiply Row 1, Col 1 element (${formatValueSimple(a)}) by the determinant of its minor matrix:
+          <br>
+          Remove row 1 and column 1:
+          <br>
+          ${matrixToHtml(sub0)}
+          <br>
+          Minor determinant = (${formatValueSimple(sub0[0][0])} × ${formatValueSimple(sub0[1][1])}) - (${formatValueSimple(sub0[0][1])} × ${formatValueSimple(sub0[1][0])}) = ${formatValueSimple(det0)}
+          <br>
+          Product = ${formatValueSimple(a)} × ${formatValueSimple(det0)} = ${formatValueSimple(a*det0)}
+          <br><br>
+          2. Multiply Row 1, Col 2 element (${formatValueSimple(b)}) by the determinant of its minor matrix and apply a negative sign:
+          <br>
+          Remove row 1 and column 2:
+          <br>
+          ${matrixToHtml(sub1)}
+          <br>
+          Minor determinant = (${formatValueSimple(sub1[0][0])} × ${formatValueSimple(sub1[1][1])}) - (${formatValueSimple(sub1[0][1])} × ${formatValueSimple(sub1[1][0])}) = ${formatValueSimple(det1)}
+          <br>
+          Product = -(${formatValueSimple(b)}) × ${formatValueSimple(det1)} = ${formatValueSimple(-b*det1)}
+          <br><br>
+          3. Multiply Row 1, Col 3 element (${formatValueSimple(c)}) by the determinant of its minor matrix:
+          <br>
+          Remove row 1 and column 3:
+          <br>
+          ${matrixToHtml(sub2)}
+          <br>
+          Minor determinant = (${formatValueSimple(sub2[0][0])} × ${formatValueSimple(sub2[1][1])}) - (${formatValueSimple(sub2[0][1])} × ${formatValueSimple(sub2[1][0])}) = ${formatValueSimple(det2)}
+          <br>
+          Product = ${formatValueSimple(c)} × ${formatValueSimple(det2)} = ${formatValueSimple(c*det2)}
+          <br><br>
+          Add the products together:
+          <br>
+          ${formatValueSimple(a*det0)} + (${formatValueSimple(-b*det1)}) + (${formatValueSimple(c*det2)}) = ${formatValueSimple(det)}
+        `;
+      }
+      
+      steps.push({
+        title: "Calculate Determinant",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.75rem;">We calculate the determinant of the starting matrix:</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; padding: 1.25rem; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 1rem; color: var(--navy); line-height: 1.6;">
+            ${detExplanation}
+          </div>
+        `
+      });
+      
+      if (Math.abs(det) < 1e-9) {
+        steps.push({
+          title: "Singular Matrix (Determinant is Zero)",
+          content: `
+            <div style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid #ef4444; padding: 1.25rem; border-radius: 8px; margin: 1rem 0; box-sizing: border-box; color: #b91c1c;">
+              <div style="font-weight: 700; margin-bottom: 0.5rem; font-size: 1.05rem;">⚠️ Singular Matrix Detected!</div>
+              <div style="font-size: 0.95rem; line-height: 1.5; color: #991b1b;">
+                Since the determinant is 0, this matrix is singular and does not have an inverse.
+                Therefore, we cannot calculate the adjoint using the Inverse Method.
+                <br><br>
+                Please go back and select either the **Cofactor Method** or the **Minor &rarr; Cofactor Method** to solve this problem step-by-step.
+              </div>
+            </div>
+          `
+        });
+        return steps;
+      }
+      
+      let A_inv = inverseMatrix(A);
+      steps.push({
+        title: "Calculate Inverse Matrix",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.5rem;">We calculate the inverse matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(A_inv)}
+          </div>
+        `
+      });
+      
+      let cofactorMat = getCofactorMatrix(A);
+      let adjointMatrix = transpose(cofactorMat);
+      
+      let multiplicationScaleLines = [];
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          let invVal = A_inv[i][j];
+          let adjVal = adjointMatrix[i][j];
+          multiplicationScaleLines.push(`Row ${i+1}, Col ${j+1}: ${formatValueSimple(det)} × ${formatValueSimple(invVal)} = ${formatValueSimple(adjVal)}`);
+        }
+      }
+      
+      steps.push({
+        title: "Multiply Inverse Matrix by Determinant",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.75rem;">We multiply each element of the inverse matrix by the determinant value (${formatValueSimple(det)}) to get the adjoint matrix:</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; padding: 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1.25rem; color: var(--navy); line-height: 1.6;">
+            ${multiplicationScaleLines.join('<br>')}
+          </div>
+          <div class="step-desc" style="margin-bottom: 0.5rem;">This gives the final adjoint matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(adjointMatrix)}
+          </div>
+        `
+      });
+      
+      return steps;
+    }
+
+    function generateRowReductionMethod(A) {
+      let n = A.length;
+      let det = getDeterminantPure(A);
+      let steps = [];
+      
+      steps.push({
+        title: "Starting Matrix",
+        content: `
+          <div class="step-desc" style="font-size: 1rem; color: var(--navy); margin-bottom: 0.5rem;">We start with the matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(A)}
+          </div>
+        `
+      });
+      
+      let gj = solveGaussJordanInverseDetailed(A);
+      if (!gj.inverse) {
+        steps.push({
+          title: "Singular Matrix (Cannot Find Inverse)",
+          content: `
+            <div style="background: rgba(239, 68, 68, 0.08); border-left: 4px solid #ef4444; padding: 1.25rem; border-radius: 8px; margin: 1rem 0; box-sizing: border-box; color: #b91c1c;">
+              <div style="font-weight: 700; margin-bottom: 0.5rem; font-size: 1.05rem;">⚠️ Singular Matrix Detected!</div>
+              <div style="font-size: 0.95rem; line-height: 1.5; color: #991b1b;">
+                During row reduction, a zero was found on the diagonal that could not be eliminated.
+                The determinant is 0, meaning the matrix is singular and does not have an inverse.
+                <br><br>
+                Please use the **Cofactor Method** to find the adjoint of this matrix instead.
+              </div>
+            </div>
+          `
+        });
+        return steps;
+      }
+      
+      let rowOpsHtml = gj.steps.map((s, idx) => `
+        <div style="margin-bottom: 1.5rem; padding: 1.25rem; border: 1px solid var(--border); border-left: 4px solid var(--teal); background: var(--bg); border-radius: 12px; box-sizing: border-box;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step ${idx + 1}: ${s.title}</div>
+          <div style="font-size: 0.95rem; color: var(--muted); margin-bottom: 0.75rem;">${s.explanation}</div>
+          ${s.mathDetail ? `
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem; padding: 0.75rem; background: var(--white); border: 1px dashed var(--border); border-radius: 8px; margin-bottom: 1rem; color: var(--navy); line-height: 1.6;">
+              ${s.mathDetail}
+            </div>
+          ` : ''}
+          <div style="text-align: center;">
+            ${s.matrixHtml}
+          </div>
+        </div>
+      `).join('');
+      
+      steps.push({
+        title: "Gauss-Jordan Row Operations",
+        isCollapsed: false,
+        content: `
+          <div class="step-desc" style="margin-bottom: 1.25rem;">We perform elementary row operations on the combined matrix until the left half becomes the identity matrix:</div>
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${rowOpsHtml}
+          </div>
+        `
+      });
+      
+      steps.push({
+        title: "Extract the Inverse Matrix",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.5rem;">The left half of our combined matrix is now the identity matrix. The right half is the inverse matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(gj.inverse)}
+          </div>
+        `
+      });
+      
+      steps.push({
+        title: "Calculate Determinant of Original Matrix",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.5rem;">We calculate the determinant of the starting matrix to scale the inverse matrix:</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; padding-left: 1rem; border-left: 2px solid var(--teal); margin: 0.75rem 0; color: var(--navy); font-weight: 600;">
+            Determinant = ${formatValueSimple(det)}
+          </div>
+        `
+      });
+      
+      let calculationsScaleHtml = [];
+      let cofactorMat = getCofactorMatrix(A);
+      let adjointMatrix = transpose(cofactorMat);
+      
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          let invVal = gj.inverse[i][j];
+          let adjVal = adjointMatrix[i][j];
+          calculationsScaleHtml.push(`Row ${i+1}, Col ${j+1}: ${formatValueSimple(det)} × ${formatValueSimple(invVal)} = ${formatValueSimple(adjVal)}`);
+        }
+      }
+      
+      steps.push({
+        title: "Scale Inverse Matrix to find Adjoint",
+        content: `
+          <div class="step-desc" style="margin-bottom: 0.75rem;">We multiply each element of the inverse matrix by the determinant value (${formatValueSimple(det)}):</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; padding: 1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1.25rem; color: var(--navy); line-height: 1.6;">
+            ${calculationsScaleHtml.join('<br>')}
+          </div>
+          <div class="step-desc" style="margin-bottom: 0.5rem;">This gives the final adjoint matrix:</div>
+          <div style="text-align: center; margin: 1rem 0;">
+            ${matrixToHtml(adjointMatrix)}
+          </div>
+        `
+      });
+      
+      return steps;
+    }
+
+    // UI Rendering Logic & Router
+    function renderMethodSelectionUI() {
+      return `
+        <div class="method-selector-card card animate-fade-in" style="padding: 2rem; margin-bottom: 2rem; background: var(--bg); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); box-sizing: border-box; width: 100%;">
+          <h3 style="color: var(--navy); margin-bottom: 0.5rem; font-family: 'Fraunces', serif; font-size: 1.6rem; text-align: center;">
+            Choose Solution Method
+          </h3>
+          <p style="color: var(--muted); text-align: center; font-size: 0.95rem; margin-bottom: 2rem;">
+            Select one of the educational pathways below to view its complete step-by-step derivation.
+          </p>
+          
+          <div class="method-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem;">
+            <!-- Card A -->
+            <div class="method-card" style="padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.25s ease; background: var(--white); box-shadow: 0 4px 6px rgba(0,0,0,0.02); box-sizing: border-box;" onclick="window.selectAdjointMethod('cofactor')" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.05)'; this.style.borderColor='var(--amber)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.02)'; this.style.borderColor='var(--border)';">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <span style="font-weight: 700; font-size: 1.15rem; color: var(--navy);">Cofactor Method</span>
+                <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: rgba(13, 148, 136, 0.1); color: var(--teal);">Textbook Standard</span>
+              </div>
+              <p style="font-size: 0.85rem; line-height: 1.5; color: var(--muted);">Expand each element individually using its minor submatrix and checkerboard sign factor, then transpose the cofactor matrix.</p>
+            </div>
+
+            <!-- Card B -->
+            <div class="method-card" style="padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.25s ease; background: var(--white); box-shadow: 0 4px 6px rgba(0,0,0,0.02); box-sizing: border-box;" onclick="window.selectAdjointMethod('minor-cofactor')" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.05)'; this.style.borderColor='var(--amber)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.02)'; this.style.borderColor='var(--border)';">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <span style="font-weight: 700; font-size: 1.15rem; color: var(--navy);">Minor → Cofactor Method</span>
+                <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: rgba(13, 148, 136, 0.1); color: var(--teal);">Matrix-Level</span>
+              </div>
+              <p style="font-size: 0.85rem; line-height: 1.5; color: var(--muted);">Compute the complete Minor Matrix first, apply the checkerboard sign overlay, and transpose the resulting Cofactor Matrix.</p>
+            </div>
+
+            <!-- Card C -->
+            <div class="method-card" style="padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.25s ease; background: var(--white); box-shadow: 0 4px 6px rgba(0,0,0,0.02); box-sizing: border-box;" onclick="window.selectAdjointMethod('inverse-formula')" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.05)'; this.style.borderColor='var(--amber)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.02)'; this.style.borderColor='var(--border)';">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <span style="font-weight: 700; font-size: 1.15rem; color: var(--navy);">Inverse Formula Method</span>
+                <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: rgba(13, 148, 136, 0.1); color: var(--teal);">Inverse Algebra</span>
+              </div>
+              <p style="font-size: 0.85rem; line-height: 1.5; color: var(--muted);">Calculate the matrix determinant and inverse, then reconstruct the Adjoint by multiplying the inverse by the determinant.</p>
+            </div>
+
+            <!-- Card D -->
+            <div class="method-card" style="padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.25s ease; background: var(--white); box-shadow: 0 4px 6px rgba(0,0,0,0.02); box-sizing: border-box;" onclick="window.selectAdjointMethod('row-reduction')" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 10px 20px rgba(0,0,0,0.05)'; this.style.borderColor='var(--amber)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 6px rgba(0,0,0,0.02)'; this.style.borderColor='var(--border)';">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <span style="font-weight: 700; font-size: 1.15rem; color: var(--navy);">Row Reduction Method</span>
+                <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: rgba(13, 148, 136, 0.1); color: var(--teal);">Gauss-Jordan</span>
+              </div>
+              <p style="font-size: 0.85rem; line-height: 1.5; color: var(--muted);">Perform step-by-step Gauss-Jordan elimination on $[A | I]$ to find the inverse, and scale it by the determinant.</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function calculateAdjointMatrix() {
+      const output = document.getElementById('steps-output');
+      if (!output) return;
+      output.innerHTML = '';
+      output.classList.add('active');
+
+      let rows = currentMatrixRows;
+      let cols = currentMatrixCols;
+
+      if (rows !== cols) {
+        output.innerHTML = `
+          <div class="step-card" style="border-left-color: #dc2626;">
+            <div class="step-header">
+              <div class="step-title" style="color: #dc2626; font-size: 1.25rem;">Error: Non-Square Matrix</div>
+            </div>
+            <div class="step-desc" style="font-size: 1rem;">
+              The Adjoint matrix is only defined for square matrices. The entered matrix size is <strong>${rows}x${cols}</strong>. Please ensure the number of Rows equals the number of Columns.
+            </div>
+          </div>
+        `;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      let A = [];
+      let hasEmpty = false;
+      let hasInvalid = false;
+
+      for (let i = 0; i < rows; i++) {
+        let row = [];
+        for (let j = 0; j < cols; j++) {
+          let cellId = `m${i}${j}`;
+          let cellEl = document.getElementById(cellId);
+          if (!cellEl) continue;
+          let valStr = cellEl.value.trim();
+          if (valStr === '') hasEmpty = true;
+          let val = parseFloat(valStr);
+          if (isNaN(val) || !isFinite(val)) hasInvalid = true;
+          row.push(val);
+        }
+        A.push(row);
+      }
+
+      if (hasEmpty || hasInvalid) {
+        output.innerHTML = `
+          <div class="step-card" style="border-left-color: #dc2626;">
+            <div class="step-header">
+              <div class="step-title" style="color: #dc2626; font-size: 1.25rem;">Error: Invalid Matrix Entries</div>
+            </div>
+            <div class="step-desc" style="font-size: 1rem;">
+              Please ensure all cells in the matrix grid are filled with valid numeric values.
+            </div>
+          </div>
+        `;
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      window.adjointInputMatrix = A;
+      output.innerHTML = renderMethodSelectionUI();
+      
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    window.selectAdjointMethod = function(methodId) {
+      let A = window.adjointInputMatrix;
+      if (!A) return;
+      
+      let stepsHtml = `
+        <button class="btn-primary" style="background: var(--bg2); color: var(--navy); padding: 0.5rem 1rem; font-size: 0.9rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border);" onclick="window.backToMethodSelection()">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="stroke: var(--navy);">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          Back to Method Selection
+        </button>
+      `;
+      
+      let methodSteps = [];
+      let finalAdjoint = [];
+      
+      if (methodId === 'cofactor') {
+        methodSteps = generateCofactorMethod(A);
+      } else if (methodId === 'minor-cofactor') {
+        methodSteps = generateMinorCofactorMethod(A);
+      } else if (methodId === 'inverse-formula') {
+        methodSteps = generateInverseFormulaMethod(A);
+      } else if (methodId === 'row-reduction') {
+        methodSteps = generateRowReductionMethod(A);
+      }
+      
+      let stepCount = 1;
+      methodSteps.forEach(step => {
+        let collapseAttr = step.isCollapsed ? 'style="display: none;"' : '';
+        let rotateAttr = step.isCollapsed ? 'style="transform: rotate(-90deg);"' : '';
+        stepsHtml += `
+          <div class="step-card">
+            <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <div class="step-number">${stepCount++}</div>
+                <div class="step-title">${step.title}</div>
+              </div>
+              <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);" ${rotateAttr}>▼</div>
+            </div>
+            <div class="step-content" ${collapseAttr}>
+              ${step.content}
+            </div>
+          </div>
+        `;
+      });
+      
+      let cofactorMat = getCofactorMatrix(A);
+      finalAdjoint = transpose(cofactorMat);
+      
+      stepsHtml += `
+        <div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: var(--navy); color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Adjoint Matrix Successfully Calculated!</div>
+          <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The adjoint matrix is computed by transposing the cofactor matrix.</div>
+          <div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px; box-sizing: border-box;">
+            <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Adjoint Matrix [Adj(A)]:</div>
+            <div style="margin-top: 1rem; text-align: center; overflow-x: auto;">
+              ${matrixToHtml(finalAdjoint)}
+            </div>
+          </div>
+        </div>
+      `;
+      
+      const output = document.getElementById('steps-output');
+      output.innerHTML = stepsHtml;
+      
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    window.backToMethodSelection = function() {
+      const output = document.getElementById('steps-output');
+      output.innerHTML = renderMethodSelectionUI();
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
