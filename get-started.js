@@ -417,6 +417,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSem = 1;
     let currentCalc = 'none';
 
+    // Matrix Dimension Logic
+    let currentMatrixRows = 3;
+    let currentMatrixCols = 3;
+
+    // Gauss Jacobi Dynamic Input State & Builders
+    let currentJacobiDim = 3;
+
     function updateURL(sem, calc) {
       const url = new URL(window.location);
       url.searchParams.set('sem', sem);
@@ -447,9 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     openCalc(initCalc, null, true);
     window.history.replaceState({ sem: initSem, calc: initCalc }, '', window.location);
 
-    // Matrix Dimension Logic
-    let currentMatrixRows = 3;
-    let currentMatrixCols = 3;
+
 
     function renderMatrixInputs() {
       const container = document.getElementById('matrix-grid-container');
@@ -481,8 +486,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize dimensions
     renderMatrixInputs();
 
-    // Gauss Jacobi Dynamic Input State & Builders
-    let currentJacobiDim = 3;
+
 
     function renderJacobiInputs() {
       const containerA = document.getElementById('jacobi-matrix-a');
