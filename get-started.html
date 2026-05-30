@@ -8,7 +8,7 @@
   <script>
     (function() {
       const currentTheme = localStorage.getItem('theme');
-      if (currentTheme === 'dark' || (!currentTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      if (currentTheme === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
       }
     })();
