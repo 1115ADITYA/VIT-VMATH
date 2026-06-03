@@ -35,17 +35,17 @@
     }
 
     html[data-theme="dark"] {
-      --bg: #090d16;
-      --bg2: #131a2a;
-      --white: #0f1729;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --border: #1e293b;
-      --border2: #334155;
-      --navy: #f8f7f4;
-      --navy2: #ffffff;
-      --nav-bg: rgba(9, 13, 22, 0.95);
-      --panel-bg: rgba(19, 28, 49, 0.88);
+      --bg: #212121;
+      --bg2: #2f2f2f;
+      --white: #171717;
+      --text: #ececec;
+      --muted: #b4b4b4;
+      --border: #424242;
+      --border2: #545454;
+      --navy: #ffffff;
+      --navy2: #f0f0f0;
+      --nav-bg: rgba(33, 33, 33, 0.95);
+      --panel-bg: rgba(47, 47, 47, 0.88);
       --panel-border: rgba(255, 255, 255, 0.1);
     }
 

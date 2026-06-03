@@ -417,8 +417,8 @@
       color: var(--text);
     }
     .final-result {
-      background: var(--navy);
-      color: var(--white);
+      background: #111827;
+      color: #ffffff;
       padding: 1.5rem;
       border-radius: 12px;
       margin-top: 2rem;
