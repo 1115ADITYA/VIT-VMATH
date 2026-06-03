@@ -175,94 +175,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ========================
-  // SEARCH SOLVER DATABASE
-  // ========================
   const SEARCHABLE_TOOLS = [
-    {
-      name: 'Determinant Calculator',
-      cat: 'matrices',
-      desc: 'Calculate matrix determinant step-by-step',
-      targetId: 'tool-det',
-      tabId: 'cat-nav-matrices'
-    },
-    {
-      name: 'Matrix Inverse',
-      cat: 'matrices',
-      desc: 'Find the inverse of a square matrix',
-      targetId: 'tool-inverse',
-      tabId: 'cat-nav-matrices'
-    },
-    {
-      name: 'Eigenvalue & Eigenvector',
-      cat: 'eigen_analysis',
-      desc: 'Calculate characteristic equations and eigenvectors',
-      targetId: 'tool-eigen',
-      tabId: 'cat-nav-eigen'
-    },
-    {
-      name: 'Diagonalisation',
-      cat: 'eigen_analysis',
-      desc: 'Diagonalise symmetric and non-symmetric matrices',
-      targetId: 'tool-diag',
-      tabId: 'cat-nav-diag'
-    },
-    {
-      name: 'Gauss-Seidel Method',
-      cat: 'numerical_methods',
-      desc: 'Iterative solver for systems of linear equations',
-      targetId: 'tool-gauss-seidel',
-      tabId: 'cat-nav-numerical'
-    },
-    {
-      name: 'Newton-Raphson',
-      cat: 'root_finding',
-      desc: 'Iterative root finding with live 2D/3D plots',
-      targetId: 'tool-newton',
-      tabId: 'cat-nav-numerical'
-    },
-    {
-      name: 'Simpson\'s 1/3 Rule',
-      cat: 'integration',
-      desc: 'Approximate definite integrals numerically',
-      targetId: 'tool-simpson',
-      tabId: 'cat-nav-integration'
-    },
-    {
-      name: 'Runge-Kutta Method',
-      cat: 'ode_methods',
-      desc: 'Solve initial value ODE problems using RK4',
-      targetId: 'tool-rk',
-      tabId: 'cat-nav-ode'
-    },
-    {
-      name: 'Row Echelon Form',
-      cat: 'matrices',
-      desc: 'Convert matrices to REF or RREF forms',
-      targetId: 'cat-nav-echelon',
-      tabId: 'cat-nav-echelon'
-    },
-    {
-      name: 'Partial Differentiation',
-      cat: 'partial_diff',
-      desc: 'Find critical points and local extrema',
-      targetId: 'cat-nav-partial',
-      tabId: 'cat-nav-partial'
-    },
-    {
-      name: 'Statistics & Data Modelling',
-      cat: 'statistics',
-      desc: 'Fit regression lines and run hypothesis tests',
-      targetId: 'cat-nav-stats',
-      tabId: 'cat-nav-stats'
-    },
-    {
-      name: 'Graph Plotter',
-      cat: 'graph_plotter',
-      desc: 'Plot mathematical equations in 2D or 3D',
-      targetId: 'cat-nav-graph',
-      tabId: 'cat-nav-graph'
-    }
+    { name: 'Determinant Calculator', cat: 'matrices', desc: 'Calculate matrix determinant step-by-step', calcId: 'det' },
+    { name: 'Adjoint Calculator', cat: 'matrices', desc: 'Find the adjoint matrix', calcId: 'adjoint' },
+    { name: 'Inverse Matrix Calculator', cat: 'matrices', desc: 'Find the inverse of a square matrix', calcId: 'inv' },
+    { name: 'Row Echelon Form', cat: 'matrices', desc: 'Convert matrices to REF or RREF forms', calcId: 'echelon' },
+    { name: 'Normal Form Calculator', cat: 'matrices', desc: 'Convert matrix to Normal Form', calcId: 'normal' },
+    { name: 'Eigenvalue & Eigenvector', cat: 'eigen_analysis', desc: 'Calculate characteristic equations and eigenvectors', calcId: 'eigen' },
+    { name: 'Diagonalisation', cat: 'eigen_analysis', desc: 'Diagonalise symmetric and non-symmetric matrices', calcId: 'diag' },
+    { name: 'Matrix Power Calculator', cat: 'matrices', desc: 'Calculate matrix power', calcId: 'matrix-power' },
+    
+    { name: 'Gauss-Jacobi Method', cat: 'numerical_methods', desc: 'Iterative solver for systems of linear equations', calcId: 'gauss-jacobi' },
+    { name: 'Gauss-Seidel Method', cat: 'numerical_methods', desc: 'Iterative solver for systems of linear equations', calcId: 'gauss-seidel' },
+    { name: 'Newton-Raphson', cat: 'root_finding', desc: 'Iterative root finding with live 2D/3D plots', calcId: 'newton-raphson' },
+    { name: 'False Position', cat: 'root_finding', desc: 'Find roots using the False Position method', calcId: 'false-position' },
+    
+    { name: 'Simpson\'s 1/3 Rule', cat: 'integration', desc: 'Approximate definite integrals numerically', calcId: 'simpson-1-3' },
+    { name: 'Simpson\'s 3/8 Rule', cat: 'integration', desc: 'Approximate definite integrals numerically', calcId: 'simpson-3-8' },
+    { name: 'Trapezoidal Rule', cat: 'integration', desc: 'Approximate definite integrals numerically', calcId: 'trapezoidal' },
+    
+    { name: 'Partial Differentiation', cat: 'partial_diff', desc: 'Find critical points and local extrema', calcId: 'partial-diff' },
+    { name: 'Maxima & Minima', cat: 'partial_diff', desc: 'Calculate maxima and minima of two variables', calcId: 'maxima-minima' },
+    { name: 'Euler Method', cat: 'ode_methods', desc: 'Solve ODEs using Euler Method', calcId: 'euler' },
+    { name: 'Runge-Kutta Method', cat: 'ode_methods', desc: 'Solve initial value ODE problems using RK4', calcId: 'runge-kutta' },
+    { name: 'Advanced Mathematics', cat: 'advanced', desc: 'Advanced Mathematics Calculator', calcId: 'adv-math' }
   ];
 
   // ========================
@@ -402,30 +338,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Handle selection click
       item.addEventListener('click', () => {
-        // 1. Activate tab in category subnav if it exists
-        if (tool.tabId) {
-          const tabEl = document.getElementById(tool.tabId);
-          if (tabEl) {
-            tabEl.click();
-          }
-        }
-
-        // 2. Scroll to target element and highlight it
-        const targetEl = document.getElementById(tool.targetId);
-        if (targetEl) {
-          setTimeout(() => {
-            targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // Trigger row flash visual highlight
-            targetEl.classList.remove('row-highlight-flash');
-            void targetEl.offsetWidth; // Force element reflow
-            targetEl.classList.add('row-highlight-flash');
-          }, 180);
-        }
+        // Redirect to the specific calculator page
+        window.location.href = `get-started.html?calc=${tool.calcId}`;
 
         // Reset search input and dropdown
         searchInput.value = '';
-        clearSearchBtn.style.display = 'none';
+        if (clearSearchBtn) clearSearchBtn.style.display = 'none';
         searchDropdown.classList.add('hidden');
         searchDropdown.innerHTML = '';
         searchSelectedIndex = -1;
