@@ -382,6 +382,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Enter the matrix and exponent below to calculate its power.";
     } else if (calcId === 'diag') {
       desc = "Select a method and enter the matrix values below to diagonalize it.";
+    } else if (calcId === 'eigen') {
+      desc = "Enter the matrix below to calculate its characteristic equation, eigenvalues, and corresponding eigenvectors.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -617,6 +619,30 @@ function divFrac(a, b) { return makeFrac(a.n * b.d, a.d * b.n); }
 function isZeroFrac(a) { return a.n === 0; }
 function formatFrac(a) { return a.d === 1 ? `${a.n}` : `${a.n}/${a.d}`; }
 
+function floatToFrac(x, tolerance = 1.0E-6) {
+    if (Math.abs(x) < 1e-9) return makeFrac(0, 1);
+    let sign = x < 0 ? -1 : 1;
+    x = Math.abs(x);
+    let h1 = 1, h2 = 0, k1 = 0, k2 = 1;
+    let b = x;
+    do {
+        let a = Math.floor(b);
+        let aux = h1; h1 = a * h1 + h2; h2 = aux;
+        aux = k1; k1 = a * k1 + k2; k2 = aux;
+        b = 1 / (b - a);
+    } while (Math.abs(x - h1 / k1) > x * tolerance && k1 < 100000);
+    return makeFrac(sign * h1, k1);
+}
+
+function floatToFractionString(val) {
+    if (Math.abs(val) < 1e-9) return "0";
+    let f = floatToFrac(val);
+    if (f.d > 10000) {
+        return (Math.round(val * 10000) / 10000).toString();
+    }
+    return formatFrac(f);
+}
+
 // Generic Matrix Math Helpers
 function identityMatrix(n) {
   let m = [];
@@ -822,7 +848,7 @@ function formatMatrix(m) {
       if (typeof val === 'object' && val.d !== undefined) {
         html += `<div>${formatFrac(val)}</div>`;
       } else {
-        html += `<div>${Math.round(val * 100) / 100}</div>`;
+        html += `<div>${floatToFractionString(val)}</div>`;
       }
     }
   }
@@ -846,6 +872,10 @@ function calculateMatrix() {
   }
   if (currentCalc === 'echelon') {
     calculateEchelonMatrix();
+    return;
+  }
+  if (currentCalc === 'eigen') {
+    calculateEigenAnalysis();
     return;
   }
   if (currentCalc === 'gauss-jacobi') {
@@ -1214,7 +1244,7 @@ function calculateMatrixPower() {
         addTextStep("Error", "<div style='color:red'>Could not find real eigenvalues or matrix is not diagonalizable over Reals.</div>");
       } else {
         // Basic Eigenvalue Output
-        let evText = evals.map((e, i) => `λ${i + 1} = ${Math.round(e * 1000) / 1000}`).join(', ');
+        let evText = evals.map((e, i) => `λ${i + 1} = ${floatToFractionString(e)}`).join(', ');
         addTextStep("1. Find Eigenvalues", `Characteristic roots: ${evText}`);
 
         let P = [];
@@ -1406,7 +1436,7 @@ function calculateDiagonalization() {
   if (!evals || evals.length === 0) {
     addTextStep("Error", "<div style='color:red'>Could not find real eigenvalues or matrix is not diagonalizable over Reals.</div>");
   } else {
-    let evText = evals.map((e, i) => `λ${i + 1} = ${Math.round(e * 1000) / 1000}`).join(', ');
+    let evText = evals.map((e, i) => `λ${i + 1} = ${floatToFractionString(e)}`).join(', ');
     addTextStep("1. Find Eigenvalues", `Characteristic roots: ${evText}`);
 
     let P = [];
@@ -1472,6 +1502,128 @@ function calculateDiagonalization() {
       }
     }
   }
+
+  output.innerHTML = stepsHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ==========================================
+// EIGEN ANALYSIS ENGINE
+// ==========================================
+
+function calculateEigenAnalysis() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let m = [];
+  for (let i = 0; i < currentMatrixRows; i++) {
+    let row = [];
+    for (let j = 0; j < currentMatrixCols; j++) {
+      row.push(parseFloat(document.getElementById(`m${i}${j}`).value) || 0);
+    }
+    m.push(row);
+  }
+
+  if (currentMatrixRows !== currentMatrixCols) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center;">Matrix must be square to calculate eigenvalues.</div>';
+    return;
+  }
+
+  let stepsHtml = '';
+  let stepCount = 1;
+  function addStep(title, desc, matrix) {
+    stepsHtml += `
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">${title}</div>
+            </div>
+            ${desc ? `<div class="step-desc" style="text-align: center; font-size: 1.05rem; margin-bottom: 1.5rem;">${desc}</div>` : ''}
+            <div style="text-align: center; margin-top: 1rem;">${formatMatrix(matrix)}</div>
+          </div>
+        `;
+  }
+  function addTextStep(title, desc) {
+    stepsHtml += `
+          <div class="step-card">
+            <div class="step-header">
+              <div class="step-number">${stepCount++}</div>
+              <div class="step-title">${title}</div>
+            </div>
+            <div class="step-desc" style="text-align: left; font-size: 1.05rem;">${desc}</div>
+          </div>
+        `;
+  }
+
+  if (m.length > 3) {
+    addTextStep("Error", "<div style='color:red'>Eigenvalue calculator currently supports up to 3x3 matrices.</div>");
+    output.innerHTML = stepsHtml;
+    return;
+  }
+
+  addStep("Initial Matrix A", "", m);
+
+  let poly = characteristicPolynomial(m);
+  let charEq = "";
+  function fmtCoeff(c, isFirst, isLast) {
+    if (Math.abs(c) < 1e-9) return "";
+    let sign = c < 0 ? " - " : " + ";
+    if (isFirst) sign = c < 0 ? "-" : "";
+    let valStr = floatToFractionString(Math.abs(c));
+    if (valStr === "1" && !isLast) valStr = "";
+    return sign + valStr;
+  }
+  if (m.length === 2) {
+    charEq = `P(λ) = λ²${fmtCoeff(poly[1], false, false)}λ${fmtCoeff(poly[2], false, true)} = 0`;
+  } else {
+    charEq = `P(λ) = λ³${fmtCoeff(poly[1], false, false)}λ²${fmtCoeff(poly[2], false, false)}λ${fmtCoeff(poly[3], false, true)} = 0`;
+  }
+  addTextStep("1. Characteristic Polynomial", `We find the characteristic polynomial by expanding the determinant <b>|A - λI| = 0</b>:<br><br><div style="font-family:'IBM Plex Mono', monospace; font-size:1.2rem; color:var(--navy); text-align:center;">${charEq}</div>`);
+
+  let evals = m.length === 2 ? solveCubic(0, poly[0], poly[1], poly[2]) : solveCubic(poly[0], poly[1], poly[2], poly[3]);
+
+  if (!evals || evals.length === 0) {
+    addTextStep("Error", "<div style='color:red'>Could not find real eigenvalues. The matrix might only have complex eigenvalues, which are not currently supported by this calculator.</div>");
+    output.innerHTML = stepsHtml;
+    return;
+  }
+
+  let evText = evals.map((e, i) => `λ<sub>${i + 1}</sub> = ${floatToFractionString(e)}`).join(', &nbsp;&nbsp;');
+  addTextStep("2. Solve for Eigenvalues", `By solving the characteristic equation P(λ) = 0, we get the eigenvalues:<br><br><div style="font-family:'IBM Plex Mono', monospace; font-size:1.25rem; font-weight:700; color:var(--amber); text-align:center;">${evText}</div>`);
+
+  // Calculate and display eigenvectors
+  let eigenBasis = {};
+  for (let i = 0; i < evals.length; i++) {
+    let e = evals[i];
+    let key = Math.round(e * 10000) / 10000;
+    if (!eigenBasis[key]) {
+      eigenBasis[key] = findEigenvectors(m, e);
+    }
+  }
+
+  let uniqueEvals = Object.keys(eigenBasis).map(parseFloat);
+  
+  uniqueEvals.forEach((lam, idx) => {
+    let basis = eigenBasis[lam.toString()];
+    if (!basis || basis.length === 0) {
+      addTextStep(`3.${idx+1} Eigenvectors for λ = ${lam}`, "<div style='color:red'>Could not compute eigenvector basis.</div>");
+    } else {
+      let vectorHtml = "";
+      basis.forEach((v, vidx) => {
+        let colMatrix = v.map(val => [val]);
+        vectorHtml += `<div style="display:inline-block; margin: 0 1rem; vertical-align:middle;">${formatMatrix(colMatrix)}</div>`;
+      });
+      addTextStep(`3.${idx+1} Find Eigenvectors for λ = ${lam}`, `We solve the system <b>(A - λI)v = 0</b> for λ = ${lam}. The basis vector(s) are:<br><div style="margin-top:1rem; text-align:center; display:flex; justify-content:center; align-items:center;">${vectorHtml}</div>`);
+    }
+  });
+
+  stepsHtml += `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem; box-sizing: border-box; width: 100%;">
+      <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif; text-align: center;">✅ Eigen Analysis Complete!</div>
+      <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 2rem; text-align: center;">Characteristic equation, eigenvalues, and eigenvectors successfully computed.</div>
+    </div>
+  `;
 
   output.innerHTML = stepsHtml;
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
