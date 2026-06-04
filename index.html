@@ -10,10 +10,8 @@
     rel="stylesheet">
   <script>
     (function() {
-      const currentTheme = localStorage.getItem('theme');
-      if (currentTheme === 'dark') {
-        document.documentElement.setAttribute('data-theme', 'dark');
-      }
+      localStorage.setItem('theme', 'light');
+      document.documentElement.removeAttribute('data-theme');
     })();
   </script>
   <link rel="stylesheet" href="style.css">
