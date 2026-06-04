@@ -342,6 +342,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const matrixPowerWrapper = document.getElementById('matrix-power-input-container');
   const diagWrapper = document.getElementById('diag-input-container');
   const partialDiffWrapper = document.getElementById('partial-diff-input-container');
+  const maximaMinimaWrapper = document.getElementById('maxima-minima-input-container');
 
   if (standardDim) standardDim.style.display = 'none';
   if (jacobiDim) jacobiDim.style.display = 'none';
@@ -353,6 +354,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (matrixPowerWrapper) matrixPowerWrapper.style.display = 'none';
   if (diagWrapper) diagWrapper.style.display = 'none';
   if (partialDiffWrapper) partialDiffWrapper.style.display = 'none';
+  if (maximaMinimaWrapper) maximaMinimaWrapper.style.display = 'none';
 
   if (calcId === 'none') {
     document.getElementById('overview-ui').style.display = 'flex';
@@ -391,6 +393,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Enter the matrix below to calculate its characteristic equation, eigenvalues, and corresponding eigenvectors.";
     } else if (calcId === 'partial-diff') {
       desc = "Enter a multivariate function f(x, y) to compute first and second-order partial derivatives step-by-step.";
+    } else if (calcId === 'maxima-minima') {
+      desc = "Enter a multivariate function f(x, y) to find and classify all its critical (stationary) points using the Hessian determinant test.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -417,6 +421,8 @@ function openCalc(calcId, element, fromHistory = false) {
       }
     } else if (calcId === 'partial-diff') {
       if (partialDiffWrapper) partialDiffWrapper.style.display = 'flex';
+    } else if (calcId === 'maxima-minima') {
+      if (maximaMinimaWrapper) maximaMinimaWrapper.style.display = 'flex';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -916,6 +922,9 @@ function calculateMatrix() {
     return;
   } else if (currentCalc === 'partial-diff') {
     calculatePartialDiff();
+    return;
+  } else if (currentCalc === 'maxima-minima') {
+    calculateMaximaMinima();
     return;
   }
   const output = document.getElementById('steps-output');
@@ -2341,6 +2350,73 @@ function differentiateSymbolic(expr) {
   return merged;
 }
 
+function convertPowersToMathPow(expr) {
+  let idx;
+  let safetyCounter = 0;
+  while ((idx = expr.indexOf('^')) !== -1 && safetyCounter < 100) {
+    safetyCounter++;
+    // 1. Find the base (before idx)
+    let baseStart = idx - 1;
+    if (baseStart < 0) {
+      expr = expr.replace('^', '**');
+      continue;
+    }
+    if (expr[baseStart] === ')') {
+      let depth = 1;
+      baseStart--;
+      while (baseStart >= 0 && depth > 0) {
+        if (expr[baseStart] === ')') depth++;
+        else if (expr[baseStart] === '(') depth--;
+        baseStart--;
+      }
+      baseStart++; // index of '('
+    } else {
+      while (baseStart >= 0 && /[a-zA-Z0-9\._]/.test(expr[baseStart])) {
+        baseStart--;
+      }
+      baseStart++;
+    }
+    let base = expr.substring(baseStart, idx);
+    if (!base) {
+      expr = expr.substring(0, idx) + '**' + expr.substring(idx + 1);
+      continue;
+    }
+
+    // 2. Find the exponent (after idx)
+    let expEnd = idx + 1;
+    if (expEnd >= expr.length) {
+      expr = expr.substring(0, idx) + '**';
+      continue;
+    }
+    if (expr[expEnd] === '(') {
+      let depth = 1;
+      expEnd++;
+      while (expEnd < expr.length && depth > 0) {
+        if (expr[expEnd] === '(') depth++;
+        else if (expr[expEnd] === ')') depth--;
+        expEnd++;
+      }
+    } else {
+      if (expr[expEnd] === '-') {
+        expEnd++;
+      }
+      while (expEnd < expr.length && /[a-zA-Z0-9\._]/.test(expr[expEnd])) {
+        expEnd++;
+      }
+    }
+    let exponent = expr.substring(idx + 1, expEnd);
+    if (!exponent) {
+      expr = expr.substring(0, idx) + '**' + expr.substring(idx + 1);
+      continue;
+    }
+
+    let target = base + '^' + exponent;
+    let replacement = `Math.pow(${base},${exponent})`;
+    expr = expr.substring(0, baseStart) + replacement + expr.substring(expEnd);
+  }
+  return expr;
+}
+
 function evaluateMath(expr, xVal) {
   let jsExpr = expr.toLowerCase().replace(/\s+/g, '');
   jsExpr = jsExpr.replace(/(\d)(x)/g, '$1*$2');
@@ -2358,7 +2434,7 @@ function evaluateMath(expr, xVal) {
     return `Math.exp(${inner})`;
   });
 
-  jsExpr = jsExpr.replace(/\^/g, '**');
+  jsExpr = convertPowersToMathPow(jsExpr);
 
   try {
     const fn = new Function('x', `with(Math) { return ${jsExpr}; }`);
@@ -2463,7 +2539,7 @@ function evaluateMultivariateMath(expr, xVal, yVal) {
     return `Math.exp(${inner})`;
   });
   
-  jsExpr = jsExpr.replace(/\^/g, '**');
+  jsExpr = convertPowersToMathPow(jsExpr);
   
   try {
     const fn = new Function('x', 'y', `with(Math) { return ${jsExpr}; }`);
@@ -3043,6 +3119,161 @@ function differentiateTermWithExplanation(term, wrt) {
   };
 }
 
+function findCriticalPoints(dfdx, dfdy) {
+  let c1 = evaluateMultivariateMath(dfdx, 0, 0);
+  let a1 = evaluateMultivariateMath(dfdx, 1, 0) - c1;
+  let b1 = evaluateMultivariateMath(dfdx, 0, 1) - c1;
+  
+  let dfdx_lin = (
+    Math.abs(evaluateMultivariateMath(dfdx, 2, 0) - (2 * a1 + c1)) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdx, 0, 2) - (2 * b1 + c1)) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdx, 1, 1) - (a1 + b1 + c1)) < 1e-6
+  );
+  
+  let c2 = evaluateMultivariateMath(dfdy, 0, 0);
+  let a2 = evaluateMultivariateMath(dfdy, 1, 0) - c2;
+  let b2 = evaluateMultivariateMath(dfdy, 0, 1) - c2;
+  
+  let dfdy_lin = (
+    Math.abs(evaluateMultivariateMath(dfdy, 2, 0) - (2 * a2 + c2)) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdy, 0, 2) - (2 * b2 + c2)) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdy, 1, 1) - (a2 + b2 + c2)) < 1e-6
+  );
+  
+  if (dfdx_lin && dfdy_lin) {
+    let det = a1 * b2 - b1 * a2;
+    if (Math.abs(det) > 1e-9) {
+      let x = (-c1 * b2 - b1 * (-c2)) / det;
+      let y = (a1 * (-c2) - (-c1) * a2) / det;
+      
+      let xStr = x.toFixed(4);
+      let yStr = y.toFixed(4);
+      
+      let eq1Str = `${a1 !== 0 ? a1 + 'x' : ''}${b1 > 0 ? ' + ' + b1 + 'y' : b1 < 0 ? ' - ' + Math.abs(b1) + 'y' : ''} = ${-c1}`;
+      let eq2Str = `${a2 !== 0 ? a2 + 'x' : ''}${b2 > 0 ? ' + ' + b2 + 'y' : b2 < 0 ? ' - ' + Math.abs(b2) + 'y' : ''} = ${-c2}`;
+      
+      return {
+        type: 'linear',
+        points: [{ x, y }],
+        details: `We solve the system of linear equations:
+                  <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.5rem; display: block;">∂f/∂x = 0 &rArr; ${eq1Str}</span>
+                  <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">∂f/∂y = 0 &rArr; ${eq2Str}</span>
+                  <br>Solving this simultaneous linear system (using substitution or Cramer's Rule):
+                  <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block; color: var(--teal);">x = ${xStr}, y = ${yStr}</span>
+                  <br>Thus, we obtain the critical point: <strong>(${xStr}, ${yStr})</strong>.`
+      };
+    }
+  }
+  
+  // Case C: dfdx = a1*x^2 + b1*y, dfdy = b2*y^2 + a2*x
+  let c1_q = evaluateMultivariateMath(dfdx, 0, 0);
+  let a1_q = evaluateMultivariateMath(dfdx, 1, 0);
+  let b1_q = evaluateMultivariateMath(dfdx, 0, 1);
+  let dfdx_caseC = (
+    Math.abs(c1_q) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdx, 2, 0) - 4 * a1_q) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdx, 0, 2) - 2 * b1_q) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdx, 1, 1) - (a1_q + b1_q)) < 1e-6
+  );
+  
+  let c2_q = evaluateMultivariateMath(dfdy, 0, 0);
+  let a2_q = evaluateMultivariateMath(dfdy, 1, 0);
+  let b2_q = evaluateMultivariateMath(dfdy, 0, 1);
+  let dfdy_caseC = (
+    Math.abs(c2_q) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdy, 2, 0) - 2 * a2_q) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdy, 0, 2) - 4 * b2_q) < 1e-6 &&
+    Math.abs(evaluateMultivariateMath(dfdy, 1, 1) - (a2_q + b2_q)) < 1e-6
+  );
+  
+  if (dfdx_caseC && dfdy_caseC && Math.abs(b1_q) > 1e-9 && Math.abs(b2_q) > 1e-9 && Math.abs(a1_q) > 1e-9) {
+    let ratio = -a2_q * b1_q * b1_q / (b2_q * a1_q * a1_q);
+    let x2 = Math.cbrt(ratio);
+    let y2 = (-a1_q / b1_q) * x2 * x2;
+    
+    let x2Str = x2.toFixed(4);
+    let y2Str = y2.toFixed(4);
+    
+    return {
+      type: 'nonlinear_poly',
+      points: [{ x: 0, y: 0 }, { x: x2, y: y2 }],
+      details: `We solve the system of non-linear equations:
+                <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.5rem; display: block;">∂f/∂x = 0 &rArr; ${a1_q}x² + ${b1_q}y = 0 &rArr; y = -(${a1_q}/${b1_q})x²</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">∂f/∂y = 0 &rArr; ${b2_q}y² + ${a2_q}x = 0</span>
+                <br>Substituting <code>y = -(${a1_q}/${b1_q})x²</code> into the second equation:
+                <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">${b2_q}·( -(${a1_q}/${b1_q})x² )² + ${a2_q}x = 0</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">${b2_q}·(${a1_q * a1_q}/${b1_q * b1_q})x⁴ + ${a2_q}x = 0</span>
+                <br>Factoring out <code>x</code> gives two solutions:
+                <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">1) x = 0 &rArr; y = 0</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">2) x³ = ${ratio.toFixed(4)} &rArr; x = ${x2Str} &rArr; y = ${y2Str}</span>
+                <br>Thus, we obtain two critical points: <strong>(0, 0)</strong> and <strong>(${x2Str}, ${y2Str})</strong>.`
+    };
+  }
+  
+  // Numerical Newton-Raphson 2D Fallback
+  let pts = [];
+  let guesses = [[-2,-2], [-2,2], [2,-2], [2,2], [0,0], [1,1], [-1,-1], [0.5,0.5], [-0.5,-0.5], [3,3], [-3,-3]];
+  for (let g of guesses) {
+    let x = g[0], y = g[1];
+    let converged = false;
+    for (let iter = 0; iter < 60; iter++) {
+      let fx = evaluateMultivariateMath(dfdx, x, y);
+      let fy = evaluateMultivariateMath(dfdy, x, y);
+      if (Math.abs(fx) < 1e-10 && Math.abs(fy) < 1e-10) {
+        converged = true;
+        break;
+      }
+      
+      let h = 1e-6;
+      let fxx = (evaluateMultivariateMath(dfdx, x + h, y) - fx) / h;
+      let fxy = (evaluateMultivariateMath(dfdx, x, y + h) - fx) / h;
+      let fyx = (evaluateMultivariateMath(dfdy, x + h, y) - fy) / h;
+      let fyy = (evaluateMultivariateMath(dfdy, x, y + h) - fy) / h;
+      
+      let det = fxx * fyy - fxy * fyx;
+      if (Math.abs(det) < 1e-10) break;
+      
+      let dx = (-fx * fyy - fxy * (-fy)) / det;
+      let dy = (fxx * (-fy) - (-fx) * fyx) / det;
+      
+      x += dx;
+      y += dy;
+      
+      if (Math.abs(dx) < 1e-11 && Math.abs(dy) < 1e-11) {
+        converged = true;
+        break;
+      }
+    }
+    
+    if (converged && isFinite(x) && isFinite(y)) {
+      let isUnique = true;
+      for (let p of pts) {
+        if (Math.abs(p.x - x) < 1e-3 && Math.abs(p.y - y) < 1e-3) {
+          isUnique = false;
+          break;
+        }
+      }
+      if (isUnique) {
+        pts.push({ x: parseFloat(x.toFixed(4)), y: parseFloat(y.toFixed(4)) });
+      }
+    }
+  }
+  
+  if (pts.length > 0) {
+    let ptsStr = pts.map(p => `<strong>(${p.x.toFixed(4)}, ${p.y.toFixed(4)})</strong>`).join(', ');
+    return {
+      type: 'numerical',
+      points: pts,
+      details: `We solve the system of equations numerically using 2D Newton-Raphson iteration:
+                <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.5rem; display: block;">∂f/∂x = 0 &rArr; ${formatMathRich(dfdx)} = 0</span>
+                <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">∂f/∂y = 0 &rArr; ${formatMathRich(dfdy)} = 0</span>
+                <br>Solving numerically yields stationary points at: ${ptsStr}.`
+    };
+  }
+  
+  return { type: 'none', points: [], details: 'Unable to solve for critical points.' };
+}
+
 function generateNewtonGraphSVG(expr, root, initialGuess) {
   let minX = Math.min(root, initialGuess) - 1.0;
   let maxX = Math.max(root, initialGuess) + 1.0;
@@ -3456,6 +3687,347 @@ function calculatePartialDiff() {
                       </p>
                       <p style="margin-bottom: 0;">
                         Second-order partial derivatives are widely used in optimization, maxima-minima problems, differential equations, and machine learning.
+                      </p>
+                    </div>
+                  </div>
+                </div>`;
+
+  output.innerHTML = stepsHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function calculateMaximaMinima() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let expr = document.getElementById('maxima-minima-function').value.trim();
+  let decimalsValStr = document.getElementById('maxima-minima-decimals').value.trim();
+  
+  if (expr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  
+  // Validation
+  let validationResult = validateMultivariateFunction(expr);
+  if (!validationResult.isValid) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Function Input</div></div><div class="step-desc">${validationResult.error}</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  
+  let decimals = parseInt(decimalsValStr);
+  if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let stepsHtml = '';
+  let stepCount = 1;
+  
+  // Step 1: Given Function
+  let richExpr = formatMathRich(expr);
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Given Function</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc">We start with the bivariate function f(x, y):</div>
+                    <div style="font-family: 'Fraunces', serif; font-size: 1.6rem; color: var(--navy); text-align: center; margin: 1.5rem 0; font-weight: 700;">
+                      f(x, y) = ${richExpr}
+                    </div>
+                  </div>
+                </div>`;
+
+  // Step 2: First Order Partial Derivatives
+  let dfdxVal = differentiateSymbolicMultivariate(expr, 'x');
+  let dfdxValClean = simplifySymbolicMultivariate(dfdxVal);
+  let dfdxValCleanFormat = formatMathRich(dfdxValClean);
+  
+  let dfdyVal = differentiateSymbolicMultivariate(expr, 'y');
+  let dfdyValClean = simplifySymbolicMultivariate(dfdyVal);
+  let dfdyValCleanFormat = formatMathRich(dfdyValClean);
+
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">First-Order Partial Derivatives</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 1rem;">
+                      We differentiate the function <code>f(x, y)</code> with respect to <strong>x</strong> and <strong>y</strong>:
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center; margin: 1.5rem 0;">
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy);">
+                        f<sub>x</sub> = ∂f/∂x = <strong>${dfdxValCleanFormat}</strong>
+                      </div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy);">
+                        f<sub>y</sub> = ∂f/∂y = <strong>${dfdyValCleanFormat}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>`;
+
+  // Step 3: Critical Point Solver
+  let solverResult = findCriticalPoints(dfdxValClean, dfdyValClean);
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Critical Point Calculation</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 1rem;">
+                      Critical (or stationary) points occur where both first-order partial derivatives are simultaneously equal to zero:
+                      <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.5rem; display: block;">f<sub>x</sub> = 0  &amp;  f<sub>y</sub> = 0</span>
+                    </div>
+                    <div style="padding: 1.25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--bg2); margin-top: 1rem;">
+                      ${solverResult.details}
+                    </div>
+                  </div>
+                </div>`;
+
+  if (solverResult.points.length === 0) {
+    output.innerHTML = stepsHtml + `<div class="step-card" style="border-left-color: #f59e0b;">
+                                      <div class="step-header"><div class="step-title" style="color: #d97706;">No Critical Points Located</div></div>
+                                      <div class="step-desc">The solver was unable to locate stationary points for this function. This can happen for functions without critical points (like <code>f(x, y) = x + y</code>).</div>
+                                    </div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  // Step 4: Second Order Partial Derivatives
+  let d2fdx2Val = differentiateSymbolicMultivariate(dfdxValClean, 'x');
+  let d2fdx2ValClean = simplifySymbolicMultivariate(d2fdx2Val);
+  let d2fdx2ValCleanFormat = formatMathRich(d2fdx2ValClean);
+  
+  let d2fdy2Val = differentiateSymbolicMultivariate(dfdyValClean, 'y');
+  let d2fdy2ValClean = simplifySymbolicMultivariate(d2fdy2Val);
+  let d2fdy2ValCleanFormat = formatMathRich(d2fdy2ValClean);
+  
+  let d2fdxdyVal = differentiateSymbolicMultivariate(dfdyValClean, 'x');
+  let d2fdxdyValClean = simplifySymbolicMultivariate(d2fdxdyVal);
+  let d2fdxdyValCleanFormat = formatMathRich(d2fdxdyValClean);
+
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Second-Order Partial Derivatives</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 1rem;">
+                      We compute the second-order partial derivatives which form the Hessian Matrix:
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; align-items: center; margin: 1.5rem 0; font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy);">
+                      <div>f<sub>xx</sub> = ∂²f/∂x² = <strong>${d2fdx2ValCleanFormat}</strong></div>
+                      <div>f<sub>yy</sub> = ∂²f/∂y² = <strong>${d2fdy2ValCleanFormat}</strong></div>
+                      <div>f<sub>xy</sub> = ∂²f/∂x∂y = <strong>${d2fdxdyValCleanFormat}</strong></div>
+                    </div>
+                  </div>
+                </div>`;
+
+  // Step 5 & 6 & 7: Hessian test, classification, and function values at each point
+  let classifications = [];
+  let detailedPointHtml = '';
+  
+  solverResult.points.forEach((p, idx) => {
+    let px = parseFloat(p.x.toFixed(decimals));
+    let py = parseFloat(p.y.toFixed(decimals));
+    
+    // Evaluate second derivatives at this point
+    let r = evaluateMultivariateMath(d2fdx2ValClean, px, py);
+    let t = evaluateMultivariateMath(d2fdy2ValClean, px, py);
+    let s = evaluateMultivariateMath(d2fdxdyValClean, px, py);
+    
+    let D = r * t - s * s;
+    let rVal = parseFloat(r.toFixed(decimals));
+    let tVal = parseFloat(t.toFixed(decimals));
+    let sVal = parseFloat(s.toFixed(decimals));
+    let DVal = parseFloat(D.toFixed(decimals));
+    
+    let classification = '';
+    let classDesc = '';
+    let classColor = '';
+    
+    if (DVal > 0) {
+      if (rVal > 0) {
+        classification = 'Local Minimum';
+        classDesc = `Since <strong>D &gt; 0</strong> and <strong>f<sub>xx</sub> &gt; 0</strong>, the function has a local minimum at this point.`;
+        classColor = 'var(--teal)';
+      } else {
+        classification = 'Local Maximum';
+        classDesc = `Since <strong>D &gt; 0</strong> and <strong>f<sub>xx</sub> &lt; 0</strong>, the function has a local maximum at this point.`;
+        classColor = 'var(--coral)';
+      }
+    } else if (DVal < 0) {
+      classification = 'Saddle Point';
+      classDesc = `Since <strong>D &lt; 0</strong>, the point is a saddle point (the surface curves up in one direction and down in another).`;
+      classColor = '#d97706';
+    } else {
+      classification = 'Inconclusive';
+      classDesc = `Since <strong>D = 0</strong>, the second derivative test is inconclusive (higher-order derivatives must be examined).`;
+      classColor = 'var(--muted)';
+    }
+    
+    // Evaluate function value
+    let fVal = evaluateMultivariateMath(expr, px, py);
+    let fValFormatted = parseFloat(fVal.toFixed(decimals)).toString();
+    
+    classifications.push({
+      point: `(${px}, ${py})`,
+      D: DVal,
+      fxx: rVal,
+      fyy: tVal,
+      fxy: sVal,
+      classification: classification,
+      value: classification.includes('Local') ? fValFormatted : 'N/A',
+      color: classColor
+    });
+    
+    detailedPointHtml += `
+      <div style="padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; background: var(--white); margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem;">
+          <span style="font-weight: 700; font-family: 'Fraunces', serif; color: var(--navy); font-size: 1.15rem;">Stationary Point P<sub>${idx + 1}</sub>: (${px}, ${py})</span>
+          <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: rgba(59, 130, 246, 0.1); color: #3b82f6;">Hessian Analysis</span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+          <div style="padding: 0.75rem; background: var(--bg2); border-radius: 8px; text-align: center;">
+            <div style="font-size: 0.8rem; color: var(--muted); font-weight: 600;">f<sub>xx</sub> (r)</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; font-weight: 700; color: var(--navy);">${rVal}</div>
+          </div>
+          <div style="padding: 0.75rem; background: var(--bg2); border-radius: 8px; text-align: center;">
+            <div style="font-size: 0.8rem; color: var(--muted); font-weight: 600;">f<sub>yy</sub> (t)</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; font-weight: 700; color: var(--navy);">${tVal}</div>
+          </div>
+          <div style="padding: 0.75rem; background: var(--bg2); border-radius: 8px; text-align: center;">
+            <div style="font-size: 0.8rem; color: var(--muted); font-weight: 600;">f<sub>xy</sub> (s)</div>
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; font-weight: 700; color: var(--navy);">${sVal}</div>
+          </div>
+        </div>
+
+        <div class="step-desc" style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem;">Hessian Discriminant (D) Calculation:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 0.5rem 0; padding-left: 0.75rem; border-left: 2px solid var(--amber);">
+          D = f<sub>xx</sub> · f<sub>yy</sub> - (f<sub>xy</sub>)²
+          <br>D = (${rVal}) · (${tVal}) - (${sVal})²
+          <br>D = ${rVal * tVal} - ${sVal * sVal} = <strong>${DVal}</strong>
+        </div>
+
+        <div style="margin-top: 1.25rem; padding: 1rem; border-radius: 8px; background: rgba(59, 130, 246, 0.03); border: 1px dashed var(--border);">
+          <div style="font-weight: 700; color: ${classColor}; font-size: 1.1rem; margin-bottom: 0.4rem;">Classification: ${classification}</div>
+          <div style="font-size: 0.95rem; color: var(--text); line-height: 1.5;">${classDesc}</div>
+        </div>
+
+        ${classification.includes('Local') ? `
+          <div style="margin-top: 1rem; font-size: 0.95rem; color: var(--text);">
+            Substituting this point into the original function to get the extreme value:
+            <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; display: block; margin-top: 0.4rem; color: var(--teal); font-weight: 600;">
+              f(${px}, ${py}) = ${fValFormatted}
+            </span>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  });
+
+  // Step 5: Hessian Discriminant Test
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Second Derivative Test &amp; Point Classification</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 1.5rem;">
+                      For each stationary point, we compute the Hessian Determinant <code>D = f<sub>xx</sub>f<sub>yy</sub> - (f<sub>xy</sub>)²</code> and apply the classification rules:
+                    </div>
+                    ${detailedPointHtml}
+                  </div>
+                </div>`;
+
+  // Step 6: Summary Card
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Classification Summary Table</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div style="overflow-x: auto; width: 100%;">
+                      <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Figtree', sans-serif;">
+                        <thead>
+                          <tr style="border-bottom: 2px solid var(--border); color: var(--navy); font-weight: 700;">
+                            <th style="padding: 10px 8px; font-size: 1rem;">Critical Point</th>
+                            <th style="padding: 10px 8px; font-size: 1rem; font-family: 'IBM Plex Mono', monospace;">D</th>
+                            <th style="padding: 10px 8px; font-size: 1rem; font-family: 'IBM Plex Mono', monospace;">f<sub>xx</sub> (r)</th>
+                            <th style="padding: 10px 8px; font-size: 1rem;">Classification</th>
+                            <th style="padding: 10px 8px; font-size: 1rem;">Extremum Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${classifications.map(c => `
+                            <tr style="border-bottom: 1px solid var(--border);">
+                              <td style="padding: 10px 8px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--navy);">${c.point}</td>
+                              <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600;">${c.D}</td>
+                              <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600;">${c.fxx}</td>
+                              <td style="padding: 10px 8px; font-weight: 700; color: ${c.color};">${c.classification}</td>
+                              <td style="padding: 10px 8px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--teal);">${c.value}</td>
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>`;
+
+  // Final Answer Card and Educational Notes
+  stepsHtml += `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2.5rem;">
+                  <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Stationary Points Fully Classified!</div>
+                  <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 2rem;">The extrema and saddle points have been evaluated step-by-step.</div>
+                  
+                  <div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); box-sizing: border-box; width: 100%; max-width: 600px;">
+                    <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 1rem;">Summary of Extrema:</div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem;">
+                      ${classifications.map(c => `
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.08); padding-bottom: 0.4rem;">
+                          <span style="color: rgba(255,255,255,0.75);">${c.point} &rarr; <span style="color:${c.color};font-weight:700;">${c.classification}</span></span>
+                          <span style="color: var(--amber); font-weight: 700;">f = ${c.value}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 2rem; padding: 1.25rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; text-align: left; box-sizing: border-box; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                      <span style="font-size: 1.2rem;">💡</span>
+                      <span style="font-weight: 700; color: var(--amber); font-size: 1.05rem; font-family: 'Fraunces', serif;">Educational Note</span>
+                    </div>
+                    <div style="font-size: 0.95rem; line-height: 1.6; color: rgba(255,255,255,0.8);">
+                      <p style="margin-bottom: 0.75rem;">
+                        The <strong>Hessian determinant test</strong> is used to classify stationary points of multivariable functions.
+                      </p>
+                      <p style="margin-bottom: 0;">
+                        A positive determinant indicates a local extremum (minimum if f<sub>xx</sub> &gt; 0, maximum if f<sub>xx</sub> &lt; 0), while a negative determinant indicates a saddle point.
                       </p>
                     </div>
                   </div>
