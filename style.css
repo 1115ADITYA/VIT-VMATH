@@ -75,6 +75,11 @@
       cursor: pointer;
     }
 
+    input, textarea {
+      color: var(--navy);
+      font-family: inherit;
+    }
+
     /* ========================
    TOP NAV (branding + CTA)
 ======================== */
@@ -524,12 +529,19 @@
       flex-shrink: 0;
       position: relative;
       padding-bottom: 72px;
-      /* Increased bottom padding to prevent overflow of floating cards */
       margin-top: 64px;
-      /* Align card vertically with heading content for balanced space allocation */
     }
 
-    #hero-graph-card {
+    #hero-carousel {
+      position: relative;
+      width: 100%;
+    }
+
+    .hero-slide {
+      transition: opacity 0.6s ease-in-out;
+    }
+
+    .hero-graph-card {
       background: var(--white);
       border: 1px solid var(--border);
       border-radius: 24px;
@@ -537,20 +549,20 @@
       box-shadow: 0 20px 56px rgba(15, 23, 41, 0.1), 0 6px 20px rgba(15, 23, 41, 0.05);
     }
 
-    #graph-header {
+    .graph-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 20px;
     }
 
-    #graph-title {
+    .graph-title {
       font-size: 14px;
       font-weight: 600;
       color: var(--text);
     }
 
-    #graph-controls {
+    .graph-controls {
       display: flex;
       gap: 6px;
     }
@@ -575,7 +587,7 @@
       color: var(--muted);
     }
 
-    #graph-svg-wrap {
+    .graph-svg-wrap {
       background: var(--bg);
       border-radius: 10px;
       padding: 14px;
@@ -949,7 +961,7 @@
 
     #tools-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 20px;
     }
 

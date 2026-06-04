@@ -62,7 +62,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Graph Tab Switching
+  // Slide Carousel Auto-Play
+  const slides = [
+    document.getElementById('slide-1'),
+    document.getElementById('slide-2'),
+    document.getElementById('slide-3')
+  ];
+  
+  let currentSlideIndex = 0;
+  let slideInterval;
+
+  function showSlide(index) {
+    slides.forEach((slide, i) => {
+      if (!slide) return;
+      if (i === index) {
+        slide.style.display = 'block';
+        setTimeout(() => { slide.style.opacity = '1'; }, 10);
+      } else {
+        slide.style.opacity = '0';
+        setTimeout(() => { 
+          // Only set to none if it's still transparent (prevents race conditions)
+          if (slide.style.opacity === '0') slide.style.display = 'none'; 
+        }, 600);
+      }
+    });
+  }
+
+  function nextSlide() {
+    currentSlideIndex = (currentSlideIndex + 1) % slides.length;
+    showSlide(currentSlideIndex);
+  }
+
+  if (slides[0] && slides[1] && slides[2]) {
+    slideInterval = setInterval(nextSlide, 5000); // 5 seconds interval
+
+    // Pause carousel on hover
+    const heroCarousel = document.getElementById('hero-carousel');
+    if (heroCarousel) {
+      heroCarousel.addEventListener('mouseenter', () => clearInterval(slideInterval));
+      heroCarousel.addEventListener('mouseleave', () => {
+        clearInterval(slideInterval);
+        slideInterval = setInterval(nextSlide, 5000);
+      });
+    }
+  }
+
+  // Internal Graph Tab Switching (Manual only) for Slide 1
   const btn2d = document.getElementById('ctrl-2d');
   const btn3d = document.getElementById('ctrl-3d');
   const btnTable = document.getElementById('ctrl-table');
@@ -73,17 +118,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const legend = document.getElementById('graph-legend');
 
   function switchTab(activeBtn, showView, showLegend = true) {
-    [btn2d, btn3d, btnTable].forEach(btn => btn.classList.remove('active'));
-    [view2d, view3d, viewTable].forEach(view => view.style.display = 'none');
+    [btn2d, btn3d, btnTable].forEach(btn => btn?.classList.remove('active'));
+    [view2d, view3d, viewTable].forEach(view => { if (view) view.style.display = 'none'; });
 
-    activeBtn.classList.add('active');
-    showView.style.display = 'block';
-    legend.style.display = showLegend ? 'flex' : 'none';
+    if (activeBtn) activeBtn.classList.add('active');
+    if (showView) showView.style.display = 'block';
+    if (legend) legend.style.display = showLegend ? 'flex' : 'none';
   }
 
-  btn2d.addEventListener('click', () => switchTab(btn2d, view2d, true));
-  btn3d.addEventListener('click', () => switchTab(btn3d, view3d, true));
-  btnTable.addEventListener('click', () => switchTab(btnTable, viewTable, false));
+  if (btn2d && btn3d && btnTable) {
+    btn2d.addEventListener('click', () => switchTab(btn2d, view2d, true));
+    btn3d.addEventListener('click', () => switchTab(btn3d, view3d, true));
+    btnTable.addEventListener('click', () => switchTab(btnTable, viewTable, false));
+  }
 
   // Prevent clicks inside preview panels from bubbling up and triggering filters
   const previewPanels = document.querySelectorAll('.nav-preview-panel');
@@ -468,4 +515,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Chatbot FAB scroll positioning logic to stop it before the footer
+  document.addEventListener('scroll', () => {
+    const fabContainer = document.getElementById('vmath-chatbot-container');
+    const footer = document.getElementById('footer');
+    if (!fabContainer || !footer) return;
+
+    const footerRect = footer.getBoundingClientRect();
+    const windowHeight = window.innerHeight;
+
+    // Default bottom position
+    let bottomPos = 24;
+
+    if (footerRect.top < windowHeight) {
+      // Push it up so it sits 24px above the footer's top edge
+      bottomPos = windowHeight - footerRect.top + 24;
+    }
+
+    fabContainer.style.bottom = `${bottomPos}px`;
+  });
 });

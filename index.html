@@ -236,7 +236,10 @@
 
     <!-- Right – Graph card -->
     <div id="hero-right">
-      <div class="ann-card" id="ann-steps">
+      <div id="hero-carousel">
+        <!-- Slide 1: Newton Raphson -->
+        <div class="hero-slide active-slide" id="slide-1">
+          <div class="ann-card" id="ann-steps">
         <div class="ann-label">Converged in</div>
         <div class="ann-value">4 steps</div>
         <div class="ann-sub">Newton-Raphson method</div>
@@ -249,18 +252,18 @@
         <div class="ann-sub">Below tolerance</div>
       </div>
 
-      <div id="hero-graph-card">
-        <div id="graph-header">
-          <div id="graph-title">Newton-Raphson Iteration</div>
-          <div id="graph-controls">
-            <button class="g-ctrl active" id="ctrl-2d">2D</button>
-            <button class="g-ctrl" id="ctrl-3d">3D</button>
-            <button class="g-ctrl" id="ctrl-table">Table</button>
-          </div>
-        </div>
+          <div class="hero-graph-card">
+            <div class="graph-header">
+              <div class="graph-title">Newton-Raphson Iteration</div>
+              <div class="graph-controls">
+                <button class="g-ctrl active" id="ctrl-2d">2D</button>
+                <button class="g-ctrl" id="ctrl-3d">3D</button>
+                <button class="g-ctrl" id="ctrl-table">Table</button>
+              </div>
+            </div>
 
-        <div id="graph-svg-wrap"
-          style="position: relative; min-height: 240px; display: flex; align-items: center; justify-content: center;">
+            <div class="graph-svg-wrap"
+              style="position: relative; min-height: 240px; display: flex; align-items: center; justify-content: center;">
           <!-- 2D View -->
           <svg id="view-2d" viewBox="0 0 460 240" xmlns="http://www.w3.org/2000/svg"
             style="width: 100%; height: auto; display: block;">
@@ -441,9 +444,116 @@
           <div class="legend-item" id="legend-root">
             <div class="legend-dot" style="background:#0f1729;"></div>Root x = 1.521
           </div>
+        </div> <!-- /graph-legend -->
+      </div> <!-- /.hero-graph-card -->
+      </div> <!-- /#slide-1 -->
+
+      <!-- Slide 2: Simpson's 1/3 Rule -->
+      <div class="hero-slide" id="slide-2" style="display: none; opacity: 0; position: absolute; top: 0; left: 0; width: 100%;">
+        <div class="ann-card" id="ann-steps-2" style="top: 140px; left: -30px;">
+          <div class="ann-label">Computed Area</div>
+          <div class="ann-value">3.14159</div>
+          <div class="ann-sub">Simpson's 1/3 Rule</div>
+          <div class="ann-badge">✓ High Precision</div>
         </div>
-      </div>
-    </div>
+
+        <div class="hero-graph-card">
+          <div class="graph-header">
+            <div class="graph-title">Numerical Integration</div>
+            <div class="graph-controls">
+              <button class="g-ctrl active">Graph</button>
+              <button class="g-ctrl">Table</button>
+            </div>
+          </div>
+
+          <div class="graph-svg-wrap" style="position: relative; min-height: 240px; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 460 240" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; display: block;">
+              <defs>
+                <linearGradient id="simpsonGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" style="stop-color:#0d9488;stop-opacity:0.3" />
+                  <stop offset="100%" style="stop-color:#0d9488;stop-opacity:0" />
+                </linearGradient>
+                <filter id="glowTeal">
+                  <feGaussianBlur stdDeviation="2" result="cb" />
+                  <feMerge><feMergeNode in="cb" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+              </defs>
+              <line x1="40" y1="20" x2="40" y2="220" stroke="#e5e3de" stroke-width="1" />
+              <line x1="40" y1="220" x2="440" y2="220" stroke="#e5e3de" stroke-width="1" />
+              
+              <path d="M 40,180 Q 140,20 240,100 T 440,60" fill="none" stroke="#f59e0b" stroke-width="2" opacity="0.4" />
+              
+              <path d="M 120,220 L 120,130 Q 180,50 240,100 T 360,110 L 360,220 Z" fill="url(#simpsonGrad)" />
+              <path d="M 120,130 Q 180,50 240,100 T 360,110" fill="none" stroke="#0d9488" stroke-width="3" filter="url(#glowTeal)" />
+
+              <line x1="120" y1="130" x2="120" y2="220" stroke="#0f1729" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.6"/>
+              <line x1="240" y1="100" x2="240" y2="220" stroke="#0f1729" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.6"/>
+              <line x1="360" y1="110" x2="360" y2="220" stroke="#0f1729" stroke-width="1.5" stroke-dasharray="4,4" opacity="0.6"/>
+
+              <circle cx="120" cy="130" r="4" fill="#0d9488" />
+              <circle cx="240" cy="100" r="4" fill="#0d9488" />
+              <circle cx="360" cy="110" r="4" fill="#0d9488" />
+
+              <text x="120" y="235" fill="#9ca3af" font-size="10" font-family="IBM Plex Mono" text-anchor="middle">a</text>
+              <text x="360" y="235" fill="#9ca3af" font-size="10" font-family="IBM Plex Mono" text-anchor="middle">b</text>
+            </svg>
+          </div>
+
+          <div style="display: flex; gap: 16px; margin-top: 20px; font-size: 11px; font-weight: 500; color: var(--muted); align-items: center; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 6px;"><div style="width: 8px; height: 8px; border-radius: 50%; background:#f59e0b; opacity:0.4;"></div>f(x)</div>
+            <div style="display: flex; align-items: center; gap: 6px;"><div style="width: 8px; height: 8px; border-radius: 50%; background:#0d9488;"></div>Parabolic Interpolation</div>
+          </div>
+        </div>
+      </div> <!-- /slide-2 -->
+
+      <!-- Slide 3: Gauss-Jacobi -->
+      <div class="hero-slide" id="slide-3" style="display: none; opacity: 0; position: absolute; top: 0; left: 0; width: 100%;">
+        <div class="ann-card" id="ann-steps-3" style="bottom: 40px; right: -30px; top: auto;">
+          <div class="ann-label">System Solved</div>
+          <div class="ann-value">x, y, z</div>
+          <div class="ann-sub">Gauss-Jacobi Method</div>
+          <div class="ann-badge" style="background:rgba(13,148,136,0.1); color:var(--teal);">✓ Error &lt; 10⁻⁴</div>
+        </div>
+
+        <div class="hero-graph-card">
+          <div class="graph-header">
+            <div class="graph-title">Error Convergence</div>
+            <div class="graph-controls">
+              <button class="g-ctrl active">Line Chart</button>
+            </div>
+          </div>
+
+          <div class="graph-svg-wrap" style="position: relative; min-height: 240px; display: flex; align-items: center; justify-content: center;">
+            <svg viewBox="0 0 460 240" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto; display: block;">
+              <line x1="40" y1="20" x2="40" y2="220" stroke="#e5e3de" stroke-width="1" />
+              <line x1="40" y1="220" x2="440" y2="220" stroke="#e5e3de" stroke-width="1" />
+              
+              <path d="M 40,40 L 120,120 L 200,180 L 280,210 L 360,215 L 440,218" fill="none" stroke="#f59e0b" stroke-width="2.5" />
+              <path d="M 40,70 L 120,150 L 200,190 L 280,215 L 360,218 L 440,219" fill="none" stroke="#0d9488" stroke-width="2.5" />
+              <path d="M 40,20 L 120,100 L 200,160 L 280,200 L 360,210 L 440,217" fill="none" stroke="#0f1729" stroke-width="2.5" />
+
+              <circle cx="280" cy="210" r="4" fill="#f59e0b" />
+              <circle cx="280" cy="215" r="4" fill="#0d9488" />
+              <circle cx="280" cy="200" r="4" fill="#0f1729" />
+
+              <circle cx="360" cy="215" r="4" fill="#f59e0b" />
+              <circle cx="360" cy="218" r="4" fill="#0d9488" />
+              <circle cx="360" cy="210" r="4" fill="#0f1729" />
+
+              <text x="280" y="235" fill="#9ca3af" font-size="10" font-family="IBM Plex Mono" text-anchor="middle">Iter 3</text>
+              <text x="360" y="235" fill="#9ca3af" font-size="10" font-family="IBM Plex Mono" text-anchor="middle">Iter 4</text>
+            </svg>
+          </div>
+
+          <div style="display: flex; gap: 16px; margin-top: 20px; font-size: 11px; font-weight: 500; color: var(--muted); align-items: center; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 6px;"><div style="width: 8px; height: 8px; border-radius: 50%; background:#f59e0b;"></div>Error in x</div>
+            <div style="display: flex; align-items: center; gap: 6px;"><div style="width: 8px; height: 8px; border-radius: 50%; background:#0d9488;"></div>Error in y</div>
+            <div style="display: flex; align-items: center; gap: 6px;"><div style="width: 8px; height: 8px; border-radius: 50%; background:#0f1729;"></div>Error in z</div>
+          </div>
+        </div>
+      </div> <!-- /slide-3 -->
+      </div> <!-- /#hero-carousel -->
+    </div> <!-- /#hero-right -->
   </section>
 
   <!-- ========================
@@ -672,7 +782,7 @@
 
       <div id="footer-bottom">
         <p id="footer-copy">© 2025 VMath. Made with ♥ for engineering students.</p>
-        <div id="footer-badge">VIT Mumbai</div>
+        <a id="footer-badge" href="https://vit.edu.in/" target="_blank" style="cursor: pointer;">VIT Mumbai</a>
       </div>
     </div>
   </footer>
