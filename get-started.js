@@ -2600,21 +2600,53 @@ function calculateNewtonRaphson() {
     stepsHtml += `<div class="step-card"><div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)"><div style="display: flex; align-items: center; gap: 0.75rem;"><div class="step-number">${stepCount++}</div><div class="step-title">Iteration Summary Table</div></div><div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: rotate(-90deg);">▼</div></div><div class="step-content" style="display: none;"><div class="step-desc">A unified view of variable approximations:</div><div style="overflow-x: auto; margin-top: 1.5rem;"><table style="width: 100%; border-collapse: collapse; border: 1px solid var(--border);"><thead><tr style="background: var(--bg); border-bottom: 2px solid var(--border);"><th style="padding: 0.75rem; color: var(--navy); width: 80px;">Iter</th><th style="padding: 0.75rem; color: var(--navy);">x<sub>n</sub></th><th style="padding: 0.75rem; color: var(--navy);">f(x<sub>n</sub>)</th><th style="padding: 0.75rem; color: var(--navy);">f'(x<sub>n</sub>)</th><th style="padding: 0.75rem; color: var(--navy);">x<sub>n+1</sub></th><th style="padding: 0.75rem; color: var(--navy);">Abs Error</th></tr></thead><tbody>${tableRows.map(row => `<tr style="border-bottom: 1px solid var(--border); ${row.iter === finalIter && converged ? 'background: rgba(13, 148, 136, 0.05); font-weight:600;' : ''}"><td style="padding: 0.75rem; text-align: center; font-weight: 600;">${row.iter}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.xn.toFixed(decimals)}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.fxn.toFixed(decimals)}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.fprime.toFixed(decimals)}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${row.xnext.toFixed(decimals)}</td><td style="padding: 0.75rem; text-align: center; font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: var(--navy);">${row.error.toFixed(decimals)}</td></tr>`).join('')}</tbody></table></div></div></div>`;
 
     // SVG Graph Plot
-    let chartGraphHtml = '';
-    try {
-      chartGraphHtml = generateNewtonGraphSVG(expr, currentX, guess);
-    } catch (gErr) {
-      console.error("SVG Plot error:", gErr);
-    }
+    let chartGraphHtml = '<div style="width: 100%; display: flex; flex-direction: column; align-items: center;"><div style="font-weight:700; color:var(--amber); font-size:1.1rem; margin-bottom:1rem; font-family:\'Fraunces\', serif;">✦ Graphical Convergence Curve</div><div id="newton-interactive-graph" style="width: 100%; height: 350px;"></div></div>';
 
     // Final answer card
-    stepsHtml += converged
-      ? `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Solution Converged Successfully!</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system converged within tolerance limit (&epsilon; = ${tolerance}) after <strong>${finalIter}</strong> iterations.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Solved Root:</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${currentX.toFixed(decimals)}</span></div></div>${chartGraphHtml}</div>`
-      : `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #991b1b; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">⚠️ Limits Reached Without Convergence</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system did not converge to tolerance (&epsilon; = ${tolerance}) within <strong>${maxIter}</strong> iterations limit.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Last Computed State (Iteration ${finalIter}):</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${currentX.toFixed(decimals)}</span></div></div></div>`;
+    let finalResultHtml = converged
+      ? `<div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;">
+          <div style="flex: 1 1 200px; min-width: 200px; order: 1;">${chartGraphHtml}</div>
+          <div style="flex: 1 1 200px; text-align: left; order: 2;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Solution Converged!</div><button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps</button></div>
+            <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system converged within tolerance limit (&epsilon; = ${tolerance}) after <strong>${finalIter}</strong> iterations.</div>
+            <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+              <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Solved Root:</div>
+              <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${currentX.toFixed(decimals)}</span></div>
+            </div>
+          </div>
+        </div>`
+      : `<div class="final-result animate-fade-in" style="padding: 2.5rem; background: #991b1b; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;">
+          <div style="flex: 1 1 200px; min-width: 200px; order: 1;">${chartGraphHtml}</div>
+          <div style="flex: 1 1 200px; text-align: left; order: 2;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">⚠️ Limits Reached</div><button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps</button></div>
+            <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system did not converge to tolerance (&epsilon; = ${tolerance}) within <strong>${maxIter}</strong> iterations limit.</div>
+            <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+              <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Last Computed State (Iteration ${finalIter}):</div>
+              <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${currentX.toFixed(decimals)}</span></div>
+            </div>
+          </div>
+        </div>`;
+      
+    stepsHtml = finalResultHtml + stepsHtml;
   }
 
   output.innerHTML = stepsHtml;
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  if (!isHalted && window.InteractiveGraph) {
+    setTimeout(() => {
+      let minX = Math.min(currentX, guess) - 1.0;
+      let maxX = Math.max(currentX, guess) + 1.0;
+      if (maxX - minX < 0.5) { minX = currentX - 1.0; maxX = currentX + 1.0; }
+      let ys = tableRows.map(r => r.fxn).filter(y => !isNaN(y) && isFinite(y));
+      let minY = ys.length > 0 ? Math.min(0, ...ys) - 2 : -10;
+      let maxY = ys.length > 0 ? Math.max(0, ...ys) + 2 : 10;
+      new InteractiveGraph('newton-interactive-graph', {
+        expr: expr, root: currentX, minX: minX, maxX: maxX, minY: minY, maxY: maxY,
+        iterations: tableRows, type: 'newton'
+      });
+    }, 50);
+  }
 }
 
 // ==========================================
@@ -3026,23 +3058,57 @@ function calculateFalsePosition() {
             <div style="font-size:0.95rem; line-height:1.5; color:var(--muted); text-align: center;">The method converged as the error is strictly below tolerance.</div></div></div>`;
     }
 
-    let chartGraphHtml = '';
+    let chartGraphHtml = '<div style="width: 100%; display: flex; flex-direction: column; align-items: center;"><div style="font-weight:700; color:var(--amber); font-size:1.1rem; margin-bottom:1rem; font-family:\'Fraunces\', serif;">✦ Graphical Secant Convergence</div><div id="false-position-interactive-graph" style="width: 100%; height: 350px;"></div></div>';
     let finalXr = tableRows[tableRows.length - 1].xr;
-    try {
-      chartGraphHtml = generateFalsePositionGraphSVG(expr, finalXr, initA, initB);
-    } catch (gErr) {
-      console.error("SVG Plot error:", gErr);
-    }
 
-    stepsHtml += converged
-      ? `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Solution Converged Successfully!</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system converged within tolerance limit (&epsilon; = ${tolerance}) after <strong>${finalIter}</strong> iterations.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Solved Root:</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${finalXr.toFixed(decimals)}</span></div><div style="font-size: 0.9rem; opacity:0.8; margin-top: 0.5rem;">Converged after <strong>${finalIter}</strong> iterations</div></div>${chartGraphHtml}</div>`
-      : `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #991b1b; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">⚠️ Limits Reached Without Convergence</div><div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Method did not converge within the specified iteration limit (&epsilon; = ${tolerance}) within <strong>${maxIter}</strong> iterations limit.</div><div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;"><div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Last Computed State (Iteration ${finalIter}):</div><div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${finalXr.toFixed(decimals)}</span></div></div></div>`;
+    let finalResultHtml = converged
+      ? `<div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;">
+          <div style="flex: 1 1 200px; min-width: 200px; order: 1;">${chartGraphHtml}</div>
+          <div style="flex: 1 1 200px; text-align: left; order: 2;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Solution Converged!</div><button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps</button></div>
+            <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">The system converged within tolerance limit (&epsilon; = ${tolerance}) after <strong>${finalIter}</strong> iterations.</div>
+            <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+              <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Final Solved Root:</div>
+              <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${finalXr.toFixed(decimals)}</span></div>
+            </div>
+          </div>
+        </div>`
+      : `<div class="final-result animate-fade-in" style="padding: 2.5rem; background: #991b1b; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;">
+          <div style="flex: 1 1 200px; min-width: 200px; order: 1;">${chartGraphHtml}</div>
+          <div style="flex: 1 1 200px; text-align: left; order: 2;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">⚠️ Limits Reached</div><button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps</button></div>
+            <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Method did not converge to tolerance (&epsilon; = ${tolerance}) within <strong>${maxIter}</strong> iterations limit.</div>
+            <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+              <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Last Computed State (Iteration ${finalIter}):</div>
+              <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">Root ≈ <span style="color:#ffffff;">${finalXr.toFixed(decimals)}</span></div>
+            </div>
+          </div>
+        </div>`;
 
-    stepsHtml += `<div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;"><div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Method Characteristics</div><div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">False Position Method combines interval bracketing with interpolation, making it generally faster than the Bisection Method while maintaining guaranteed bracketing of the root.</div></div>`;
+    stepsHtml = finalResultHtml + stepsHtml + `<div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;"><div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Method Characteristics</div><div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">False Position Method combines interval bracketing with interpolation, making it generally faster than the Bisection Method while maintaining guaranteed bracketing of the root.</div></div>`;
   }
 
   output.innerHTML = stepsHtml;
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  if (!isHalted && window.InteractiveGraph) {
+    setTimeout(() => {
+      let finalXr = tableRows[tableRows.length - 1].xr;
+      let minX = Math.min(finalXr, initA, initB) - 0.5;
+      let maxX = Math.max(finalXr, initA, initB) + 0.5;
+      if (maxX - minX < 0.5) { minX = finalXr - 1.0; maxX = finalXr + 1.0; }
+      let ys = [];
+      tableRows.forEach(r => { ys.push(r.fa, r.fb, r.fxr); });
+      ys = ys.filter(y => !isNaN(y) && isFinite(y));
+      let minY = ys.length > 0 ? Math.min(0, ...ys) - 2 : -10;
+      let maxY = ys.length > 0 ? Math.max(0, ...ys) + 2 : 10;
+      
+      new InteractiveGraph('false-position-interactive-graph', {
+        expr: expr, root: finalXr, minX: minX, maxX: maxX, minY: minY, maxY: maxY,
+        iterations: tableRows, type: 'false-position'
+      });
+    }, 50);
+  }
 }
 
 function calculateIntegration() {
@@ -3467,23 +3533,26 @@ function calculateIntegration() {
         </div>
       `;
 
-  // Success Banner Defined Result Card
-  stepsHtml += `
-        <div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2rem;">
-          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Integration Definite Solved!</div>
-          <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Definite integral value calculated over boundary interval bounds [${initA}, ${initB}] using step spacing.</div>
-          <div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); min-width: 250px;">
-            <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Definite Integral Value:</div>
-            <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">
-              &int;<sub>${initA}</sub><sup>${initB}</sup> f(x) dx &approx; <span style="color:#ffffff;">${resultVal.toFixed(decimals)}</span>
+  let graphHtml = '<div style="width: 100%; display: flex; flex-direction: column; align-items: center;"><div style="font-weight:700; color:var(--amber); font-size:1.1rem; margin-bottom:1rem; font-family:\'Fraunces\', serif;">✦ Area Approximation Visualization</div><div id="integration-interactive-graph" style="width: 100%; height: 350px;"></div></div>';
+
+  let finalResultHtml = `
+        <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center;">
+          <div style="flex: 1 1 200px; min-width: 200px; order: 1;">${graphHtml}</div>
+          <div style="flex: 1 1 200px; text-align: left; order: 2;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;"><div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Definite Integral Solved!</div><button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'"><svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps</button></div>
+            <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Calculated over boundary interval bounds [${initA}, ${initB}] using step spacing.</div>
+            <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+              <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Definite Integral Value:</div>
+              <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.45rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">
+                &int;<sub>${initA}</sub><sup>${initB}</sup> f(x) dx &approx; <span style="color:#ffffff;">${resultVal.toFixed(decimals)}</span>
+              </div>
+              <div style="font-size: 0.9rem; opacity:0.8; margin-top: 0.5rem;">Step Size h = <strong>${h.toFixed(decimals)}</strong></div>
+              <div style="font-size: 0.9rem; opacity:0.8;">Sub-Intervals n = <strong>${intervalsN}</strong></div>
             </div>
-            <div style="font-size: 0.9rem; opacity:0.8; margin-top: 0.5rem;">Step Size h = <strong>${h.toFixed(decimals)}</strong></div>
-            <div style="font-size: 0.9rem; opacity:0.8;">Sub-Intervals n = <strong>${intervalsN}</strong></div>
           </div>
         </div>
       `;
 
-  // Educational Note Footer Card
   stepsHtml += `
         <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
           <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Method Characteristics</div>
@@ -3491,8 +3560,24 @@ function calculateIntegration() {
         </div>
       `;
 
-  output.innerHTML = stepsHtml;
+  output.innerHTML = finalResultHtml + stepsHtml;
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  if (window.InteractiveGraph) {
+    setTimeout(() => {
+      let minX = initA - h;
+      let maxX = initB + h;
+      let ys = nodes.map(n => n.y).filter(y => !isNaN(y) && isFinite(y));
+      let minY = ys.length > 0 ? Math.min(0, ...ys) - Math.abs(Math.min(0, ...ys)) * 0.2 - 2 : -10;
+      let maxY = ys.length > 0 ? Math.max(0, ...ys) + Math.abs(Math.max(0, ...ys)) * 0.2 + 2 : 10;
+      
+      new InteractiveGraph('integration-interactive-graph', {
+        expr: expr, minX: minX, maxX: maxX, minY: minY, maxY: maxY,
+        type: 'integration',
+        methodData: { method: currentCalc, points: nodes }
+      });
+    }, 50);
+  }
 }
 
 // ==========================================
