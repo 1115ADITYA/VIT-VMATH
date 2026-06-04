@@ -347,6 +347,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const partialDiffWrapper = document.getElementById('partial-diff-input-container');
   const maximaMinimaWrapper = document.getElementById('maxima-minima-input-container');
   const eulerWrapper = document.getElementById('euler-method-input-container');
+  const rungeKuttaWrapper = document.getElementById('runge-kutta-input-container');
 
   if (standardDim) standardDim.style.display = 'none';
   if (jacobiDim) jacobiDim.style.display = 'none';
@@ -360,6 +361,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (partialDiffWrapper) partialDiffWrapper.style.display = 'none';
   if (maximaMinimaWrapper) maximaMinimaWrapper.style.display = 'none';
   if (eulerWrapper) eulerWrapper.style.display = 'none';
+  if (rungeKuttaWrapper) rungeKuttaWrapper.style.display = 'none';
 
   if (calcId === 'none') {
     document.getElementById('overview-ui').style.display = 'flex';
@@ -402,6 +404,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Enter a multivariate function f(x, y) to find and classify all its critical (stationary) points using the Hessian determinant test.";
     } else if (calcId === 'euler') {
       desc = "Enter the differential equation dy/dx = f(x, y), initial values, step size, and target x to approximate the solution step-by-step using Euler's Method.";
+    } else if (calcId === 'runge-kutta') {
+      desc = "Enter the differential equation dy/dx = f(x, y), initial values, step size, and target x to approximate the solution step-by-step using Runge Kutta 4th Order (RK4).";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -432,6 +436,8 @@ function openCalc(calcId, element, fromHistory = false) {
       if (maximaMinimaWrapper) maximaMinimaWrapper.style.display = 'flex';
     } else if (calcId === 'euler') {
       if (eulerWrapper) eulerWrapper.style.display = 'flex';
+    } else if (calcId === 'runge-kutta') {
+      if (rungeKuttaWrapper) rungeKuttaWrapper.style.display = 'flex';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -942,6 +948,9 @@ function calculateMatrix() {
     return;
   } else if (currentCalc === 'euler') {
     calculateEuler();
+    return;
+  } else if (currentCalc === 'runge-kutta') {
+    calculateRungeKutta();
     return;
   }
   const output = document.getElementById('steps-output');
@@ -8317,8 +8326,341 @@ function calculateEuler() {
                       <p style="margin-bottom: 0.75rem;">
                         <strong>Euler Method</strong> is the simplest numerical technique for solving ordinary differential equations.
                       </p>
-                      <p style="margin-bottom: 0;">
+                       <p style="margin-bottom: 0;">
                         It approximates the solution curve using tangent slopes computed at discrete points.
+                      </p>
+                    </div>
+                  </div>
+                </div>`;
+
+  output.innerHTML = stepsHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function calculateRungeKutta() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let expr = document.getElementById('runge-kutta-function').value.trim();
+  let x0Str = document.getElementById('runge-kutta-x0').value.trim();
+  let y0Str = document.getElementById('runge-kutta-y0').value.trim();
+  let hStr = document.getElementById('runge-kutta-h').value.trim();
+  let xnStr = document.getElementById('runge-kutta-xn').value.trim();
+  let decimalsValStr = document.getElementById('runge-kutta-decimals').value.trim();
+
+  // Validation
+  if (expr === '' || x0Str === '' || y0Str === '' || hStr === '' || xnStr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let validationResult = validateMultivariateFunction(expr);
+  if (!validationResult.isValid) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Function Input</div></div><div class="step-desc">${validationResult.error}</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let x0 = parseFloat(x0Str);
+  let y0 = parseFloat(y0Str);
+  let h = parseFloat(hStr);
+  let xn = parseFloat(xnStr);
+  let decimals = parseInt(decimalsValStr);
+
+  if (isNaN(x0) || isNaN(y0) || isNaN(h) || isNaN(xn)) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Numbers</div></div><div class="step-desc">Initial values, step size, and target x must be valid numeric values.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (h <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Step Size</div></div><div class="step-desc">Step size h must be strictly greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (xn < x0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Target x Less Than Initial x</div></div><div class="step-desc">Target xₙ (${xn}) cannot be less than initial x₀ (${x0}).</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let stepsCount = Math.round((xn - x0) / h);
+  if (stepsCount > 200) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Too Many Iterations</div></div><div class="step-desc">The step size h (${h}) results in too many steps to reach target xₙ (${xn}) (${stepsCount} steps). Maximum allowed is 200 steps to prevent browser slowdown.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (stepsCount <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Target Already Reached</div></div><div class="step-desc">Target xₙ (${xn}) is already equal to or less than initial x₀ (${x0}). Please set target xₙ to be greater than x₀.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let stepsHtml = '';
+  let stepCount = 1;
+
+  // Step 1: Given Problem
+  let richExpr = formatMathRich(expr);
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Given Problem</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc">We are given the ordinary differential equation (ODE) and initial parameters:</div>
+                    <div style="margin-left: 1rem; border-left: 2px solid var(--teal); padding-left: 1rem; font-family: 'Figtree', sans-serif; font-size: 1.05rem; color: var(--navy); display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1rem; margin-bottom: 1rem;">
+                      <div>Differential Equation: <strong>dy/dx = f(x, y) = ${richExpr}</strong></div>
+                      <div>Initial x₀ = <strong>${x0.toString()}</strong></div>
+                      <div>Initial y₀ = <strong>${y0.toString()}</strong></div>
+                      <div>Step Size h = <strong>${h.toString()}</strong></div>
+                      <div>Target xₙ = <strong>${xn.toString()}</strong></div>
+                    </div>
+                  </div>
+                </div>`;
+
+  // Step 2: RK4 Formula
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Runge-Kutta 4th Order Formulas</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 1rem;">
+                      The Runge-Kutta 4th Order (RK4) method computes four intermediate slope approximations at each step:
+                    </div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1rem; color: var(--navy); margin-left: 1rem; border-left: 2px solid var(--amber); padding-left: 1rem; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+                      <div>k₁ = h · f(x<sub>n</sub>, y<sub>n</sub>)</div>
+                      <div>k₂ = h · f(x<sub>n</sub> + h/2, y<sub>n</sub> + k₁/2)</div>
+                      <div>k₃ = h · f(x<sub>n</sub> + h/2, y<sub>n</sub> + k₂/2)</div>
+                      <div>k₄ = h · f(x<sub>n</sub> + h, y<sub>n</sub> + k₃)</div>
+                    </div>
+                    <div class="step-desc" style="margin-bottom: 1rem;">
+                      Using these slopes, the next solution value is computed as a weighted average:
+                    </div>
+                    <div style="font-family: 'Fraunces', serif; font-size: 1.35rem; color: var(--navy); text-align: center; margin: 1.5rem 0; font-weight: 700;">
+                      y<sub>n+1</sub> = y<sub>n</sub> + <sup>1</sup>/<sub>6</sub> (k₁ + 2k₂ + 2k₃ + k₄)
+                    </div>
+                  </div>
+                </div>`;
+
+  // Perform Iterations
+  let currentX = x0;
+  let currentY = y0;
+  let tableRows = [];
+
+  function formatSubstitution(exp, xVal, yVal, dec) {
+    let xStr = parseFloat(xVal.toFixed(dec)).toString();
+    let yStr = parseFloat(yVal.toFixed(dec)).toString();
+    let norm = normalizeExpression(exp);
+    let tokens = norm.split(/([\+\-\*\/\^ \(\)])/);
+    let formatted = tokens.map(t => {
+      let tl = t.trim().toLowerCase();
+      if (tl === 'x') return xStr;
+      if (tl === 'y') return yStr;
+      return t;
+    });
+    return formatMathRich(formatted.join(''));
+  }
+
+  for (let i = 0; i < stepsCount; i++) {
+    // 1. Calculate k1
+    let f1 = evaluateMultivariateMath(expr, currentX, currentY);
+    let k1 = h * f1;
+
+    // 2. Calculate k2
+    let x_mid = currentX + h / 2;
+    let y_mid2 = currentY + k1 / 2;
+    let f2 = evaluateMultivariateMath(expr, x_mid, y_mid2);
+    let k2 = h * f2;
+
+    // 3. Calculate k3
+    let y_mid3 = currentY + k2 / 2;
+    let f3 = evaluateMultivariateMath(expr, x_mid, y_mid3);
+    let k3 = h * f3;
+
+    // 4. Calculate k4
+    let x_end = currentX + h;
+    let y_end = currentY + k3;
+    let f4 = evaluateMultivariateMath(expr, x_end, y_end);
+    let k4 = h * f4;
+
+    // 5. Calculate nextY
+    let nextY = currentY + (k1 + 2 * k2 + 2 * k3 + k4) / 6;
+    let nextX = currentX + h;
+
+    let x_curr = parseFloat(currentX.toFixed(decimals));
+    let y_curr = parseFloat(currentY.toFixed(decimals));
+    let next_x_formatted = parseFloat(nextX.toFixed(decimals));
+    let next_y_formatted = parseFloat(nextY.toFixed(decimals));
+
+    // Formatted intermediate values for rendering
+    let f1_sub = formatSubstitution(expr, x_curr, y_curr, decimals);
+    let f2_sub = formatSubstitution(expr, x_mid, y_mid2, decimals);
+    let f3_sub = formatSubstitution(expr, x_mid, y_mid3, decimals);
+    let f4_sub = formatSubstitution(expr, x_end, y_end, decimals);
+
+    // Collapsed state logic
+    let isCollapsed = stepsCount > 3;
+    let contentDisplay = isCollapsed ? 'none' : 'block';
+    let iconRotation = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+
+    stepsHtml += `<div class="step-card">
+                    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                      <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div class="step-number">${stepCount++}</div>
+                        <div class="step-title">Iteration ${i + 1} (to x = ${next_x_formatted})</div>
+                      </div>
+                      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: ${iconRotation};">▼</div>
+                    </div>
+                    <div class="step-content" style="display: ${contentDisplay};">
+                      <div class="step-desc" style="margin-bottom: 1rem;">
+                        Starting values:
+                        <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; color: var(--teal); font-weight: 600; display: block; margin-top: 0.4rem;">x<sub>${i}</sub> = ${x_curr}, y<sub>${i}</sub> = ${y_curr}</span>
+                      </div>
+                      
+                      <!-- k1 calculation -->
+                      <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600;">Step A: Calculate k₁ (Slope at the beginning of interval)</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--navy); margin-bottom: 1rem; padding-left: 0.75rem; border-left: 2px solid var(--amber); display: flex; flex-direction: column; gap: 0.3rem;">
+                        <div>k₁ = h · f(x<sub>${i}</sub>, y<sub>${i}</sub>)</div>
+                        <div>k₁ = ${h} · f(${x_curr}, ${y_curr})</div>
+                        <div style="opacity: 0.8; font-size: 0.9rem;">f(${x_curr}, ${y_curr}) = ${f1_sub} = ${parseFloat(f1.toFixed(decimals))}</div>
+                        <div>k₁ = ${h} · (${parseFloat(f1.toFixed(decimals))}) = <strong>${parseFloat(k1.toFixed(decimals))}</strong></div>
+                      </div>
+
+                      <!-- k2 calculation -->
+                      <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600;">Step B: Calculate k₂ (Slope at the midpoint of interval, using k₁)</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--navy); margin-bottom: 1rem; padding-left: 0.75rem; border-left: 2px solid var(--teal); display: flex; flex-direction: column; gap: 0.3rem;">
+                        <div>k₂ = h · f(x<sub>${i}</sub> + h/2, y<sub>${i}</sub> + k₁/2)</div>
+                        <div>k₂ = ${h} · f(${x_curr} + ${h/2}, ${y_curr} + ${parseFloat((k1/2).toFixed(decimals))})</div>
+                        <div>k₂ = ${h} · f(${parseFloat(x_mid.toFixed(decimals))}, ${parseFloat(y_mid2.toFixed(decimals))})</div>
+                        <div style="opacity: 0.8; font-size: 0.9rem;">f(${parseFloat(x_mid.toFixed(decimals))}, ${parseFloat(y_mid2.toFixed(decimals))}) = ${f2_sub} = ${parseFloat(f2.toFixed(decimals))}</div>
+                        <div>k₂ = ${h} · (${parseFloat(f2.toFixed(decimals))}) = <strong>${parseFloat(k2.toFixed(decimals))}</strong></div>
+                      </div>
+
+                      <!-- k3 calculation -->
+                      <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600;">Step C: Calculate k₃ (Slope at the midpoint of interval, using k₂)</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--navy); margin-bottom: 1rem; padding-left: 0.75rem; border-left: 2px solid var(--teal); display: flex; flex-direction: column; gap: 0.3rem;">
+                        <div>k₃ = h · f(x<sub>${i}</sub> + h/2, y<sub>${i}</sub> + k₂/2)</div>
+                        <div>k₃ = ${h} · f(${x_curr} + ${h/2}, ${y_curr} + ${parseFloat((k2/2).toFixed(decimals))})</div>
+                        <div>k₃ = ${h} · f(${parseFloat(x_mid.toFixed(decimals))}, ${parseFloat(y_mid3.toFixed(decimals))})</div>
+                        <div style="opacity: 0.8; font-size: 0.9rem;">f(${parseFloat(x_mid.toFixed(decimals))}, ${parseFloat(y_mid3.toFixed(decimals))}) = ${f3_sub} = ${parseFloat(f3.toFixed(decimals))}</div>
+                        <div>k₃ = ${h} · (${parseFloat(f3.toFixed(decimals))}) = <strong>${parseFloat(k3.toFixed(decimals))}</strong></div>
+                      </div>
+
+                      <!-- k4 calculation -->
+                      <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600;">Step D: Calculate k₄ (Slope at the end of interval, using k₃)</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--navy); margin-bottom: 1rem; padding-left: 0.75rem; border-left: 2px solid var(--teal); display: flex; flex-direction: column; gap: 0.3rem;">
+                        <div>k₄ = h · f(x<sub>${i}</sub> + h, y<sub>${i}</sub> + k₃)</div>
+                        <div>k₄ = ${h} · f(${x_curr} + ${h}, ${y_curr} + ${parseFloat(k3.toFixed(decimals))})</div>
+                        <div>k₄ = ${h} · f(${parseFloat(x_end.toFixed(decimals))}, ${parseFloat(y_end.toFixed(decimals))})</div>
+                        <div style="opacity: 0.8; font-size: 0.9rem;">f(${parseFloat(x_end.toFixed(decimals))}, ${parseFloat(y_end.toFixed(decimals))}) = ${f4_sub} = ${parseFloat(f4.toFixed(decimals))}</div>
+                        <div>k₄ = ${h} · (${parseFloat(f4.toFixed(decimals))}) = <strong>${parseFloat(k4.toFixed(decimals))}</strong></div>
+                      </div>
+
+                      <!-- yn+1 calculation -->
+                      <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600;">Step E: Weighted Average & y<sub>${i+1}</sub> Calculation</div>
+                      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--navy); padding-left: 0.75rem; border-left: 2px solid var(--amber); display: flex; flex-direction: column; gap: 0.4rem;">
+                        <div>y<sub>${i+1}</sub> = y<sub>${i}</sub> + <sup>1</sup>/<sub>6</sub> (k₁ + 2k₂ + 2k₃ + k₄)</div>
+                        <div>y<sub>${i+1}</sub> = ${y_curr} + <sup>1</sup>/<sub>6</sub> (${parseFloat(k1.toFixed(decimals))} + 2(${parseFloat(k2.toFixed(decimals))}) + 2(${parseFloat(k3.toFixed(decimals))}) + ${parseFloat(k4.toFixed(decimals))})</div>
+                        <div>y<sub>${i+1}</sub> = ${y_curr} + <sup>1</sup>/<sub>6</sub> (${parseFloat((k1 + 2*k2 + 2*k3 + k4).toFixed(decimals))})</div>
+                        <div>y<sub>${i+1}</sub> = ${y_curr} + ${parseFloat(((k1 + 2*k2 + 2*k3 + k4)/6).toFixed(decimals))}</div>
+                        <div>y<sub>${i+1}</sub> = <strong>${next_y_formatted}</strong></div>
+                      </div>
+                    </div>
+                  </div>`;
+
+    currentX = nextX;
+    currentY = nextY;
+    tableRows.push({
+      step: i + 1,
+      x: currentX,
+      y: currentY
+    });
+  }
+
+  // Summary Table Card
+  let isCollapsedTable = stepsCount > 10;
+  let contentTableDisplay = isCollapsedTable ? 'none' : 'block';
+  let iconTableRotation = isCollapsedTable ? 'rotate(-90deg)' : 'rotate(0deg)';
+
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Iteration Summary Table</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted); transform: ${iconTableRotation};">▼</div>
+                  </div>
+                  <div class="step-content" style="display: ${contentTableDisplay};">
+                    <div style="overflow-x: auto; width: 100%;">
+                      <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Figtree', sans-serif;">
+                        <thead>
+                          <tr style="border-bottom: 2px solid var(--border); color: var(--navy); font-weight: 700; background: var(--bg);">
+                            <th style="padding: 12px 10px; font-size: 1rem; width: 80px; text-align: center;">Step</th>
+                            <th style="padding: 12px 10px; font-size: 1rem; font-family: 'IBM Plex Mono', monospace; text-align: center;">x</th>
+                            <th style="padding: 12px 10px; font-size: 1rem; font-family: 'IBM Plex Mono', monospace; text-align: center;">y</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px 10px; text-align: center; font-weight: 600;">0 (Initial)</td>
+                            <td style="padding: 12px 10px; text-align: center; font-family: 'IBM Plex Mono', monospace;">${x0.toFixed(decimals)}</td>
+                            <td style="padding: 12px 10px; text-align: center; font-family: 'IBM Plex Mono', monospace;">${y0.toFixed(decimals)}</td>
+                          </tr>
+                          ${tableRows.map(r => `
+                            <tr style="border-bottom: 1px solid var(--border); ${r.step === stepsCount ? 'background: rgba(13, 148, 136, 0.05); font-weight: 700;' : ''}">
+                              <td style="padding: 12px 10px; text-align: center; font-weight: 600;">${r.step}</td>
+                              <td style="padding: 12px 10px; text-align: center; font-family: 'IBM Plex Mono', monospace;">${r.x.toFixed(decimals)}</td>
+                              <td style="padding: 12px 10px; text-align: center; font-family: 'IBM Plex Mono', monospace; color: var(--teal); font-weight: 700;">${r.y.toFixed(decimals)}</td>
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>`;
+
+  // Final Answer Card and Educational Notes
+  let targetXFormatted = parseFloat(xn.toFixed(decimals)).toString();
+  
+  stepsHtml += `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2.5rem;">
+                  <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Approximate Solution Found!</div>
+                  <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 2rem;">RK4 Method completed successfully in <strong>${stepsCount}</strong> steps.</div>
+                  
+                  <div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); box-sizing: border-box; width: 100%; max-width: 600px;">
+                    <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 1rem;">Approximate Solution:</div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.6rem; color: var(--amber); font-weight: 700; text-align: center; margin: 0.5rem 0;">
+                      y(${targetXFormatted}) ≈ <span style="color:#ffffff;">${currentY.toFixed(decimals)}</span>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 2rem; padding: 1.25rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; text-align: left; box-sizing: border-box; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                      <span style="font-size: 1.2rem;">💡</span>
+                      <span style="font-weight: 700; color: var(--amber); font-size: 1.05rem; font-family: 'Fraunces', serif;">Educational Note</span>
+                    </div>
+                    <div style="font-size: 0.95rem; line-height: 1.6; color: rgba(255,255,255,0.8);">
+                      <p style="margin-bottom: 0.75rem;">
+                        <strong>Runge-Kutta 4th Order (RK4) method</strong> is significantly more accurate than the simple Euler Method.
+                      </p>
+                      <p style="margin-bottom: 0;">
+                        While Euler's method has a global error of order <strong>O(h)</strong> (first-order accuracy), RK4 has a global error of order <strong>O(h⁴)</strong> (fourth-order accuracy). This is because RK4 computes and averages slopes at multiple intermediate points in the interval (starting, midpoint, and ending) rather than relying solely on the slope at the beginning of the step.
                       </p>
                     </div>
                   </div>

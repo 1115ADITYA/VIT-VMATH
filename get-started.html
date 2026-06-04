@@ -402,6 +402,45 @@
                 </div>
               </div>
             </div>
+
+            <!-- Runge Kutta 4th Order Inputs Container -->
+            <div id="runge-kutta-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+              <div style="display: flex; gap: 1.5rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: flex-start;">
+                <!-- Function f(x, y) -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 200px; flex-grow: 2; max-width: 350px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">dy/dx = f(x, y)</span>
+                  <input type="text" id="runge-kutta-function" value="x + y" placeholder="e.g. x + y" style="width: 100%; padding: 0.6rem 1rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+                <!-- Initial x0 -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 100px; flex-grow: 1; max-width: 120px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Initial x₀</span>
+                  <input type="number" id="runge-kutta-x0" value="0" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+                <!-- Initial y0 -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 100px; flex-grow: 1; max-width: 120px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Initial y₀</span>
+                  <input type="number" id="runge-kutta-y0" value="1" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+                <!-- Step Size h -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 100px; flex-grow: 1; max-width: 120px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Step Size (h)</span>
+                  <input type="number" id="runge-kutta-h" value="0.1" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+                <!-- Target xn -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 100px; flex-grow: 1; max-width: 120px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Target xₙ</span>
+                  <input type="number" id="runge-kutta-xn" value="0.2" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+              </div>
+
+              <!-- Decimal Places -->
+              <div style="display: flex; gap: 2rem; justify-content: center; margin-top: 1rem; width: 100%; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-weight: 600; color: var(--navy); font-size: 0.95rem;">Decimal Places:</span>
+                  <input type="number" id="runge-kutta-decimals" value="4" step="1" min="0" max="15" style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; background: var(--bg);">
+                </div>
+              </div>
+            </div>
           </div>
 
 
