@@ -68,29 +68,29 @@ class InteractiveGraph {
   }
 
   setupEvents() {
-    this.canvas.addEventListener('mousedown', (e) => {
+    const startDrag = (clientX, clientY) => {
       this.isDragging = true;
-      this.lastMouse = { x: e.clientX, y: e.clientY };
+      this.lastMouse = { x: clientX, y: clientY };
       this.canvas.style.cursor = 'grabbing';
-    });
+    };
 
-    window.addEventListener('mouseup', () => {
+    const endDrag = () => {
       this.isDragging = false;
       this.canvas.style.cursor = 'default';
-    });
+    };
 
-    this.canvas.addEventListener('mousemove', (e) => {
+    const doDrag = (clientX, clientY) => {
       const rect = this.canvas.getBoundingClientRect();
       this.mouseHover = { 
-        x: e.clientX - rect.left, 
-        y: e.clientY - rect.top, 
+        x: clientX - rect.left, 
+        y: clientY - rect.top, 
         active: true 
       };
 
       if (this.isDragging) {
-        const dx = e.clientX - this.lastMouse.x;
-        const dy = e.clientY - this.lastMouse.y;
-        this.lastMouse = { x: e.clientX, y: e.clientY };
+        const dx = clientX - this.lastMouse.x;
+        const dy = clientY - this.lastMouse.y;
+        this.lastMouse = { x: clientX, y: clientY };
         
         const scaleX = (this.options.maxX - this.options.minX) / this.canvas.width;
         const scaleY = (this.options.maxY - this.options.minY) / this.canvas.height;
@@ -104,7 +104,28 @@ class InteractiveGraph {
       } else {
         this.checkTooltip();
       }
-    });
+    };
+
+    // Mouse events
+    this.canvas.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+    window.addEventListener('mouseup', endDrag);
+    this.canvas.addEventListener('mousemove', (e) => doDrag(e.clientX, e.clientY));
+
+    // Touch events
+    this.canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        startDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
+    
+    window.addEventListener('touchend', endDrag);
+    
+    this.canvas.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1) {
+        e.preventDefault(); // Prevent scrolling while panning the graph
+        doDrag(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: false });
 
     this.canvas.addEventListener('mouseleave', () => {
       this.mouseHover.active = false;
