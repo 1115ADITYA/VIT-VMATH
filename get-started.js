@@ -309,6 +309,9 @@ document.addEventListener('click', (e) => {
 });
 
 function openCalc(calcId, element, fromHistory = false) {
+  if (calcId === 'partial-differentiation') {
+    calcId = 'partial-diff';
+  }
   if (typeof currentCalc !== 'undefined') currentCalc = calcId;
   // Update sidebar active state
   document.querySelectorAll('.calc-item').forEach(el => el.classList.remove('active'));
@@ -338,6 +341,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const integrationWrapper = document.getElementById('integration-input-container');
   const matrixPowerWrapper = document.getElementById('matrix-power-input-container');
   const diagWrapper = document.getElementById('diag-input-container');
+  const partialDiffWrapper = document.getElementById('partial-diff-input-container');
 
   if (standardDim) standardDim.style.display = 'none';
   if (jacobiDim) jacobiDim.style.display = 'none';
@@ -348,6 +352,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (integrationWrapper) integrationWrapper.style.display = 'none';
   if (matrixPowerWrapper) matrixPowerWrapper.style.display = 'none';
   if (diagWrapper) diagWrapper.style.display = 'none';
+  if (partialDiffWrapper) partialDiffWrapper.style.display = 'none';
 
   if (calcId === 'none') {
     document.getElementById('overview-ui').style.display = 'flex';
@@ -384,6 +389,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Select a method and enter the matrix values below to diagonalize it.";
     } else if (calcId === 'eigen') {
       desc = "Enter the matrix below to calculate its characteristic equation, eigenvalues, and corresponding eigenvectors.";
+    } else if (calcId === 'partial-diff') {
+      desc = "Enter a multivariate function f(x, y) to compute first and second-order partial derivatives step-by-step.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -408,6 +415,8 @@ function openCalc(calcId, element, fromHistory = false) {
           reqNote.innerHTML = `<span style="color: var(--teal); display: flex; align-items: center; gap: 4px;">✓ Trapezoidal Rule works with any interval count (n).</span>`;
         }
       }
+    } else if (calcId === 'partial-diff') {
+      if (partialDiffWrapper) partialDiffWrapper.style.display = 'flex';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -444,7 +453,9 @@ function updateURL(sem, calc) {
   const url = new URL(window.location);
   url.searchParams.set('sem', sem);
   if (calc && calc !== 'none') {
-    url.searchParams.set('calc', calc);
+    let urlCalc = calc;
+    if (urlCalc === 'partial-diff') urlCalc = 'partial-differentiation';
+    url.searchParams.set('calc', urlCalc);
   } else {
     url.searchParams.delete('calc');
   }
@@ -462,8 +473,12 @@ window.addEventListener('popstate', (e) => {
 
 // Initialize from URL or default to Sem 1
 const initParams = new URLSearchParams(window.location.search);
-const initSem = parseInt(initParams.get('sem')) || 1;
-const initCalc = initParams.get('calc') || 'none';
+let initSem = parseInt(initParams.get('sem')) || 1;
+let initCalc = initParams.get('calc') || 'none';
+if (initCalc === 'partial-differentiation') {
+  initCalc = 'partial-diff';
+  initSem = 2;
+}
 
 // Call without pushing history initially
 selectSem(initSem, false, true);
@@ -898,6 +913,9 @@ function calculateMatrix() {
     return;
   } else if (currentCalc === 'diag') {
     calculateDiagonalization();
+    return;
+  } else if (currentCalc === 'partial-diff') {
+    calculatePartialDiff();
     return;
   }
   const output = document.getElementById('steps-output');
@@ -2360,6 +2378,671 @@ function evaluateMathDerivative(expr, xVal) {
   return (f_plus - f_minus) / (2 * h);
 }
 
+// ==========================================
+// MULTIVARIATE SYMBOLIC CALCULUS ENGINE
+// ==========================================
+
+function normalizeExpression(expr) {
+  let normalized = expr.replace(/\s+/g, ''); // remove spaces
+  normalized = normalized.toLowerCase();
+  
+  // Replace digit followed by variable or parenthesis or function
+  normalized = normalized.replace(/(\d)(?=[a-z\(])/g, '$1*');
+  
+  // Replace variable (x or y) followed by variable or parenthesis or function
+  normalized = normalized.replace(/([xy])(?=[a-z\(])/g, '$1*');
+  
+  // Replace closing parenthesis followed by digit, variable, or opening parenthesis
+  normalized = normalized.replace(/(\))(?=[a-z0-9\(])/g, '$1*');
+  
+  return normalized;
+}
+
+function hasVariable(expr, varName) {
+  const regex = new RegExp('\\b' + varName + '\\b', 'i');
+  return regex.test(expr);
+}
+
+function removeOuterParens(str) {
+  str = str.trim();
+  while (str.startsWith('(') && str.endsWith(')')) {
+    let depth = 0;
+    let match = true;
+    for (let i = 0; i < str.length - 1; i++) {
+      if (str[i] === '(') depth++;
+      if (str[i] === ')') depth--;
+      if (depth === 0) {
+        match = false;
+        break;
+      }
+    }
+    if (match && depth === 1 && str[str.length - 1] === ')') {
+      str = str.substring(1, str.length - 1).trim();
+    } else {
+      break;
+    }
+  }
+  return str;
+}
+
+function splitByOperator(str, op) {
+  let parts = [];
+  let current = '';
+  let parenDepth = 0;
+  for (let i = 0; i < str.length; i++) {
+    let char = str[i];
+    if (char === '(') parenDepth++;
+    if (char === ')') parenDepth--;
+    
+    if (char === op && parenDepth === 0) {
+      parts.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  if (current) {
+    parts.push(current.trim());
+  }
+  return parts;
+}
+
+function evaluateMultivariateMath(expr, xVal, yVal) {
+  let jsExpr = expr.toLowerCase().replace(/\s+/g, '');
+  jsExpr = normalizeExpression(jsExpr);
+  
+  jsExpr = jsExpr.replace(/\bsin\b/g, 'Math.sin')
+                 .replace(/\bcos\b/g, 'Math.cos')
+                 .replace(/\btan\b/g, 'Math.tan')
+                 .replace(/\bexp\b/g, 'Math.exp')
+                 .replace(/\bln\b/g, 'Math.log')
+                 .replace(/\bpi\b/g, 'Math.PI');
+                 
+  jsExpr = jsExpr.replace(/\be\^(x|y|\((.*?)\))/g, (match, p1, p2) => {
+    let inner = p2 || p1;
+    return `Math.exp(${inner})`;
+  });
+  
+  jsExpr = jsExpr.replace(/\^/g, '**');
+  
+  try {
+    const fn = new Function('x', 'y', `with(Math) { return ${jsExpr}; }`);
+    let result = fn(xVal, yVal);
+    if (isNaN(result) || !isFinite(result)) return NaN;
+    return result;
+  } catch (err) {
+    return NaN;
+  }
+}
+
+function validateMultivariateFunction(expr) {
+  expr = expr.trim();
+  if (expr === '') {
+    return { isValid: false, error: "Function expression cannot be empty." };
+  }
+  
+  let clean = expr.replace(/\s+/g, '');
+  if (/[\+\-\*\/]{2,}/.test(clean)) {
+    if (/\*{2,}/.test(clean)) {
+      return { isValid: false, error: "Invalid operator syntax: consecutive multiplication symbols (e.g., '***')." };
+    }
+    return { isValid: false, error: "Invalid operator syntax: consecutive operators." };
+  }
+  
+  let depth = 0;
+  for (let i = 0; i < expr.length; i++) {
+    if (expr[i] === '(') depth++;
+    if (expr[i] === ')') depth--;
+    if (depth < 0) {
+      return { isValid: false, error: "Unmatched parentheses: closing parenthesis ')' found before opening parenthesis '('." };
+    }
+  }
+  if (depth !== 0) {
+    return { isValid: false, error: "Unmatched parentheses: missing closing parenthesis ')'." };
+  }
+  
+  if (/[\+\-\*\/^]$/.test(clean)) {
+    return { isValid: false, error: "Expression cannot end with an operator." };
+  }
+  if (/^[\*\/^]/.test(clean)) {
+    return { isValid: false, error: "Expression cannot start with this operator." };
+  }
+  
+  let stripped = clean.toLowerCase()
+    .replace(/sin|cos|tan|exp|ln/g, '')
+    .replace(/[a-z]/g, (match) => {
+      if (match === 'x' || match === 'y' || match === 'e') return '';
+      return match;
+    });
+  stripped = stripped.replace(/[0-9\.\+\-\*\/\^\(\)]/g, '');
+  if (stripped.length > 0) {
+    return { isValid: false, error: `Invalid symbol(s) or variable(s) found in expression: '${stripped}'. Only variables 'x' and 'y' are allowed.` };
+  }
+  
+  let testVal = evaluateMultivariateMath(expr, 1.0, 1.0);
+  if (isNaN(testVal)) {
+    return { isValid: false, error: "Invalid function syntax. Please check for unmatched parentheses, missing brackets, or dangling operators." };
+  }
+  
+  return { isValid: true };
+}
+
+function formatSuperscript(expr) {
+  if (!expr) return '';
+  return expr.replace(/\^2\b/g, '²')
+             .replace(/\^3\b/g, '³')
+             .replace(/\^4\b/g, '⁴')
+             .replace(/\^5\b/g, '⁵')
+             .replace(/\^6\b/g, '⁶')
+             .replace(/\^7\b/g, '⁷')
+             .replace(/\^8\b/g, '⁸')
+             .replace(/\^9\b/g, '⁹')
+             .replace(/\^n\b/g, 'ⁿ')
+             .replace(/\^(\d+)/g, (match, p) => {
+                const map = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹' };
+                return p.split('').map(c => map[c] || c).join('');
+             });
+}
+
+function formatMathRich(expr) {
+  if (!expr) return '';
+  let formatted = expr.replace(/\s+/g, '');
+  formatted = formatted.replace(/(\d)\*(\d)/g, '$1 × $2');
+  formatted = formatted.replace(/\*/g, '');
+  formatted = formatSuperscript(formatted);
+  // Add spaces around + and -
+  formatted = formatted.replace(/\+/g, ' + ').replace(/\-/g, ' - ').replace(/\s+/g, ' ').trim();
+  if (formatted.startsWith('- ')) {
+    formatted = '-' + formatted.slice(2);
+  }
+  return formatted;
+}
+
+function simplifyTermMultivariate(term) {
+  let isNegative = false;
+  term = term.trim();
+  if (term.startsWith('-')) {
+    isNegative = true;
+    term = term.substring(1).trim();
+  }
+  
+  term = removeOuterParens(term);
+  
+  if (term === '0') return '0';
+  if (term === '1') return isNegative ? '-1' : '1';
+  
+  let factors = splitByOperator(term, '*');
+  if (factors.length <= 1) {
+    return isNegative ? '-' + term : term;
+  }
+  
+  let coef = 1;
+  let xPower = 0;
+  let yPower = 0;
+  let otherFactors = [];
+  
+  for (let factor of factors) {
+    factor = removeOuterParens(factor);
+    if (factor === '0') return '0';
+    if (factor === '1') continue;
+    
+    let factorIsNegative = false;
+    if (factor.startsWith('-')) {
+      factorIsNegative = true;
+      factor = factor.substring(1).trim();
+    }
+    if (factor.startsWith('+')) {
+      factor = factor.substring(1).trim();
+    }
+    
+    if (/^[+-]?\d+(?:\.\d+)?$/.test(factor)) {
+      let val = parseFloat(factor);
+      if (factorIsNegative) val = -val;
+      coef *= val;
+      continue;
+    }
+    
+    if (factorIsNegative) {
+      isNegative = !isNegative;
+    }
+    
+    let xMatch = factor.match(/^x\^([+-]?\d+(?:\.\d+)?)$/) || (factor === 'x' ? ['x', '1'] : null);
+    if (xMatch) {
+      xPower += parseFloat(xMatch[1]);
+      continue;
+    }
+    
+    let yMatch = factor.match(/^y\^([+-]?\d+(?:\.\d+)?)$/) || (factor === 'y' ? ['y', '1'] : null);
+    if (yMatch) {
+      yPower += parseFloat(yMatch[1]);
+      continue;
+    }
+    
+    otherFactors.push(factor);
+  }
+  
+  const decimalsEl = document.getElementById('partial-diff-decimals');
+  let decimals = decimalsEl ? parseInt(decimalsEl.value) : 4;
+  if (isNaN(decimals) || decimals < 0) decimals = 4;
+  coef = parseFloat(coef.toFixed(decimals));
+
+  if (isNegative) coef = -coef;
+  
+  let parts = [];
+  if (coef !== 1 || (xPower === 0 && yPower === 0 && otherFactors.length === 0)) {
+    if (coef === -1 && (xPower > 0 || yPower > 0 || otherFactors.length > 0)) {
+      parts.push('-');
+    } else {
+      parts.push(coef.toString());
+    }
+  }
+  
+  if (xPower > 0) {
+    if (xPower === 1) parts.push('x');
+    else parts.push(`x^${xPower}`);
+  }
+  
+  if (yPower > 0) {
+    if (yPower === 1) parts.push('y');
+    else parts.push(`y^${yPower}`);
+  }
+  
+  for (let other of otherFactors) {
+    parts.push(other);
+  }
+  
+  if (parts[0] === '-') {
+    if (parts.length > 1) {
+      parts[1] = '-' + parts[1];
+      parts.shift();
+    } else {
+      return '-1';
+    }
+  }
+  
+  return parts.join('*');
+}
+
+function simplifySymbolicMultivariate(expr) {
+  expr = expr.replace(/\s+/g, '');
+  if (!expr) return '0';
+  
+  expr = removeOuterParens(expr);
+  
+  // 1. Check for addition/subtraction at parent depth 0
+  let terms = [];
+  let current = '';
+  let parenDepth = 0;
+  for (let i = 0; i < expr.length; i++) {
+    let char = expr[i];
+    if (char === '(') parenDepth++;
+    if (char === ')') parenDepth--;
+    if ((char === '+' || char === '-') && parenDepth === 0) {
+      if (current) terms.push(current);
+      current = char;
+    } else {
+      current += char;
+    }
+  }
+  if (current) terms.push(current);
+  
+  if (terms.length > 1) {
+    let simplifiedTerms = terms.map(t => {
+      let sign = '';
+      if (t.startsWith('+')) {
+        t = t.substring(1);
+      } else if (t.startsWith('-')) {
+        sign = '-';
+        t = t.substring(1);
+      }
+      let simplified = simplifySymbolicMultivariate(t);
+      if (simplified === '0' || simplified === '') return '';
+      if (simplified.startsWith('-')) {
+        return sign === '-' ? simplified.substring(1) : simplified;
+      }
+      return sign + simplified;
+    });
+    
+    simplifiedTerms = simplifiedTerms.filter(t => t !== '');
+    if (simplifiedTerms.length === 0) return '0';
+    
+    let merged = simplifiedTerms[0];
+    for (let i = 1; i < simplifiedTerms.length; i++) {
+      let t = simplifiedTerms[i];
+      if (t.startsWith('-')) {
+        merged += ' - ' + t.substring(1);
+      } else {
+        merged += ' + ' + t;
+      }
+    }
+    return merged;
+  }
+  
+  // 2. Check for division at parent depth 0
+  let divParts = splitByOperator(expr, '/');
+  if (divParts.length > 1) {
+    let num = simplifySymbolicMultivariate(divParts[0]);
+    let den = simplifySymbolicMultivariate(divParts.slice(1).join('/'));
+    if (num === '0') return '0';
+    if (den === '1') return num;
+    return `(${num})/(${den})`;
+  }
+  
+  // 3. Check for multiplication at parent depth 0
+  let mulParts = splitByOperator(expr, '*');
+  if (mulParts.length > 1) {
+    let simplifiedFactors = mulParts.map(f => simplifySymbolicMultivariate(f));
+    if (simplifiedFactors.includes('0')) return '0';
+    simplifiedFactors = simplifiedFactors.filter(f => f !== '1');
+    if (simplifiedFactors.length === 0) return '1';
+    
+    let termResult = simplifyTermMultivariate(simplifiedFactors.join('*'));
+    return termResult;
+  }
+  
+  // 4. Basic factors
+  expr = removeOuterParens(expr);
+  
+  let isNegative = false;
+  if (expr.startsWith('-')) {
+    isNegative = true;
+    expr = expr.substring(1).trim();
+  }
+  
+  let result = expr;
+  
+  if (/^\d+(?:\.\d+)?$/.test(expr)) {
+    const decimalsEl = document.getElementById('partial-diff-decimals');
+    let decimals = decimalsEl ? parseInt(decimalsEl.value) : 4;
+    if (isNaN(decimals) || decimals < 0) decimals = 4;
+    let numVal = parseFloat(expr);
+    numVal = parseFloat(numVal.toFixed(decimals));
+    result = numVal.toString();
+  }
+  
+  return isNegative ? '-' + result : result;
+}
+
+function differentiateTermMultivariate(term, wrt) {
+  term = term.trim();
+  if (term === '') return '0';
+  
+  if (term.startsWith('+')) {
+    term = term.substring(1).trim();
+  }
+  
+  let isNegative = false;
+  if (term.startsWith('-')) {
+    isNegative = true;
+    term = term.substring(1).trim();
+  }
+  
+  term = removeOuterParens(term);
+  
+  let result = '0';
+  
+  if (!hasVariable(term, wrt)) {
+    return '0';
+  }
+  
+  let divParts = splitByOperator(term, '/');
+  if (divParts.length > 1) {
+    let num = divParts[0];
+    let den = divParts.slice(1).join('/');
+    let dNum = differentiateSymbolicMultivariate(num, wrt);
+    let dDen = differentiateSymbolicMultivariate(den, wrt);
+    result = `((${den})*(${dNum}) - (${num})*(${dDen})) / (${den})^2`;
+    if (isNegative) return `-(${result})`;
+    return result;
+  }
+  
+  let mulParts = splitByOperator(term, '*');
+  if (mulParts.length > 1) {
+    let left = mulParts[0];
+    let right = mulParts.slice(1).join('*');
+    let dLeft = differentiateSymbolicMultivariate(left, wrt);
+    let dRight = differentiateSymbolicMultivariate(right, wrt);
+    result = `(${left})*(${dRight}) + (${right})*(${dLeft})`;
+    if (isNegative) return `-(${result})`;
+    return result;
+  }
+  
+  if (term === wrt) {
+    result = '1';
+  } else {
+    let powerMatch = term.match(/^([xy])\^([+-]?\d+(?:\.\d+)?)$/);
+    if (powerMatch && powerMatch[1] === wrt) {
+      let p = parseFloat(powerMatch[2]);
+      if (p === 1) result = '1';
+      else if (p === 2) result = `2*${wrt}`;
+      else result = `${p}*${wrt}^${p-1}`;
+    } else {
+      let sinMatch = term.match(/^sin\((.*)\)$/);
+      if (sinMatch) {
+        let arg = sinMatch[1];
+        let dArg = differentiateSymbolicMultivariate(arg, wrt);
+        result = `cos(${arg})*(${dArg})`;
+      } else {
+        let cosMatch = term.match(/^cos\((.*)\)$/);
+        if (cosMatch) {
+          let arg = cosMatch[1];
+          let dArg = differentiateSymbolicMultivariate(arg, wrt);
+          result = `-sin(${arg})*(${dArg})`;
+        } else {
+          let expMatch = term.match(/^e\^(.*)$/) || term.match(/^exp\((.*)\)$/);
+          if (expMatch) {
+            let arg = expMatch[1];
+            let dArg = differentiateSymbolicMultivariate(arg, wrt);
+            result = `e^(${arg})*(${dArg})`;
+          } else {
+            let lnMatch = term.match(/^ln\((.*)\)$/);
+            if (lnMatch) {
+              let arg = lnMatch[1];
+              let dArg = differentiateSymbolicMultivariate(arg, wrt);
+              result = `(${dArg})/(${arg})`;
+            } else {
+              let tanMatch = term.match(/^tan\((.*)\)$/);
+              if (tanMatch) {
+                let arg = tanMatch[1];
+                let dArg = differentiateSymbolicMultivariate(arg, wrt);
+                result = `(1/cos(${arg})^2)*(${dArg})`;
+              } else {
+                result = `d/d${wrt}(${term})`;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  if (isNegative) return `-${result}`;
+  return result;
+}
+
+function differentiateSymbolicMultivariate(expr, wrt) {
+  expr = expr.replace(/\s+/g, '');
+  if (!expr) return '0';
+  
+  let terms = [];
+  let current = '';
+  let parenDepth = 0;
+  
+  for (let i = 0; i < expr.length; i++) {
+    let char = expr[i];
+    if (char === '(') parenDepth++;
+    if (char === ')') parenDepth--;
+    
+    if ((char === '+' || char === '-') && parenDepth === 0) {
+      if (current) terms.push(current);
+      current = char;
+    } else {
+      current += char;
+    }
+  }
+  if (current) terms.push(current);
+  
+  let derivedTerms = terms.map(term => {
+    let d = differentiateTermMultivariate(term, wrt);
+    return simplifySymbolicMultivariate(d);
+  });
+  
+  let merged = '';
+  for (let term of derivedTerms) {
+    if (term === '0' || term === '') continue;
+    
+    if (merged.length > 0) {
+      if (term.startsWith('-')) {
+        merged += ' - ' + term.substring(1);
+      } else {
+        merged += ' + ' + term;
+      }
+    } else {
+      merged += term;
+    }
+  }
+  
+  if (!merged) return '0';
+  return simplifySymbolicMultivariate(merged);
+}
+
+function differentiateTermWithExplanation(term, wrt) {
+  let isNegative = false;
+  let termClean = term.trim();
+  if (termClean.startsWith('+')) {
+    termClean = termClean.substring(1).trim();
+  }
+  if (termClean.startsWith('-')) {
+    isNegative = true;
+    termClean = termClean.substring(1).trim();
+  }
+  
+  let cleanTerm = formatMathRich(term);
+  let wrtUpper = wrt.toUpperCase();
+  let otherVar = wrt === 'x' ? 'y' : 'x';
+  
+  let resultVal = differentiateTermMultivariate(termClean, wrt);
+  let resultValClean = simplifySymbolicMultivariate(resultVal);
+  let finalResult = isNegative ? simplifySymbolicMultivariate(`-(${resultValClean})`) : resultValClean;
+  
+  if (!hasVariable(termClean, wrt)) {
+    return {
+      term: cleanTerm,
+      explanation: `The term <code>${cleanTerm}</code> does not contain the variable <strong>${wrt}</strong>, so it is treated as a constant.
+                    <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.25rem; display: block; color: var(--amber);">∂/∂${wrt}(${cleanTerm}) = 0</span>`,
+      derivative: '0'
+    };
+  }
+  
+  if (termClean === wrt) {
+    let deriv = isNegative ? '-1' : '1';
+    return {
+      term: cleanTerm,
+      explanation: `The term is the variable <strong>${wrt}</strong> itself. Its derivative with respect to itself is 1.
+                    <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.25rem; display: block; color: var(--teal);">∂/∂${wrt}(${cleanTerm}) = ${deriv}</span>`,
+      derivative: deriv
+    };
+  }
+  
+  let mulParts = splitByOperator(termClean, '*');
+  if (mulParts.length > 1) {
+    let constantFactors = [];
+    let variableFactors = [];
+    for (let factor of mulParts) {
+      if (!hasVariable(factor, wrt)) {
+        constantFactors.push(factor);
+      } else {
+        variableFactors.push(factor);
+      }
+    }
+    
+    if (constantFactors.length > 0 && variableFactors.length > 0) {
+      let constantPart = constantFactors.join('*');
+      let variablePart = variableFactors.join('*');
+      
+      let dVarPart = differentiateSymbolicMultivariate(variablePart, wrt);
+      let dVarPartClean = simplifySymbolicMultivariate(dVarPart);
+      
+      let constantPartClean = formatMathRich(constantPart);
+      let variablePartClean = formatMathRich(variablePart);
+      let dVarPartCleanFormat = formatMathRich(dVarPartClean);
+      let finalResultFormat = formatMathRich(finalResult);
+      
+      let stepExplanation = `We factor out the constant multiplier <code>${constantPartClean}</code> (treating <strong>${otherVar}</strong> as constant) and differentiate <code>${variablePartClean}</code> with respect to <strong>${wrt}</strong>:
+                             <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.25rem; display: block;">∂/∂${wrt}(${formatMathRich(termClean)}) = ${constantPartClean} · [ ∂/∂${wrt}(${variablePartClean}) ]</span>
+                             <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${constantPartClean} · (${dVarPartCleanFormat})</span>
+                             <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block; color: var(--teal);">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${finalResultFormat}</span>`;
+      
+      return {
+        term: cleanTerm,
+        explanation: stepExplanation,
+        derivative: finalResult
+      };
+    }
+  }
+  
+  let powerMatch = termClean.match(/^([xy])\^([+-]?\d+(?:\.\d+)?)$/);
+  if (powerMatch && powerMatch[1] === wrt) {
+    let p = parseFloat(powerMatch[2]);
+    let finalResultFormat = formatMathRich(finalResult);
+    let stepExplanation = `Using the power rule <span style="font-family: 'IBM Plex Mono', monospace;">d/d${wrt}(${wrt}<sup>n</sup>) = n${wrt}<sup>n-1</sup></span>:
+                           <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.25rem; display: block; color: var(--teal);">∂/∂${wrt}(${cleanTerm}) = ${finalResultFormat}</span>`;
+    return {
+      term: cleanTerm,
+      explanation: stepExplanation,
+      derivative: finalResult
+    };
+  }
+  
+  let fnMatch = termClean.match(/^(sin|cos|exp|ln|tan)\((.*)\)$/) || termClean.match(/^e\^(.*)$/);
+  if (fnMatch) {
+    let fnName = fnMatch[1] || 'exp';
+    let arg = fnMatch[2] || fnMatch[1];
+    if (termClean.startsWith('e^')) {
+      fnName = 'e^';
+      arg = termClean.substring(2);
+    }
+    
+    let dArg = differentiateSymbolicMultivariate(arg, wrt);
+    let dArgClean = simplifySymbolicMultivariate(dArg);
+    
+    let argClean = formatMathRich(arg);
+    let dArgCleanFormat = formatMathRich(dArgClean);
+    let finalResultFormat = formatMathRich(finalResult);
+    
+    let stepExplanation = `Using the chain rule, we differentiate the outer function <code>${fnName}</code> and multiply by the derivative of the inner argument <code>${argClean}</code>:
+                           <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.25rem; display: block;">∂/∂${wrt}(${formatMathRich(termClean)}) = derivative_of_outer · ∂/∂${wrt}(${argClean})</span>`;
+    
+    if (fnName === 'sin') {
+      stepExplanation += `<span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= cos(${argClean}) · (${dArgCleanFormat})</span>`;
+    } else if (fnName === 'cos') {
+      stepExplanation += `<span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= -sin(${argClean}) · (${dArgCleanFormat})</span>`;
+    } else if (fnName === 'e^' || fnName === 'exp') {
+      stepExplanation += `<span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= e<sup>${argClean}</sup> · (${dArgCleanFormat})</span>`;
+    } else if (fnName === 'ln') {
+      stepExplanation += `<span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= (1 / ${argClean}) · (${dArgCleanFormat})</span>`;
+    } else if (fnName === 'tan') {
+      stepExplanation += `<span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= (1 / cos(${argClean})²) · (${dArgCleanFormat})</span>`;
+    }
+    
+    stepExplanation += `<span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block; color: var(--teal);">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${finalResultFormat}</span>`;
+    
+    return {
+      term: cleanTerm,
+      explanation: stepExplanation,
+      derivative: finalResult
+    };
+  }
+  
+  let finalResultFormat = formatMathRich(finalResult);
+  return {
+    term: cleanTerm,
+    explanation: `Differentiating the term <code>${cleanTerm}</code> with respect to <strong>${wrt}</strong> yields:
+                  <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.25rem; display: block; color: var(--teal);">∂/∂${wrt}(${cleanTerm}) = ${finalResultFormat}</span>`,
+    derivative: finalResult
+  };
+}
+
 function generateNewtonGraphSVG(expr, root, initialGuess) {
   let minX = Math.min(root, initialGuess) - 1.0;
   let maxX = Math.max(root, initialGuess) + 1.0;
@@ -2466,6 +3149,320 @@ function generateNewtonGraphSVG(expr, root, initialGuess) {
         </div>
       `;
   return graphHtml;
+}
+
+function calculatePartialDiff() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let expr = document.getElementById('partial-diff-function').value.trim();
+  let decimalsValStr = document.getElementById('partial-diff-decimals').value.trim();
+  
+  if (expr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  
+  // Validation
+  let validationResult = validateMultivariateFunction(expr);
+  if (!validationResult.isValid) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Function Input</div></div><div class="step-desc">${validationResult.error}</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  
+  let decimals = parseInt(decimalsValStr);
+  if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let stepsHtml = '';
+  let stepCount = 1;
+  
+  // Step 1: Given Function
+  let richExpr = formatMathRich(expr);
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Given Function</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc">We are given the following function of two variables:</div>
+                    <div style="font-family: 'Fraunces', serif; font-size: 1.6rem; color: var(--navy); text-align: center; margin: 1.5rem 0; font-weight: 700;">
+                      f(x, y) = ${richExpr}
+                    </div>
+                  </div>
+                </div>`;
+
+  // Step 2: Partial Derivative with respect to x
+  let xTerms = splitIntoTerms(expr);
+  let xDetails = xTerms.map(t => differentiateTermWithExplanation(t, 'x'));
+  let dfdxVal = differentiateSymbolicMultivariate(expr, 'x');
+  let dfdxValClean = simplifySymbolicMultivariate(dfdxVal);
+  let dfdxValCleanFormat = formatMathRich(dfdxValClean);
+  
+  let xStepsList = xDetails.map((d, index) => {
+    return `<div style="margin-bottom: 1.25rem; padding: 1rem; border-left: 3px solid var(--amber); background: var(--bg2); border-radius: 8px;">
+              <strong style="color: var(--navy); display: block; margin-bottom: 0.4rem;">Term ${index + 1}: <code>${d.term}</code></strong>
+              <div style="font-size: 0.95rem; color: var(--text); line-height: 1.6;">${d.explanation}</div>
+            </div>`;
+  }).join('');
+  
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Partial Derivative with respect to x (∂f/∂x)</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 1rem;">
+                      To find <strong>∂f/∂x</strong>, we differentiate the function with respect to <strong>x</strong>, treating <strong>y</strong> as a constant:
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                      ${xStepsList}
+                    </div>
+                    <div class="step-desc" style="margin-top: 1rem;">
+                      Summing up the derivatives of the individual terms and simplifying, we get:
+                    </div>
+                    <div style="font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--teal); text-align: center; margin: 1.5rem 0; font-weight: 700;">
+                      ∂f/∂x = ${dfdxValCleanFormat}
+                    </div>
+                  </div>
+                </div>`;
+
+  // Step 3: Partial Derivative with respect to y
+  let yTerms = splitIntoTerms(expr);
+  let yDetails = yTerms.map(t => differentiateTermWithExplanation(t, 'y'));
+  let dfdyVal = differentiateSymbolicMultivariate(expr, 'y');
+  let dfdyValClean = simplifySymbolicMultivariate(dfdyVal);
+  let dfdyValCleanFormat = formatMathRich(dfdyValClean);
+  
+  let yStepsList = yDetails.map((d, index) => {
+    return `<div style="margin-bottom: 1.25rem; padding: 1rem; border-left: 3px solid var(--amber); background: var(--bg2); border-radius: 8px;">
+              <strong style="color: var(--navy); display: block; margin-bottom: 0.4rem;">Term ${index + 1}: <code>${d.term}</code></strong>
+              <div style="font-size: 0.95rem; color: var(--text); line-height: 1.6;">${d.explanation}</div>
+            </div>`;
+  }).join('');
+  
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Partial Derivative with respect to y (∂f/∂y)</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 1rem;">
+                      To find <strong>∂f/∂y</strong>, we differentiate the function with respect to <strong>y</strong>, treating <strong>x</strong> as a constant:
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                      ${yStepsList}
+                    </div>
+                    <div class="step-desc" style="margin-top: 1rem;">
+                      Summing up the derivatives of the individual terms and simplifying, we get:
+                    </div>
+                    <div style="font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--teal); text-align: center; margin: 1.5rem 0; font-weight: 700;">
+                      ∂f/∂y = ${dfdyValCleanFormat}
+                    </div>
+                  </div>
+                </div>`;
+
+  // Step 4: Second Order Partial Derivatives
+  let d2fdx2Val = differentiateSymbolicMultivariate(dfdxValClean, 'x');
+  let d2fdx2ValClean = simplifySymbolicMultivariate(d2fdx2Val);
+  let d2fdx2ValCleanFormat = formatMathRich(d2fdx2ValClean);
+  
+  let d2fdy2Val = differentiateSymbolicMultivariate(dfdyValClean, 'y');
+  let d2fdy2ValClean = simplifySymbolicMultivariate(d2fdy2Val);
+  let d2fdy2ValCleanFormat = formatMathRich(d2fdy2ValClean);
+  
+  let d2fdxdyVal = differentiateSymbolicMultivariate(dfdyValClean, 'x');
+  let d2fdxdyValClean = simplifySymbolicMultivariate(d2fdxdyVal);
+  let d2fdxdyValCleanFormat = formatMathRich(d2fdxdyValClean);
+
+  // Card 4a: ∂²f/∂x²
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Second Order: ∂²f/∂x²</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 0.5rem;">
+                      The second-order partial derivative <strong>∂²f/∂x²</strong> is computed by differentiating the first-order derivative <code>∂f/∂x = ${dfdxValCleanFormat}</code> with respect to <strong>x</strong> again:
+                    </div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1rem 0;">
+                      ∂²f/∂x² = ∂/∂x ( ${dfdxValCleanFormat} )
+                    </div>
+                    <div style="font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--teal); text-align: center; margin: 1.5rem 0; font-weight: 700;">
+                      ∂²f/∂x² = ${d2fdx2ValCleanFormat}
+                    </div>
+                  </div>
+                </div>`;
+
+  // Card 4b: ∂²f/∂y²
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Second Order: ∂²f/∂y²</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 0.5rem;">
+                      The second-order partial derivative <strong>∂²f/∂y²</strong> is computed by differentiating the first-order derivative <code>∂f/∂y = ${dfdyValCleanFormat}</code> with respect to <strong>y</strong> again:
+                    </div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1rem 0;">
+                      ∂²f/∂y² = ∂/∂y ( ${dfdyValCleanFormat} )
+                    </div>
+                    <div style="font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--teal); text-align: center; margin: 1.5rem 0; font-weight: 700;">
+                      ∂²f/∂y² = ${d2fdy2ValCleanFormat}
+                    </div>
+                  </div>
+                </div>`;
+
+  // Card 4c: ∂²f/∂x∂y
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Second Order: ∂²f/∂x∂y (Mixed Derivative)</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 0.5rem;">
+                      The mixed second-order partial derivative <strong>∂²f/∂x∂y</strong> is computed by differentiating <code>∂f/∂y = ${dfdyValCleanFormat}</code> with respect to <strong>x</strong>:
+                    </div>
+                    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1rem 0;">
+                      ∂²f/∂x∂y = ∂/∂x ( ${dfdyValCleanFormat} )
+                    </div>
+                    <div style="font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--teal); text-align: center; margin: 1.5rem 0; font-weight: 700;">
+                      ∂²f/∂x∂y = ${d2fdxdyValCleanFormat}
+                    </div>
+                    <div style="font-size:0.9rem; line-height:1.5; color:var(--muted); font-style:italic;">
+                      Note: According to Clairaut's Theorem, for functions with continuous second-order derivatives, the mixed derivatives are equal: ∂²f/∂x∂y = ∂²f/∂y∂x.
+                    </div>
+                  </div>
+                </div>`;
+
+  // Step 5: Summary Card
+  stepsHtml += `<div class="step-card">
+                  <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                      <div class="step-number">${stepCount++}</div>
+                      <div class="step-title">Derivatives Summary Table</div>
+                    </div>
+                    <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+                  </div>
+                  <div class="step-content">
+                    <div class="step-desc" style="margin-bottom: 1.5rem;">
+                      Here is the summary of all first and second-order partial derivatives computed for the function:
+                    </div>
+                    <div style="overflow-x: auto; width: 100%;">
+                      <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: 'Figtree', sans-serif;">
+                        <thead>
+                          <tr style="border-bottom: 2px solid var(--border); color: var(--navy); font-weight: 700;">
+                            <th style="padding: 10px 8px; font-size: 1rem;">Derivative Order</th>
+                            <th style="padding: 10px 8px; font-size: 1rem;">Notation</th>
+                            <th style="padding: 10px 8px; font-size: 1rem; font-family: 'IBM Plex Mono', monospace;">Expression</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 10px 8px; font-weight: 600;">First-Order (w.r.t. x)</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--amber);">∂f/∂x</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--navy);">${dfdxValCleanFormat}</td>
+                          </tr>
+                          <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 10px 8px; font-weight: 600;">First-Order (w.r.t. y)</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--amber);">∂f/∂y</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--navy);">${dfdyValCleanFormat}</td>
+                          </tr>
+                          <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 10px 8px; font-weight: 600;">Second-Order (x)</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--amber);">∂²f/∂x²</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--navy);">${d2fdx2ValCleanFormat}</td>
+                          </tr>
+                          <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 10px 8px; font-weight: 600;">Second-Order (y)</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--amber);">∂²f/∂y²</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--navy);">${d2fdy2ValCleanFormat}</td>
+                          </tr>
+                          <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 10px 8px; font-weight: 600;">Mixed Second-Order</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--amber);">∂²f/∂x∂y</td>
+                            <td style="padding: 10px 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--navy);">${d2fdxdyValCleanFormat}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>`;
+
+  // Step 6: Final Answer Card and Educational Notes
+  stepsHtml += `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2.5rem;">
+                  <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Derivatives Successfully Calculated!</div>
+                  <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 2rem;">The partial derivatives of f(x, y) have been solved symbolically.</div>
+                  
+                  <div style="display:inline-block; text-align: left; padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); box-sizing: border-box; width: 100%; max-width: 600px;">
+                    <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 1rem;">Summary of Solutions:</div>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem;">
+                      <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 1.1rem;">∂f/∂x:</span>
+                        <span style="color: var(--amber); font-weight: 700;">${dfdxValCleanFormat}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 1.1rem;">∂f/∂y:</span>
+                        <span style="color: var(--amber); font-weight: 700;">${dfdyValCleanFormat}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 1.1rem;">∂²f/∂x²:</span>
+                        <span style="color: var(--teal); font-weight: 700;">${d2fdx2ValCleanFormat}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 1.1rem;">∂²f/∂y²:</span>
+                        <span style="color: var(--teal); font-weight: 700;">${d2fdy2ValCleanFormat}</span>
+                      </div>
+                      <div style="display: flex; justify-content: space-between; padding-bottom: 0.25rem;">
+                        <span style="color: rgba(255,255,255,0.6); font-size: 1.1rem;">∂²f/∂x∂y:</span>
+                        <span style="color: var(--teal); font-weight: 700;">${d2fdxdyValCleanFormat}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="margin-top: 2rem; padding: 1.25rem; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; text-align: left; box-sizing: border-box; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto;">
+                    <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
+                      <span style="font-size: 1.2rem;">💡</span>
+                      <span style="font-weight: 700; color: var(--amber); font-size: 1.05rem; font-family: 'Fraunces', serif;">Educational Note</span>
+                    </div>
+                    <div style="font-size: 0.95rem; line-height: 1.6; color: rgba(255,255,255,0.8);">
+                      <p style="margin-bottom: 0.75rem;">
+                        <strong>Partial differentiation</strong> treats all other variables as constants while differentiating with respect to a chosen variable.
+                      </p>
+                      <p style="margin-bottom: 0;">
+                        Second-order partial derivatives are widely used in optimization, maxima-minima problems, differential equations, and machine learning.
+                      </p>
+                    </div>
+                  </div>
+                </div>`;
+
+  output.innerHTML = stepsHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function calculateNewtonRaphson() {
