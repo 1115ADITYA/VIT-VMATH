@@ -382,6 +382,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const futureValueWrapper = document.getElementById('future-value-input-container');
   const presentValueWrapper = document.getElementById('present-value-input-container');
   const annuityWrapper = document.getElementById('annuity-input-container');
+  const interestRateWrapper = document.getElementById('interest-rate-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -401,6 +402,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (futureValueWrapper) futureValueWrapper.style.display = 'none';
   if (presentValueWrapper) presentValueWrapper.style.display = 'none';
   if (annuityWrapper) annuityWrapper.style.display = 'none';
+  if (interestRateWrapper) interestRateWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -495,7 +497,9 @@ function openCalc(calcId, element, fromHistory = false) {
       if (presentValueWrapper) presentValueWrapper.style.display = 'flex';
     } else if (calcId === 'annuity') {
       if (annuityWrapper) annuityWrapper.style.display = 'flex';
-    } else if (['interest-rate', 'emi'].includes(calcId)) {
+    } else if (calcId === 'interest-rate') {
+      if (interestRateWrapper) interestRateWrapper.style.display = 'flex';
+    } else if (['emi'].includes(calcId)) {
       if (comingSoonWrapper) comingSoonWrapper.style.display = 'flex';
       if (calcAction) calcAction.style.display = 'none';
     } else {
@@ -975,6 +979,10 @@ function calculateMatrix() {
   }
   if (currentCalc === 'annuity') {
     calculateAnnuity();
+    return;
+  }
+  if (currentCalc === 'interest-rate') {
+    calculateInterestRate();
     return;
   }
   if (currentCalc === 'det') {
@@ -9316,6 +9324,225 @@ function calculateAnnuity() {
           <li><strong>Annuity Factor:</strong> Evaluates the total multiplier effect of regular contributions over time. The formula takes into account that earlier payments earn compounding interest for longer durations, whereas the final payment earns no interest.</li>
           <li><strong>Ordinary vs. Due:</strong> In an ordinary annuity, payments are at the end of each period. In an annuity due, payments are at the beginning (which earns one extra compounding period of interest).</li>
         </ul>
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+function calculateInterestRate() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let pvValStr = document.getElementById('ir-pv').value.trim();
+  let fvValStr = document.getElementById('ir-fv').value.trim();
+  let yearsValStr = document.getElementById('ir-years').value.trim();
+  let decimalsValStr = document.getElementById('ir-decimals').value.trim();
+
+  if (pvValStr === '' || fvValStr === '' || yearsValStr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let pv = parseFloat(pvValStr);
+  let fv = parseFloat(fvValStr);
+  let years = parseFloat(yearsValStr);
+  let decimals = parseInt(decimalsValStr);
+
+  // Validation:
+  // - PV > 0
+  // - FV > 0
+  // - Time > 0
+  // - FV must be greater than PV
+  if (isNaN(pv) || pv <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Present Value</div></div><div class="step-desc">Present Value (PV) must be a positive number greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(fv) || fv <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Future Value</div></div><div class="step-desc">Future Value (FV) must be a positive number greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(years) || years <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Time Period</div></div><div class="step-desc">Time Period (Years) must be a positive number greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (fv <= pv) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: FV must be greater than PV</div></div><div class="step-desc">Future Value (FV) must be strictly greater than Present Value (PV) for growth to occur.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let ratio = fv / pv;
+  let invTime = 1 / years;
+  let growthFactor = Math.pow(ratio, invTime);
+  let r = (growthFactor - 1) * 100;
+
+  let stepsHtml = '';
+  let stepCount = 1;
+
+  // Step 1: Given Values
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Given Values</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Identify the given parameters from the inputs:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>Present Value (PV) = <b>₹${pv.toLocaleString('en-IN')}</b></div>
+        <div>Future Value (FV) = <b>₹${fv.toLocaleString('en-IN')}</b></div>
+        <div>Time Period (t) = <b>${years} Years</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 2: Compute FV / PV
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Compute FV / PV</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Calculate the total growth ratio by dividing the Future Value (FV) by the Present Value (PV):</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        FV / PV = ${fv} / ${pv} = <b>${ratio.toFixed(decimals + 4)}</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 3: Apply Interest Rate Formula
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Apply Interest Rate Formula</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Substitute the values into the interest rate formula:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1.5rem 0; display: flex; flex-direction: column; gap: 1rem; align-items: center; text-align: center;">
+        <div style="font-size: 1.25rem; font-weight: 600; color: var(--amber);">r = ((FV / PV)<sup>1 / t</sup> - 1) &times; 100</div>
+        <div style="border-top: 1px dashed var(--border); width: 100%; padding-top: 1rem; margin-top: 0.5rem;"><b>Substitution:</b></div>
+        <div>r = ((${fv} / ${pv})<sup>1 / ${years}</sup> - 1) &times; 100</div>
+        <div>r = (${ratio.toFixed(decimals + 4)}<sup>${invTime.toFixed(decimals + 4)}</sup> - 1) &times; 100</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 4: Calculate Annual Growth Factor
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Calculate Annual Growth Factor</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Raise the growth ratio to the power of (1 / t) to find the annual compounding multiplier (growth factor):</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        (${ratio.toFixed(decimals + 4)})<sup>${invTime.toFixed(decimals + 4)}</sup> = <b>${growthFactor.toFixed(decimals + 4)}</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 5: Convert to Percentage
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Convert to Percentage</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Subtract 1 to isolate the rate decimal, then multiply by 100 to get the interest rate percentage:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; text-align: center;">
+        <div>Growth Rate Decimal = ${growthFactor.toFixed(decimals + 4)} - 1 = ${(growthFactor - 1).toFixed(decimals + 4)}</div>
+        <div>r = ${(growthFactor - 1).toFixed(decimals + 4)} &times; 100 = <b>${r.toFixed(decimals + 2)}%</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 6: Final Interest Rate
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Final Interest Rate</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">The required annual interest rate to achieve the target growth, rounded to your specified decimal places, is:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.5rem; color: var(--teal); text-align: center; margin: 1.5rem 0; font-weight: 700;">
+        r = <b>${r.toFixed(decimals)}%</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 7: Educational Note
+  let educationalHtml = `
+    <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
+      <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Step 7: Educational Note: Interest Rates and CAGR</div>
+      <div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">
+        The calculated annual interest rate represents the <strong>Compound Annual Growth Rate (CAGR)</strong> needed to grow the Present Value into the Future Value over the specified time period.
+        <br><br>
+        Key takeaways of interest rate growth:
+        <ul>
+          <li><strong>Compounding Power:</strong> Under compounding growth, your money earns interest on interest. Consequently, the required interest rate is lower than the corresponding simple interest rate because simple interest does not compound.</li>
+          <li><strong>Time Effect:</strong> The longer the duration (t) allowed for growth, the lower the annual interest rate required to hit your target Future Value. This demonstrates the immense benefit of long investment periods.</li>
+        </ul>
+      </div>
+    </div>
+  `;
+
+  // Result Card
+  let finalResultHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; width: 100%; box-sizing: border-box;">
+      <div style="flex: 1 1 200px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Interest Rate Calculated!</div>
+          <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
+          </button>
+        </div>
+        <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Annual growth rate projection summary.</div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Annual Interest Rate (%):</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 2rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">
+            Annual Interest Rate = <span style="color:#ffffff;">${r.toFixed(decimals)}%</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; font-size: 0.9rem; opacity: 0.85;">
+            <div>Present Value: <strong>₹${pv.toLocaleString('en-IN')}</strong></div>
+            <div>Future Value: <strong>₹${fv.toLocaleString('en-IN')}</strong></div>
+            <div>Time Period: <strong>${years} Years</strong></div>
+          </div>
+        </div>
       </div>
     </div>
   `;
