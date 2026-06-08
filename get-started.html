@@ -527,6 +527,48 @@
               </div>
             </div>
 
+            <!-- Annuity Inputs Container -->
+            <div id="annuity-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+              <div style="display: flex; gap: 1.5rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: flex-start;">
+                <!-- Periodic Payment (PMT) -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Periodic Payment (PMT)</span>
+                  <input type="number" id="annuity-pmt" value="1000" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+
+                <!-- Annual Interest Rate (%) -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Interest Rate (% p.a.)</span>
+                  <input type="number" id="annuity-rate" value="10" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+
+                <!-- Time Period (Years) -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 120px; flex-grow: 1;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Time Period (Years)</span>
+                  <input type="number" id="annuity-years" value="5" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+
+                <!-- Compounding Frequency -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 180px; flex-grow: 1;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Compounding Frequency</span>
+                  <select id="annuity-frequency" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-family: 'Figtree', sans-serif; font-size: 1.05rem; background: var(--bg); color: var(--navy); font-weight: 600; outline: none; height: 44px;">
+                    <option value="1">Annually</option>
+                    <option value="2">Semi-Annually</option>
+                    <option value="4">Quarterly</option>
+                    <option value="12">Monthly</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Decimal Places -->
+              <div style="display: flex; gap: 2rem; justify-content: center; margin-top: 1rem; width: 100%; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-weight: 600; color: var(--navy); font-size: 0.95rem;">Decimal Places:</span>
+                  <input type="number" id="annuity-decimals" value="2" step="1" min="0" max="15" style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; background: var(--bg);">
+                </div>
+              </div>
+            </div>
+
             <!-- Coming Soon Placeholder Container -->
             <div id="coming-soon-container" style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1.5rem; text-align: center; width: 100%;">
               <svg style="width: 64px; height: 64px; stroke: var(--amber); margin-bottom: 1.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -381,6 +381,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const rungeKuttaWrapper = document.getElementById('runge-kutta-input-container');
   const futureValueWrapper = document.getElementById('future-value-input-container');
   const presentValueWrapper = document.getElementById('present-value-input-container');
+  const annuityWrapper = document.getElementById('annuity-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -399,6 +400,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (rungeKuttaWrapper) rungeKuttaWrapper.style.display = 'none';
   if (futureValueWrapper) futureValueWrapper.style.display = 'none';
   if (presentValueWrapper) presentValueWrapper.style.display = 'none';
+  if (annuityWrapper) annuityWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -491,7 +493,9 @@ function openCalc(calcId, element, fromHistory = false) {
       if (futureValueWrapper) futureValueWrapper.style.display = 'flex';
     } else if (calcId === 'present-value') {
       if (presentValueWrapper) presentValueWrapper.style.display = 'flex';
-    } else if (['annuity', 'interest-rate', 'emi'].includes(calcId)) {
+    } else if (calcId === 'annuity') {
+      if (annuityWrapper) annuityWrapper.style.display = 'flex';
+    } else if (['interest-rate', 'emi'].includes(calcId)) {
       if (comingSoonWrapper) comingSoonWrapper.style.display = 'flex';
       if (calcAction) calcAction.style.display = 'none';
     } else {
@@ -967,6 +971,10 @@ function calculateMatrix() {
   }
   if (currentCalc === 'present-value') {
     calculatePresentValue();
+    return;
+  }
+  if (currentCalc === 'annuity') {
+    calculateAnnuity();
     return;
   }
   if (currentCalc === 'det') {
@@ -9091,6 +9099,222 @@ function calculatePresentValue() {
         <ul>
           <li><strong>Higher Discount Rate (r):</strong> The higher the interest rate (discount rate), the lower the present value of the future sum, because a smaller starting amount would be required to reach that future value.</li>
           <li><strong>Longer Time Horizon (t):</strong> The further in the future a sum is to be received, the lower its present value today.</li>
+        </ul>
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+function calculateAnnuity() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let pmtValStr = document.getElementById('annuity-pmt').value.trim();
+  let rateValStr = document.getElementById('annuity-rate').value.trim();
+  let yearsValStr = document.getElementById('annuity-years').value.trim();
+  let freqValStr = document.getElementById('annuity-frequency').value.trim();
+  let decimalsValStr = document.getElementById('annuity-decimals').value.trim();
+
+  if (pmtValStr === '' || rateValStr === '' || yearsValStr === '' || freqValStr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let pmt = parseFloat(pmtValStr);
+  let rate = parseFloat(rateValStr);
+  let years = parseFloat(yearsValStr);
+  let n = parseInt(freqValStr);
+  let decimals = parseInt(decimalsValStr);
+
+  // Validation
+  if (isNaN(pmt) || pmt <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Periodic Payment</div></div><div class="step-desc">Periodic Payment (PMT) must be a positive number greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(rate) || rate <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Interest Rate</div></div><div class="step-desc">Annual Interest Rate must be a positive number greater than 0%.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(years) || years <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Time Period</div></div><div class="step-desc">Time Period (Years) must be a positive number greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let r = rate / 100;
+  let i = r / n;
+  let nt = n * years;
+  let compoundingFactor = Math.pow(1 + i, nt);
+  let annuityFactor = (compoundingFactor - 1) / i;
+  let fv = pmt * annuityFactor;
+
+  const formatCurrency = (val) => {
+    return val.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  };
+
+  const getFreqName = (val) => {
+    if (val === 1) return 'Annually';
+    if (val === 2) return 'Semi-Annually';
+    if (val === 4) return 'Quarterly';
+    if (val === 12) return 'Monthly';
+    return 'Annually';
+  };
+
+  let freqName = getFreqName(n);
+
+  let stepsHtml = '';
+  let stepCount = 1;
+
+  // Step 1: Given Values
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Given Values</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Identify the given parameters from the inputs:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>Periodic Payment (PMT) = <b>₹${pmt.toLocaleString('en-IN')}</b></div>
+        <div>Annual Interest Rate (R) = <b>${rate}%</b></div>
+        <div>Compounding Frequency (n) = <b>${n}</b> (${freqName})</div>
+        <div>Time Period (t) = <b>${years} Years</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 2: Convert Interest Rate
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Convert Annual Interest Rate to Decimal</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Convert the interest rate from a percentage to a decimal value (r = R / 100):</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        r = ${rate} / 100 = <b>${r.toFixed(decimals + 2)}</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 3: Calculate Effective Periodic Rate
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Calculate Effective Periodic Interest Rate</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Divide the annual interest rate by the compounding frequency (i = r / n):</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        i = ${r.toFixed(decimals + 2)} / ${n} = <b>${i.toFixed(decimals + 4)}</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 4: Apply Annuity Formula
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Apply Ordinary Annuity Formula</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Substitute the values into the Future Value of an Ordinary Annuity formula:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1.5rem 0; display: flex; flex-direction: column; gap: 1rem; align-items: center; text-align: center;">
+        <div style="font-size: 1.25rem; font-weight: 600; color: var(--amber);">FV = PMT &times; [((1 + i)<sup>n &times; t</sup> &minus; 1) / i]</div>
+        <div style="border-top: 1px dashed var(--border); width: 100%; padding-top: 1rem; margin-top: 0.5rem;"><b>Substitution:</b></div>
+        <div>FV = ${pmt} &times; [((1 + ${i.toFixed(decimals + 4)})<sup>${n} &times; ${years}</sup> &minus; 1) / ${i.toFixed(decimals + 4)}]</div>
+        <div>FV = ${pmt} &times; [((1.0${i.toString().substring(2)})<sup>${nt}</sup> &minus; 1) / ${i.toFixed(decimals + 4)}]</div>
+        <div>FV = ${pmt} &times; [${compoundingFactor.toFixed(decimals + 4)} &minus; 1) / ${i.toFixed(decimals + 4)}]</div>
+        <div>FV = ${pmt} &times; [${(compoundingFactor - 1).toFixed(decimals + 4)} / ${i.toFixed(decimals + 4)}]</div>
+        <div>FV = ${pmt} &times; <b>${annuityFactor.toFixed(decimals + 4)}</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 5: Calculate Future Value
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Calculate Final Future Value of Annuity</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Multiply the periodic payment by the annuity factor to find the final future value:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        FV = ${pmt} &times; ${annuityFactor.toFixed(decimals + 4)} = <b>₹${formatCurrency(fv)}</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Result Card
+  let finalResultHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; width: 100%; box-sizing: border-box;">
+      <div style="flex: 1 1 200px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Future Value of Annuity Calculated!</div>
+          <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
+          </button>
+        </div>
+        <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Future value projection summary for your periodic payments.</div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Future Value of Annuity (FV):</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 2rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">
+            Future Value = <span style="color:#ffffff;">₹${formatCurrency(fv)}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; font-size: 0.9rem; opacity: 0.85;">
+            <div>Periodic Payment (PMT): <strong>₹${pmt.toLocaleString('en-IN')}</strong></div>
+            <div>Interest Rate: <strong>${rate}%</strong></div>
+            <div>Time Period: <strong>${years} Years</strong></div>
+            <div>Compounding Frequency: <strong>${freqName}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Educational Note Card
+  let educationalHtml = `
+    <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
+      <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Future Value of an Ordinary Annuity</div>
+      <div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">
+        An <strong>Ordinary Annuity</strong> is a series of equal periodic payments made at the end of each compounding period (e.g. end of each month or year).
+        Calculating the Future Value of an annuity determines the total accumulated value of these payments at a future date, including compound interest earned on each payment.
+        <br><br>
+        Key components of annuities:
+        <ul>
+          <li><strong>Periodic Payment (PMT):</strong> The fixed amount deposited or paid in each period.</li>
+          <li><strong>Annuity Factor:</strong> Evaluates the total multiplier effect of regular contributions over time. The formula takes into account that earlier payments earn compounding interest for longer durations, whereas the final payment earns no interest.</li>
+          <li><strong>Ordinary vs. Due:</strong> In an ordinary annuity, payments are at the end of each period. In an annuity due, payments are at the beginning (which earns one extra compounding period of interest).</li>
         </ul>
       </div>
     </div>
