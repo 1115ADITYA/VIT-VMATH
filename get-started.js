@@ -383,6 +383,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const presentValueWrapper = document.getElementById('present-value-input-container');
   const annuityWrapper = document.getElementById('annuity-input-container');
   const interestRateWrapper = document.getElementById('interest-rate-input-container');
+  const emiWrapper = document.getElementById('emi-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -403,6 +404,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (presentValueWrapper) presentValueWrapper.style.display = 'none';
   if (annuityWrapper) annuityWrapper.style.display = 'none';
   if (interestRateWrapper) interestRateWrapper.style.display = 'none';
+  if (emiWrapper) emiWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -499,9 +501,8 @@ function openCalc(calcId, element, fromHistory = false) {
       if (annuityWrapper) annuityWrapper.style.display = 'flex';
     } else if (calcId === 'interest-rate') {
       if (interestRateWrapper) interestRateWrapper.style.display = 'flex';
-    } else if (['emi'].includes(calcId)) {
-      if (comingSoonWrapper) comingSoonWrapper.style.display = 'flex';
-      if (calcAction) calcAction.style.display = 'none';
+    } else if (calcId === 'emi') {
+      if (emiWrapper) emiWrapper.style.display = 'flex';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -983,6 +984,10 @@ function calculateMatrix() {
   }
   if (currentCalc === 'interest-rate') {
     calculateInterestRate();
+    return;
+  }
+  if (currentCalc === 'emi') {
+    calculateEMI();
     return;
   }
   if (currentCalc === 'det') {
@@ -9541,6 +9546,233 @@ function calculateInterestRate() {
             <div>Present Value: <strong>₹${pv.toLocaleString('en-IN')}</strong></div>
             <div>Future Value: <strong>₹${fv.toLocaleString('en-IN')}</strong></div>
             <div>Time Period: <strong>${years} Years</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+function calculateEMI() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let principalValStr = document.getElementById('emi-principal').value.trim();
+  let rateValStr = document.getElementById('emi-rate').value.trim();
+  let yearsValStr = document.getElementById('emi-years').value.trim();
+  let decimalsValStr = document.getElementById('emi-decimals').value.trim();
+
+  if (principalValStr === '' || rateValStr === '' || yearsValStr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let P = parseFloat(principalValStr);
+  let rate = parseFloat(rateValStr);
+  let years = parseFloat(yearsValStr);
+  let decimals = parseInt(decimalsValStr);
+
+  // Validation:
+  // - Principal > 0
+  // - Interest Rate > 0
+  // - Loan Tenure > 0
+  if (isNaN(P) || P <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Principal Amount</div></div><div class="step-desc">Principal Amount must be a positive number greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(rate) || rate <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Interest Rate</div></div><div class="step-desc">Annual Interest Rate must be a positive number greater than 0%.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(years) || years <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Loan Tenure</div></div><div class="step-desc">Loan Tenure (Years) must be a positive number greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  // Math Calculations:
+  // r = Annual Rate / (12 * 100)
+  // n = Years * 12
+  // EMI = P * r * (1 + r)^n / ((1 + r)^n - 1)
+  let r = rate / 1200;
+  let n = years * 12;
+  let base = 1 + r;
+  let powerFactor = Math.pow(base, n);
+  let emiVal = (P * r * powerFactor) / (powerFactor - 1);
+  let totalAmount = emiVal * n;
+  let totalInterest = totalAmount - P;
+
+  const formatCurrency = (val) => {
+    return val.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  };
+
+  let stepsHtml = '';
+  let stepCount = 1;
+
+  // Step 1: Given Values
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Given Values</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Identify the given parameters from the inputs:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>Principal Loan Amount (P) = <b>₹${P.toLocaleString('en-IN')}</b></div>
+        <div>Annual Interest Rate (R) = <b>${rate}% p.a.</b></div>
+        <div>Loan Tenure (t) = <b>${years} Years</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 2: Convert Annual Rate to Monthly Rate
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Convert Annual Rate to Monthly Rate</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Divide the annual interest rate by 12 months and convert it to a decimal (r = R / 1200):</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        r = ${rate} / 1200 = <b>${r.toFixed(decimals + 6)}</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 3: Calculate Total Number of Payments
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Calculate Total Number of Payments</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Multiply the loan tenure in years by 12 months (n = t &times; 12):</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        n = ${years} &times; 12 = <b>${n} payments</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 4: Compute (1 + r)^n
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Compute (1 + r)^n</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Calculate the compounding base raised to the power of the number of payments:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        (1 + ${r.toFixed(decimals + 6)})<sup>${n}</sup> = (${base.toFixed(decimals + 6)})<sup>${n}</sup> = <b>${powerFactor.toFixed(decimals + 4)}</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 5: Apply EMI Formula
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Apply EMI Formula</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Substitute the values into the loan EMI formula:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1.5rem 0; display: flex; flex-direction: column; gap: 1rem; align-items: center; text-align: center;">
+        <div style="font-size: 1.25rem; font-weight: 600; color: var(--amber);">EMI = [P &times; r &times; (1 + r)<sup>n</sup>] / [(1 + r)<sup>n</sup> - 1]</div>
+        <div style="border-top: 1px dashed var(--border); width: 100%; padding-top: 1rem; margin-top: 0.5rem;"><b>Substitution:</b></div>
+        <div>EMI = [${P} &times; ${r.toFixed(decimals + 6)} &times; ${powerFactor.toFixed(decimals + 4)}] / [${powerFactor.toFixed(decimals + 4)} - 1]</div>
+        <div>Numerator = ${P} &times; ${r.toFixed(decimals + 6)} &times; ${powerFactor.toFixed(decimals + 4)} = ${(P * r * powerFactor).toFixed(decimals + 4)}</div>
+        <div>Denominator = ${powerFactor.toFixed(decimals + 4)} - 1 = ${(powerFactor - 1).toFixed(decimals + 4)}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 6: Calculate Monthly EMI and Additional Outputs
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Calculate Monthly EMI & Totals</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Divide the numerator by the denominator to find the monthly EMI, and calculate total payables:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1.5rem 0; display: flex; flex-direction: column; gap: 0.75rem; padding-left: 2rem;">
+        <div>Monthly EMI = ${(P * r * powerFactor).toFixed(decimals + 4)} / ${(powerFactor - 1).toFixed(decimals + 4)} = <b>₹${formatCurrency(emiVal)}</b></div>
+        <div>Total Amount Payable = EMI &times; n = ₹${formatCurrency(emiVal)} &times; ${n} = <b>₹${formatCurrency(totalAmount)}</b></div>
+        <div>Total Interest Payable = Total Amount &minus; Principal = ₹${formatCurrency(totalAmount)} &minus; ₹${P.toLocaleString('en-IN')} = <b>₹${formatCurrency(totalInterest)}</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 7: Educational Note
+  let educationalHtml = `
+    <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
+      <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Step 7: Educational Note: Understanding Loan Amortisation</div>
+      <div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">
+        An <strong>Equated Monthly Installment (EMI)</strong> is a fixed payment amount made by a borrower to a lender at a specified date each calendar month. EMIs are applied to both interest and principal each month, so that over a specified number of years, the loan is fully paid off.
+        <br><br>
+        <strong>Amortisation Dynamics:</strong>
+        <ul>
+          <li><strong>Interest vs. Principal Ratio:</strong> In the early stages of a loan, a larger portion of your EMI goes toward paying interest because the outstanding principal balance is high. As the principal is gradually paid down, interest charges decrease, and a larger share of the EMI is allocated to principal repayment.</li>
+          <li><strong>Impact of Tenure:</strong> Opting for a longer tenure (t) reduces your monthly EMI amount, making it more affordable, but significantly increases the total interest paid over the life of the loan.</li>
+        </ul>
+      </div>
+    </div>
+  `;
+
+  // Result Card
+  let finalResultHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; width: 100%; box-sizing: border-box;">
+      <div style="flex: 1 1 200px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Loan EMI Calculated!</div>
+          <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
+          </button>
+        </div>
+        <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Equated monthly loan repayment projection summary.</div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Monthly EMI:</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 2.2rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">
+            Monthly EMI = <span style="color:#ffffff;">₹${formatCurrency(emiVal)}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.25rem; font-size: 0.95rem; opacity: 0.85; line-height:1.6;">
+            <div>Principal Amount: <strong>₹${P.toLocaleString('en-IN')}</strong></div>
+            <div>Interest Rate: <strong>${rate}% p.a.</strong></div>
+            <div>Tenure (Years): <strong>${years}</strong></div>
+            <div>Total Interest Payable: <strong style="color:var(--amber);">₹${formatCurrency(totalInterest)}</strong></div>
+            <div style="grid-column: span 2;">Total Amount Payable (Principal + Interest): <strong style="color:#ffffff;">₹${formatCurrency(totalAmount)}</strong></div>
           </div>
         </div>
       </div>
