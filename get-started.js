@@ -182,6 +182,18 @@ const data = {
         { id: 'adv-math', name: 'Advanced Mathematics Calculator', icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' }
       ]
     }
+  ],
+  'finance': [
+    {
+      category: 'Financial Calculators',
+      items: [
+        { id: 'future-value', name: 'Future Value Calculator', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { id: 'present-value', name: 'Present Value Calculator', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { id: 'annuity', name: 'Annuity Calculator', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { id: 'interest-rate', name: 'Interest Rate Calculator', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
+        { id: 'emi', name: 'EMI Calculator', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' }
+      ]
+    }
   ]
 };
 
@@ -194,7 +206,8 @@ function selectSem(sem, resetUI = true, fromHistory = false) {
 
   // Update Active Button
   document.querySelectorAll('.sem-btn').forEach((btn, idx) => {
-    if (idx + 1 === sem) btn.classList.add('active');
+    const isMatched = (sem === 'finance' && idx === 3) || (idx + 1 === sem);
+    if (isMatched) btn.classList.add('active');
     else btn.classList.remove('active');
   });
 
@@ -204,7 +217,8 @@ function selectSem(sem, resetUI = true, fromHistory = false) {
 
   // Populate Overview UI
   const overview = document.getElementById('overview-ui');
-  let overviewHtml = `<h2 style="font-family: 'Fraunces', serif; color: var(--navy); margin-bottom: 2rem; font-size: 2rem;">Semester ${sem} Tools</h2>`;
+  let overviewTitle = sem === 'finance' ? 'Financial Calculators' : `Semester ${sem} Tools`;
+  let overviewHtml = `<h2 style="font-family: 'Fraunces', serif; color: var(--navy); margin-bottom: 2rem; font-size: 2rem;">${overviewTitle}</h2>`;
 
   const semData = data[sem];
   if (semData) {
@@ -315,6 +329,23 @@ function openCalc(calcId, element, fromHistory = false) {
   if (calcId === 'euler-method') {
     calcId = 'euler';
   }
+
+  // Find which semester contains this calculator (synchronize semester navigation)
+  let foundSem = null;
+  if (calcId !== 'none') {
+    Object.entries(data).forEach(([semKey, semData]) => {
+      semData.forEach(section => {
+        if (section.items.some(i => i.id === calcId)) {
+          foundSem = semKey === 'finance' ? 'finance' : parseInt(semKey);
+        }
+      });
+    });
+  }
+
+  if (foundSem && foundSem !== currentSem) {
+    selectSem(foundSem, false, fromHistory);
+  }
+
   if (typeof currentCalc !== 'undefined') currentCalc = calcId;
   // Update sidebar active state
   document.querySelectorAll('.calc-item').forEach(el => el.classList.remove('active'));
@@ -348,6 +379,9 @@ function openCalc(calcId, element, fromHistory = false) {
   const maximaMinimaWrapper = document.getElementById('maxima-minima-input-container');
   const eulerWrapper = document.getElementById('euler-method-input-container');
   const rungeKuttaWrapper = document.getElementById('runge-kutta-input-container');
+  const futureValueWrapper = document.getElementById('future-value-input-container');
+  const comingSoonWrapper = document.getElementById('coming-soon-container');
+  const calcAction = document.querySelector('.calc-action');
 
   if (standardDim) standardDim.style.display = 'none';
   if (jacobiDim) jacobiDim.style.display = 'none';
@@ -362,6 +396,9 @@ function openCalc(calcId, element, fromHistory = false) {
   if (maximaMinimaWrapper) maximaMinimaWrapper.style.display = 'none';
   if (eulerWrapper) eulerWrapper.style.display = 'none';
   if (rungeKuttaWrapper) rungeKuttaWrapper.style.display = 'none';
+  if (futureValueWrapper) futureValueWrapper.style.display = 'none';
+  if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
+  if (calcAction) calcAction.style.display = 'block';
 
   if (calcId === 'none') {
     document.getElementById('overview-ui').style.display = 'flex';
@@ -406,6 +443,16 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Enter the differential equation dy/dx = f(x, y), initial values, step size, and target x to approximate the solution step-by-step using Euler's Method.";
     } else if (calcId === 'runge-kutta') {
       desc = "Enter the differential equation dy/dx = f(x, y), initial values, step size, and target x to approximate the solution step-by-step using Runge Kutta 4th Order (RK4).";
+    } else if (calcId === 'future-value') {
+      desc = "Calculate the future value of an investment using compound interest.";
+    } else if (calcId === 'present-value') {
+      desc = "Calculate the present value of a future sum.";
+    } else if (calcId === 'annuity') {
+      desc = "Calculate annuity payouts and values.";
+    } else if (calcId === 'interest-rate') {
+      desc = "Calculate interest rates on loans or investments.";
+    } else if (calcId === 'emi') {
+      desc = "Calculate Equated Monthly Installments (EMI) for loans.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -438,6 +485,11 @@ function openCalc(calcId, element, fromHistory = false) {
       if (eulerWrapper) eulerWrapper.style.display = 'flex';
     } else if (calcId === 'runge-kutta') {
       if (rungeKuttaWrapper) rungeKuttaWrapper.style.display = 'flex';
+    } else if (calcId === 'future-value') {
+      if (futureValueWrapper) futureValueWrapper.style.display = 'flex';
+    } else if (['present-value', 'annuity', 'interest-rate', 'emi'].includes(calcId)) {
+      if (comingSoonWrapper) comingSoonWrapper.style.display = 'flex';
+      if (calcAction) calcAction.style.display = 'none';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -495,7 +547,10 @@ window.addEventListener('popstate', (e) => {
 
 // Initialize from URL or default to Sem 1
 const initParams = new URLSearchParams(window.location.search);
-let initSem = parseInt(initParams.get('sem')) || 1;
+let initSem = initParams.get('sem') || '1';
+if (initSem !== 'finance') {
+  initSem = parseInt(initSem) || 1;
+}
 let initCalc = initParams.get('calc') || 'none';
 if (initCalc === 'partial-differentiation') {
   initCalc = 'partial-diff';
@@ -504,6 +559,9 @@ if (initCalc === 'partial-differentiation') {
 if (initCalc === 'euler-method') {
   initCalc = 'euler';
   initSem = 2;
+}
+if (['future-value', 'present-value', 'annuity', 'interest-rate', 'emi'].includes(initCalc)) {
+  initSem = 'finance';
 }
 
 // Call without pushing history initially
@@ -899,6 +957,10 @@ function formatMatrix(m) {
 
 // Rank Calculation Logic
 function calculateMatrix() {
+  if (currentCalc === 'future-value') {
+    calculateFutureValue();
+    return;
+  }
   if (currentCalc === 'det') {
     calculateDeterminantMatrix();
     return;
@@ -8667,6 +8729,186 @@ function calculateRungeKutta() {
                 </div>`;
 
   output.innerHTML = stepsHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+function calculateFutureValue() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let pvValStr = document.getElementById('fv-pv').value.trim();
+  let rateValStr = document.getElementById('fv-rate').value.trim();
+  let yearsValStr = document.getElementById('fv-years').value.trim();
+  let freqValStr = document.getElementById('fv-frequency').value.trim();
+  let decimalsValStr = document.getElementById('fv-decimals').value.trim();
+
+  if (pvValStr === '' || rateValStr === '' || yearsValStr === '' || freqValStr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let pv = parseFloat(pvValStr);
+  let rate = parseFloat(rateValStr);
+  let years = parseFloat(yearsValStr);
+  let n = parseInt(freqValStr);
+  let decimals = parseInt(decimalsValStr);
+
+  // Validation
+  if (isNaN(pv) || pv <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Present Value</div></div><div class="step-desc">Present Value (PV) must be a positive number greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(rate) || rate < 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Interest Rate</div></div><div class="step-desc">Annual Interest Rate must be greater than or equal to 0%.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(years) || years <= 0) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Time Period</div></div><div class="step-desc">Time Period (Years) must be a positive number greater than 0.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let r = rate / 100;
+  let nt = n * years;
+  let base = 1 + (r / n);
+  let power = Math.pow(base, nt);
+  let fv = pv * power;
+
+  const formatCurrency = (val) => {
+    return val.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  };
+
+  const getFreqName = (val) => {
+    if (val === 1) return 'Annually';
+    if (val === 2) return 'Semi-Annually';
+    if (val === 4) return 'Quarterly';
+    if (val === 12) return 'Monthly';
+    return 'Annually';
+  };
+
+  let freqName = getFreqName(n);
+
+  let stepsHtml = '';
+  let stepCount = 1;
+
+  // Step 1: Given Values
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Given Values</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Identify the given parameters from the inputs:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>Present Value (PV) = <b>₹${pv.toLocaleString('en-IN')}</b></div>
+        <div>Annual Interest Rate (r) = <b>${rate}%</b></div>
+        <div>Compounding Frequency (n) = <b>${n}</b> (${freqName})</div>
+        <div>Time Period (t) = <b>${years} Years</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 2: Convert Interest Rate
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Convert Annual Interest Rate to Decimal</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Convert the interest rate from a percentage to a decimal value (r = R / 100):</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0;">
+        r = ${rate} / 100 = <b>${r.toFixed(decimals + 2)}</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 3: Apply Formula
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Apply Future Value Formula</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Substitute the values into the compound interest formula:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1.5rem 0; display: flex; flex-direction: column; gap: 1rem; align-items: center; text-align: center;">
+        <div style="font-size: 1.25rem; font-weight: 600; color: var(--amber);">FV = PV &times; (1 + r/n)<sup>n &times; t</sup></div>
+        <div style="border-top: 1px dashed var(--border); width: 100%; padding-top: 1rem; margin-top: 0.5rem;"><b>Substitution:</b></div>
+        <div>FV = ${pv} &times; (1 + ${r.toFixed(decimals + 2)} / ${n})<sup>${n} &times; ${years}</sup></div>
+        <div>FV = ${pv} &times; (1 + ${(r/n).toFixed(decimals + 4)})<sup>${nt}</sup></div>
+        <div>FV = ${pv} &times; (${base.toFixed(decimals + 4)})<sup>${nt}</sup></div>
+        <div>FV = ${pv} &times; <b>${power.toFixed(decimals + 4)}</b></div>
+        <div style="font-size: 1.35rem; color: var(--teal); font-weight: 700; border-top: 1px solid var(--border); padding-top: 1rem; width: 100%;">FV = ₹${formatCurrency(fv)}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Result Card
+  let finalResultHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; width: 100%; box-sizing: border-box;">
+      <div style="flex: 1 1 200px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Future Value Calculated!</div>
+          <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
+          </button>
+        </div>
+        <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Compound interest projection summary for your investment.</div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Future Value (FV):</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 2rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">
+            Future Value = <span style="color:#ffffff;">₹${formatCurrency(fv)}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; font-size: 0.9rem; opacity: 0.85;">
+            <div>Present Value: <strong>₹${pv.toLocaleString('en-IN')}</strong></div>
+            <div>Interest Rate: <strong>${rate}%</strong></div>
+            <div>Years: <strong>${years}</strong></div>
+            <div>Compounding Frequency: <strong>${freqName}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Educational Note Card
+  let educationalHtml = `
+    <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
+      <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Future Value & Compound Interest</div>
+      <div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">
+        <strong>Future Value (FV)</strong> represents the value of a current asset at a specified date in the future based on an assumed rate of growth. 
+        It is computed using <strong>Compound Interest</strong>, which is the interest calculated on the initial principal and also on the accumulated interest of previous periods. 
+        <br><br>
+        Key takeaways of compounding:
+        <ul>
+          <li><strong>Higher Compounding Frequency (n):</strong> The more frequently interest is compounded (e.g., Monthly vs. Annually), the faster the investment grows. This is because interest is earned on interest sooner.</li>
+          <li><strong>Exponential Growth:</strong> Due to compounding, investments do not grow linearly; instead, they experience exponential growth over time, especially over long investment horizons.</li>
+        </ul>
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 

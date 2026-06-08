@@ -245,7 +245,13 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Maxima & Minima', cat: 'partial_diff', desc: 'Calculate maxima and minima of two variables', calcId: 'maxima-minima' },
     { name: 'Euler Method', cat: 'ode_methods', desc: 'Solve ODEs using Euler Method', calcId: 'euler' },
     { name: 'Runge-Kutta Method', cat: 'ode_methods', desc: 'Solve initial value ODE problems using RK4', calcId: 'runge-kutta' },
-    { name: 'Advanced Mathematics', cat: 'advanced', desc: 'Advanced Mathematics Calculator', calcId: 'adv-math' }
+    { name: 'Advanced Mathematics', cat: 'advanced', desc: 'Advanced Mathematics Calculator', calcId: 'adv-math' },
+    
+    { name: 'Future Value Calculator', cat: 'finance', desc: 'Calculate the future value of an investment using compound interest', calcId: 'future-value' },
+    { name: 'Present Value Calculator', cat: 'finance', desc: 'Calculate the present value of a future sum', calcId: 'present-value' },
+    { name: 'Annuity Calculator', cat: 'finance', desc: 'Calculate annuity payouts and values', calcId: 'annuity' },
+    { name: 'Interest Rate Calculator', cat: 'finance', desc: 'Calculate interest rates on loans or investments', calcId: 'interest-rate' },
+    { name: 'EMI Calculator', cat: 'finance', desc: 'Calculate Equated Monthly Installments for loans', calcId: 'emi' }
   ];
 
   // ========================
