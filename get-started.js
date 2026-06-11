@@ -157,6 +157,14 @@ const data = {
         { id: 'simpson-3-8', name: 'Simpson\'s 3/8 Rule Calculator', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z' },
         { id: 'trapezoidal', name: 'Trapezoidal Rule Calculator', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z' }
       ]
+    },
+    {
+      category: 'Trigonometry & Functions',
+      items: [
+        { id: 'hyperbolic-calc', name: 'Hyperbolic Function Calculator', icon: 'M4 19c1.5-3 3.5-3 5-3s3.5 0 5 3m-10-8c1.5-3 3.5-3 5-3s3.5 0 5 3' },
+        { id: 'root-calc', name: 'Root Calculator', icon: 'M9 7h6m0 10v-3m-3 3v-6M4 4h16v16H4z' },
+        { id: 'trig-expand', name: 'Trigonometric Expansion Calculator', icon: 'M8 7h8M8 11h8M8 15h8' }
+      ]
     }
   ],
   2: [
@@ -384,6 +392,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const annuityWrapper = document.getElementById('annuity-input-container');
   const interestRateWrapper = document.getElementById('interest-rate-input-container');
   const emiWrapper = document.getElementById('emi-input-container');
+  const hyperbolicWrapper = document.getElementById('hyperbolic-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -405,6 +414,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (annuityWrapper) annuityWrapper.style.display = 'none';
   if (interestRateWrapper) interestRateWrapper.style.display = 'none';
   if (emiWrapper) emiWrapper.style.display = 'none';
+  if (hyperbolicWrapper) hyperbolicWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -461,6 +471,12 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Calculate interest rates on loans or investments.";
     } else if (calcId === 'emi') {
       desc = "Calculate Equated Monthly Installments (EMI) for loans.";
+    } else if (calcId === 'hyperbolic-calc') {
+      desc = "Evaluate hyperbolic functions (sinh, cosh, tanh) step-by-step.";
+    } else if (calcId === 'root-calc') {
+      desc = "Approximate real roots of equations using numerical methods.";
+    } else if (calcId === 'trig-expand') {
+      desc = "Expand trigonometric functions of multiple angles step-by-step.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -503,6 +519,15 @@ function openCalc(calcId, element, fromHistory = false) {
       if (interestRateWrapper) interestRateWrapper.style.display = 'flex';
     } else if (calcId === 'emi') {
       if (emiWrapper) emiWrapper.style.display = 'flex';
+    } else if (calcId === 'hyperbolic-calc') {
+      if (hyperbolicWrapper) hyperbolicWrapper.style.display = 'flex';
+    } else if (calcId === 'root-calc' || calcId === 'trig-expand') {
+      if (comingSoonWrapper) comingSoonWrapper.style.display = 'flex';
+      if (calcAction) calcAction.style.display = 'none';
+      const comingSoonTitle = comingSoonWrapper.querySelector('h3');
+      const comingSoonDesc = comingSoonWrapper.querySelector('p');
+      if (comingSoonTitle) comingSoonTitle.innerText = "Calculator Coming Soon";
+      if (comingSoonDesc) comingSoonDesc.innerText = "We are working hard to bring this trigonometry tool to VMath. Stay tuned for updates!";
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -970,6 +995,10 @@ function formatMatrix(m) {
 
 // Rank Calculation Logic
 function calculateMatrix() {
+  if (currentCalc === 'hyperbolic-calc') {
+    calculateHyperbolic();
+    return;
+  }
   if (currentCalc === 'future-value') {
     calculateFutureValue();
     return;
@@ -9775,6 +9804,235 @@ function calculateEMI() {
             <div style="grid-column: span 2;">Total Amount Payable (Principal + Interest): <strong style="color:#ffffff;">₹${formatCurrency(totalAmount)}</strong></div>
           </div>
         </div>
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+function calculateHyperbolic() {
+  const output = document.getElementById('steps-output');
+  if (!output) return;
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let funcType = document.getElementById('hyperbolic-function').value;
+  let xValStr = document.getElementById('hyperbolic-x').value.trim();
+  let decimalsValStr = document.getElementById('hyperbolic-decimals').value.trim();
+
+  // Validate empty input
+  if (xValStr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let x = parseFloat(xValStr);
+  let decimals = parseInt(decimalsValStr);
+
+  // Validate x
+  if (isNaN(x)) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Input Value</div></div><div class="step-desc">The value of x must be a valid number.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  // Validate decimal places
+  if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  // Math computations
+  let expX = Math.exp(x);
+  let expNegX = Math.exp(-x);
+  let sinhVal = (expX - expNegX) / 2;
+  let coshVal = (expX + expNegX) / 2;
+  let tanhVal = sinhVal / coshVal;
+
+  let finalVal;
+  if (funcType === 'sinh') {
+    finalVal = sinhVal;
+  } else if (funcType === 'cosh') {
+    finalVal = coshVal;
+  } else {
+    finalVal = tanhVal;
+  }
+
+  let finalResultStr = finalVal.toFixed(decimals);
+
+  let stepsHtml = '';
+  let stepCount = 1;
+
+  // SECTION 1: Given Values
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Given Values</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Identify the given parameters from the inputs:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>Selected Function = <b>${funcType}(x)</b></div>
+        <div>Input Value (x) = <b>${x}</b></div>
+        <div>Decimal Places = <b>${decimals}</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // SECTION 2: Formula Used
+  let formulaText = '';
+  if (funcType === 'sinh') {
+    formulaText = 'sinh(x) = (e^x - e^(-x)) / 2';
+  } else if (funcType === 'cosh') {
+    formulaText = 'cosh(x) = (e^x + e^(-x)) / 2';
+  } else {
+    formulaText = 'tanh(x) = sinh(x) / cosh(x)';
+  }
+
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Formula Used</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">The formula for the selected hyperbolic function is:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); text-align: center; margin: 1.5rem 0; font-weight: 600; color: var(--amber);">
+        ${formulaText}
+      </div>
+    </div>
+  </div>`;
+
+  // SECTION 3: Exponential Evaluation
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Exponential Evaluation</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Evaluate the exponential components e^x and e^(-x):</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>e^(${x}) = <b>${expX.toFixed(decimals)}</b></div>
+        <div>e^(-${x}) = <b>${expNegX.toFixed(decimals)}</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // SECTION 4: Substitution
+  let substitutionHtml = '';
+  let roundedExpX = expX.toFixed(decimals);
+  let roundedExpNegX = expNegX.toFixed(decimals);
+
+  if (funcType === 'sinh') {
+    let diff = (parseFloat(roundedExpX) - parseFloat(roundedExpNegX));
+    substitutionHtml = `
+      <div>sinh(${x}) = (e^${x} - e^{-${x}}) / 2</div>
+      <div>= (${roundedExpX} - ${roundedExpNegX}) / 2</div>
+      <div>= ${diff.toFixed(decimals)} / 2</div>
+    `;
+  } else if (funcType === 'cosh') {
+    let sum = (parseFloat(roundedExpX) + parseFloat(roundedExpNegX));
+    substitutionHtml = `
+      <div>cosh(${x}) = (e^${x} + e^{-${x}}) / 2</div>
+      <div>= (${roundedExpX} + ${roundedExpNegX}) / 2</div>
+      <div>= ${sum.toFixed(decimals)} / 2</div>
+    `;
+  } else {
+    let roundedSinh = sinhVal.toFixed(decimals);
+    let roundedCosh = coshVal.toFixed(decimals);
+    substitutionHtml = `
+      <div>tanh(${x}) = sinh(${x}) / cosh(${x})</div>
+      <div>= (${roundedSinh}) / (${roundedCosh})</div>
+    `;
+  }
+
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Substitution</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Substitute the numerical values into the selected formula:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); margin: 1.5rem 0; display: flex; flex-direction: column; gap: 1rem; align-items: center; text-align: center;">
+        ${substitutionHtml}
+      </div>
+    </div>
+  </div>`;
+
+  // SECTION 5: Final Evaluation
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Final Evaluation</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Display final calculation:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.35rem; color: var(--teal); font-weight: 700; text-align: center; margin: 1.5rem 0;">
+        ${funcType}(${x}) = <b>${finalResultStr}</b>
+      </div>
+    </div>
+  </div>`;
+
+  // Result Summary Card
+  let finalResultHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; width: 100%; box-sizing: border-box;">
+      <div style="flex: 1 1 200px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Hyperbolic Function Evaluated!</div>
+          <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
+          </button>
+        </div>
+        <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Hyperbolic function evaluation summary.</div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Calculation Result:</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 2.2rem; font-weight:700; color:var(--amber); margin: 0.6rem 0;">
+            ${funcType}(${x}) = <span style="color:#ffffff;">${finalResultStr}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.25rem; font-size: 0.95rem; opacity: 0.85; line-height:1.6;">
+            <div>Selected Function: <strong>${funcType}(x)</strong></div>
+            <div>Input Value: <strong>x = ${x}</strong></div>
+            <div>Final Result: <strong>${finalResultStr}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Educational Note Card
+  let educationalHtml = `
+    <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
+      <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Hyperbolic Functions</div>
+      <div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">
+        Hyperbolic functions are defined using exponential functions:
+        <div style="margin: 0.5rem 0; font-family: 'IBM Plex Mono', monospace; font-weight: 600;">
+          sinh(x) = (e^x - e^(-x))/2<br>
+          cosh(x) = (e^x + e^(-x))/2
+        </div>
+        <strong>Important Identity:</strong>
+        <div style="margin: 0.5rem 0; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--amber);">
+          cosh²(x) − sinh²(x) = 1
+        </div>
+        Hyperbolic functions are widely used in engineering mathematics, differential equations, and physics.
       </div>
     </div>
   `;

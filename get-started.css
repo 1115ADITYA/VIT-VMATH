@@ -527,7 +527,8 @@
       /* Stack Calculator Param Inputs */
       #newton-input-container > div,
       #false-position-input-container > div,
-      #jacobi-grid-container > div {
+      #jacobi-grid-container > div,
+      #hyperbolic-input-container > div {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 1rem !important;
@@ -536,7 +537,8 @@
       
       #newton-input-container div,
       #false-position-input-container div,
-      #jacobi-grid-container div {
+      #jacobi-grid-container div,
+      #hyperbolic-input-container div {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
@@ -544,7 +546,9 @@
 
       #newton-input-container input,
       #false-position-input-container input,
-      #jacobi-grid-container input {
+      #jacobi-grid-container input,
+      #hyperbolic-input-container input,
+      #hyperbolic-input-container select {
         width: 100% !important;
       }
 

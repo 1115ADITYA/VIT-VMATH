@@ -246,6 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Euler Method', cat: 'ode_methods', desc: 'Solve ODEs using Euler Method', calcId: 'euler' },
     { name: 'Runge-Kutta Method', cat: 'ode_methods', desc: 'Solve initial value ODE problems using RK4', calcId: 'runge-kutta' },
     { name: 'Advanced Mathematics', cat: 'advanced', desc: 'Advanced Mathematics Calculator', calcId: 'adv-math' },
+    { name: 'Hyperbolic Function Calculator', cat: 'trigonometry', desc: 'Evaluate hyperbolic functions sinh(x), cosh(x), and tanh(x) with steps', calcId: 'hyperbolic-calc' },
+    { name: 'Root Calculator', cat: 'trigonometry', desc: 'Approximate real roots of equations using numerical methods', calcId: 'root-calc' },
+    { name: 'Trigonometric Expansion Calculator', cat: 'trigonometry', desc: 'Expand trigonometric functions of multiple angles step-by-step', calcId: 'trig-expand' },
     
     { name: 'Future Value Calculator', cat: 'finance', desc: 'Calculate the future value of an investment using compound interest', calcId: 'future-value' },
     { name: 'Present Value Calculator', cat: 'finance', desc: 'Calculate the present value of a future sum', calcId: 'present-value' },
