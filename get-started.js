@@ -406,6 +406,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const powerReductionWrapper = document.getElementById('power-reduction-input-container');
   const binomialWrapper = document.getElementById('binomial-input-container');
   const uniformWrapper = document.getElementById('uniform-input-container');
+  const poissonWrapper = document.getElementById('poisson-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -433,6 +434,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (powerReductionWrapper) powerReductionWrapper.style.display = 'none';
   if (binomialWrapper) binomialWrapper.style.display = 'none';
   if (uniformWrapper) uniformWrapper.style.display = 'none';
+  if (poissonWrapper) poissonWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -501,6 +503,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Enter the number of trials, probability of success, and number of successes to calculate binomial probabilities.";
     } else if (calcId === 'uniform') {
       desc = "Enter the lower bound, upper bound, and target value(s) to calculate uniform distribution probabilities.";
+    } else if (calcId === 'poisson') {
+      desc = "Enter the average rate (λ) and the number of occurrences (x) to calculate Poisson probabilities.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -555,6 +559,8 @@ function openCalc(calcId, element, fromHistory = false) {
       if (binomialWrapper) binomialWrapper.style.display = 'flex';
     } else if (calcId === 'uniform') {
       if (uniformWrapper) uniformWrapper.style.display = 'flex';
+    } else if (calcId === 'poisson') {
+      if (poissonWrapper) poissonWrapper.style.display = 'flex';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -1036,6 +1042,10 @@ function calculateMatrix() {
   }
   if (currentCalc === 'uniform') {
     calculateUniform();
+    return;
+  }
+  if (currentCalc === 'poisson') {
+    calculatePoisson();
     return;
   }
   if (currentCalc === 'poly-roots') {
@@ -12070,3 +12080,330 @@ function calculateUniform() {
 }
 
 
+
+
+function calculatePoisson() {
+  const mode = document.getElementById('poisson-mode').value;
+  const lambdaStr = document.getElementById('poisson-lambda').value;
+  const xStr = document.getElementById('poisson-x').value;
+  const output = document.getElementById('steps-output');
+  output.classList.remove('active');
+
+  const lambda = parseFloat(lambdaStr);
+  const x = parseInt(xStr, 10);
+
+  if (isNaN(lambda) || isNaN(x)) {
+    alert("Please enter valid numbers for average rate (λ) and occurrences (x).");
+    return;
+  }
+  if (lambda <= 0) {
+    alert("Average rate (λ) must be strictly greater than 0.");
+    return;
+  }
+  if (x < 0 || !Number.isInteger(x)) {
+    alert("Occurrences (x) must be a non-negative integer.");
+    return;
+  }
+
+  // Helper functions
+  const renderFraction = (num, den) => `
+    <div style="display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; padding: 0 4px; line-height: 1.2;">
+      <div style="border-bottom:2px solid currentColor; padding:0 4px; width: 100%; text-align: center;">${num}</div>
+      <div style="padding:0 4px;">${den}</div>
+    </div>
+  `;
+
+  const logFactorial = (n) => {
+    if (n <= 1) return 0;
+    let res = 0;
+    for (let i = 2; i <= n; i++) res += Math.log(i);
+    return res;
+  };
+
+  const exactFactorial = (n) => {
+    if (n <= 1) return 1n;
+    let res = 1n;
+    for (let i = 2n; i <= BigInt(n); i++) res *= i;
+    return res;
+  };
+
+  const poissonProb = (l, k) => {
+    return Math.exp(k * Math.log(l) - l - logFactorial(k));
+  };
+
+  // 1. Core Calculations
+  const mean = lambda;
+  const variance = lambda;
+  const stdDev = Math.sqrt(lambda);
+
+  const exactPx = poissonProb(lambda, x);
+  
+  let pCumulative = 0;
+  for (let i = 0; i <= x; i++) {
+    pCumulative += poissonProb(lambda, i);
+  }
+
+  let pLess = pCumulative - exactPx;
+  let pGreaterEq = 1 - pLess;
+  let pGreater = 1 - pCumulative;
+
+  // Clamp floating point weirdness
+  if (pCumulative > 1) pCumulative = 1;
+  if (pLess < 0) pLess = 0;
+  if (pGreaterEq > 1) pGreaterEq = 1;
+  if (pGreater < 0) pGreater = 0;
+
+  let mainResult = 0;
+  let probTitle = '';
+  let finalTargetText = '';
+
+  if (mode === 'exact') {
+    mainResult = exactPx;
+    probTitle = `P(X = ${x})`;
+    finalTargetText = `exactly <b>${x}</b> events`;
+  } else if (mode === 'lte') {
+    mainResult = pCumulative;
+    probTitle = `P(X &le; ${x})`;
+    finalTargetText = `<b>${x}</b> or fewer events`;
+  } else if (mode === 'lt') {
+    mainResult = pLess;
+    probTitle = `P(X &lt; ${x})`;
+    finalTargetText = `strictly fewer than <b>${x}</b> events`;
+  } else if (mode === 'gte') {
+    mainResult = pGreaterEq;
+    probTitle = `P(X &ge; ${x})`;
+    finalTargetText = `<b>${x}</b> or more events`;
+  } else if (mode === 'gt') {
+    mainResult = pGreater;
+    probTitle = `P(X &gt; ${x})`;
+    finalTargetText = `strictly more than <b>${x}</b> events`;
+  }
+
+  output.classList.add('active');
+  output.style.display = 'block';
+
+  // 2. Educational Breakdown
+  let stepsHtml = `
+    <div class="animate-fade-in" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+      <h3 style="font-family: 'Fraunces', serif; color: var(--navy); font-size: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid rgba(var(--teal-rgb), 0.2); padding-bottom: 0.5rem;">Educational Breakdown</h3>
+      
+      <!-- Step 1 -->
+      <div class="step-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 1: Understand the Poisson Distribution</div>
+        <div style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">
+          The Poisson Distribution calculates the probability of a given number of events occurring in a fixed interval of time or space if these events occur with a known constant average rate and independently of the time since the last event.
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 2: The Poisson Formula</div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 1rem;">
+          <div>P(X = x) = ${renderFraction('&lambda;<sup>x</sup> &middot; e<sup>-&lambda;</sup>', 'x!')}</div>
+        </div>
+        <div style="color: var(--text); font-size: 0.95rem; line-height: 1.6; margin-top: 1rem;">
+          <b>Variables:</b><br>
+          &bull; <b>&lambda; (lambda)</b> = ${lambda} (average rate of occurrence)<br>
+          &bull; <b>x</b> = ${x} (number of events)<br>
+          &bull; <b>e</b> &approx; 2.71828 (Euler's constant)<br>
+          &bull; <b>x!</b> = factorial of x
+        </div>
+      </div>
+  `;
+
+  // Components Calculation
+  let lambdaToX = Math.pow(lambda, x);
+  let eToMinusLambda = Math.exp(-lambda);
+  let factXStr = x <= 170 ? exactFactorial(x).toLocaleString() : 'Very Large';
+
+  stepsHtml += `
+      <!-- Step 3 -->
+      <div class="step-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 3: Calculate Components</div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: left; display: flex; flex-direction: column; gap: 0.5rem;">
+          <div>&lambda;<sup>x</sup> = ${lambda}<sup>${x}</sup> = ${lambdaToX <= 1e20 ? lambdaToX.toLocaleString() : lambdaToX.toExponential(6)}</div>
+          <div>e<sup>-&lambda;</sup> = e<sup>-${lambda}</sup> &approx; ${eToMinusLambda.toExponential(6)}</div>
+          <div>x! = ${x}! = ${factXStr}</div>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 4: Calculate Exact Probability P(X = ${x})</div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+          <div>P(X = ${x}) =</div>
+          <div>${renderFraction(`${lambda}<sup>${x}</sup> &middot; e<sup>-${lambda}</sup>`, `${x}!`)}</div>
+          <div>=</div>
+          <div>${renderFraction(`${lambdaToX <= 1e10 ? lambdaToX.toLocaleString() : lambdaToX.toExponential(4)} &middot; ${eToMinusLambda.toExponential(4)}`, `${x <= 20 ? factXStr : x + '!'}`)}</div>
+          <div>&approx; ${exactPx.toFixed(6)}</div>
+        </div>
+      </div>
+  `;
+
+  if (mode !== 'exact') {
+    let summationTermsHtml = '';
+    if (mode === 'lte' || mode === 'lt') {
+      let upperLimit = mode === 'lte' ? x : x - 1;
+      if (upperLimit < 0) {
+         summationTermsHtml = `P(X &le; ${upperLimit}) = 0`;
+      } else {
+         summationTermsHtml = `P(X &le; ${upperLimit}) = `;
+         let maxShow = Math.min(upperLimit, 5);
+         for (let i = 0; i <= maxShow; i++) {
+           summationTermsHtml += `P(${i}) ${i < maxShow ? '+ ' : ''}`;
+         }
+         if (upperLimit > 5) summationTermsHtml += `... + P(${upperLimit})`;
+      }
+    } else if (mode === 'gte' || mode === 'gt') {
+      let lowerLimit = mode === 'gte' ? x : x + 1;
+      summationTermsHtml = `P(X &ge; ${lowerLimit}) = 1 - P(X &le; ${lowerLimit - 1})`;
+    }
+
+    stepsHtml += `
+      <!-- Step 5 -->
+      <div class="step-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 5: Calculate Cumulative Probability ${probTitle}</div>
+        <div style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">
+          Sum the required exact probabilities based on the requested range.
+        </div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: left;">
+          <div>${summationTermsHtml}</div>
+          <div style="margin-top: 0.5rem; font-weight: 700; color: var(--teal);">Final Result: ${mainResult.toFixed(6)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  stepsHtml += `
+      <!-- Statistics Step -->
+      <div class="step-card" style="border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step ${mode !== 'exact' ? 6 : 5}: Distribution Statistics</div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: left; display: flex; flex-direction: column; gap: 0.5rem;">
+          <div><b>Mean (&mu;)</b> = &lambda; = ${lambda}</div>
+          <div><b>Variance (&sigma;&sup2;)</b> = &lambda; = ${lambda}</div>
+          <div><b>Std Deviation (&sigma;)</b> = &radic;<span style="border-top: 1px solid currentColor; padding-top: 2px;">&lambda;</span> = &radic;<span style="border-top: 1px solid currentColor; padding-top: 2px;">${lambda}</span> &approx; ${stdDev.toFixed(4)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 3. Visualization
+  let startX = Math.max(0, Math.floor(lambda - 3 * stdDev));
+  let endX = Math.ceil(lambda + 3 * stdDev);
+  if (endX - startX < 10) endX = startX + 10;
+  
+  if (x > endX) endX = x + 2;
+  if (x < startX) startX = Math.max(0, x - 2);
+
+  let barData = [];
+  let maxPx = 0;
+  for (let k = startX; k <= endX; k++) {
+    let px = poissonProb(lambda, k);
+    if (px > maxPx) maxPx = px;
+    barData.push({ k, px });
+  }
+
+  let barsHtml = '';
+  barData.forEach((d) => {
+    let heightPct = (d.px / maxPx) * 100;
+    
+    let isTarget = false;
+    if (mode === 'exact' && d.k === x) isTarget = true;
+    else if (mode === 'lte' && d.k <= x) isTarget = true;
+    else if (mode === 'lt' && d.k < x) isTarget = true;
+    else if (mode === 'gte' && d.k >= x) isTarget = true;
+    else if (mode === 'gt' && d.k > x) isTarget = true;
+
+    let barColor = isTarget ? 'var(--amber)' : 'var(--teal)';
+    let barBg = isTarget ? 'rgba(245, 158, 11, 0.8)' : 'rgba(var(--teal-rgb), 0.6)';
+    
+    barsHtml += `
+      <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; position: relative; group;">
+        <div style="font-size: 0.7rem; font-weight: 600; color: ${barColor}; margin-bottom: 4px; opacity: ${d.k === x || d.px === maxPx ? 1 : 0}; transition: opacity 0.2s;">
+          ${(d.px * 100).toFixed(1)}%
+        </div>
+        <div style="width: 80%; max-width: 30px; height: ${heightPct}%; background: ${barBg}; border: 1px solid ${barColor}; border-bottom: none; border-radius: 4px 4px 0 0; transition: height 0.5s ease-out;"></div>
+        <div style="margin-top: 8px; font-size: 0.8rem; font-weight: 600; color: var(--navy); font-family: 'IBM Plex Mono', monospace;">${d.k}</div>
+      </div>
+    `;
+  });
+
+  let vizHtml = `
+    <div class="viz-container animate-fade-in" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+      <h3 style="font-family: 'Fraunces', serif; color: var(--navy); font-size: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid rgba(var(--teal-rgb), 0.2); padding-bottom: 0.5rem;">Poisson Distribution Curve</h3>
+      <div style="width: 100%; height: 280px; background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; padding: 2rem 1rem 1rem 1rem; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; position: relative;">
+        <!-- Y-Axis Label -->
+        <div style="position: absolute; left: 10px; top: 10px; font-size: 0.8rem; color: var(--navy); font-weight: 600;">P(X=x)</div>
+        <div style="position: absolute; left: 10px; top: 30px; font-size: 0.8rem; color: var(--text);">${maxPx.toFixed(3)}</div>
+        <!-- Bars -->
+        <div style="width: 100%; height: 180px; border-bottom: 2px solid var(--navy); display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; padding: 0 1rem;">
+          ${barsHtml}
+        </div>
+        <div style="width: 100%; text-align: center; margin-top: 10px; font-size: 0.8rem; font-weight: 600; color: var(--navy);">Occurrences (x)</div>
+      </div>
+      <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 2rem; font-size: 0.9rem; font-weight: 600; color: var(--navy);">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="width: 14px; height: 14px; background: rgba(var(--teal-rgb), 0.6); border: 1px solid var(--teal); border-radius: 3px;"></div>
+          Probability Mass
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="width: 14px; height: 14px; background: rgba(245, 158, 11, 0.8); border: 1px solid var(--amber); border-radius: 3px;"></div>
+          Target Region ${probTitle}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 4. Final Results
+  let resultsGridHtml = `
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem;">Mean &mu;</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">${mean.toFixed(4)}</div>
+      </div>
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem;">Variance &sigma;&sup2;</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">${variance.toFixed(4)}</div>
+      </div>
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem;">Exact P(X = ${x})</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">${exactPx.toFixed(6)}</div>
+      </div>
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem;">Cumulative P(X &le; ${x})</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">${pCumulative.toFixed(6)}</div>
+      </div>
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.12); border-radius: 12px; border: 2px solid var(--amber); box-shadow: 0 0 20px rgba(245, 158, 11, 0.15); display: flex; flex-direction: column; justify-content: space-between; transform: scale(1.02); z-index: 1;">
+        <div style="font-size:0.95rem; font-weight:600; color: var(--amber); margin-bottom: 0.5rem;">${probTitle}</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.8rem; font-weight:700; color:var(--amber);">${mainResult.toFixed(6)}</div>
+      </div>
+    </div>
+  `;
+
+  let resultsHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; width: 100%; box-sizing: border-box;">
+      <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif; margin-bottom: 2rem; text-align: center;">✅ Comprehensive Results</div>
+      
+      <!-- Summary Box -->
+      <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--amber); padding: 1.5rem; border-radius: 0 12px 12px 0; margin-bottom: 2rem;">
+        <div style="font-size: 1.05rem; line-height: 1.6; color: rgba(255,255,255,0.9);">
+          For a Poisson process with average rate <b>&lambda; = ${lambda}</b>, the probability of observing ${finalTargetText} is:
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.8rem; font-weight: 700; color: #ffffff; margin-top: 1rem; display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap;">
+          <span>${mainResult.toFixed(6)}</span>
+          <span style="font-size: 1.2rem; color: var(--amber); font-family: 'Figtree', sans-serif;">or</span>
+          <span style="color: var(--amber);">${(mainResult * 100).toFixed(4)}%</span>
+        </div>
+      </div>
+
+      <!-- Probability Grid -->
+      ${resultsGridHtml}
+    </div>
+  `;
+
+  output.innerHTML = resultsHtml + stepsHtml + vizHtml;
+  
+  setTimeout(() => {
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
