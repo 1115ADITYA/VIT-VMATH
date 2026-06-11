@@ -186,9 +186,16 @@ const data = {
   ],
   3: [
     {
-      category: 'Advanced Mathematics',
+      category: 'Probability distribution',
       items: [
-        { id: 'adv-math', name: 'Advanced Mathematics Calculator', icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' }
+        { id: 'binomial', name: 'Binomial Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+        { id: 'uniform', name: 'Uniform Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+        { id: 'poisson', name: 'Poisson Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+        { id: 'normal', name: 'Normal Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+        { id: 'gamma', name: 'Gamma Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+        { id: 'beta', name: 'Beta Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+        { id: 'exponential', name: 'Exponential Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
+        { id: 'geometric', name: 'Geometric Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' }
       ]
     }
   ],
@@ -397,6 +404,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const polyRootsWrapper = document.getElementById('poly-roots-input-container');
   const multipleAngleExpandWrapper = document.getElementById('multiple-angle-expand-input-container');
   const powerReductionWrapper = document.getElementById('power-reduction-input-container');
+  const binomialWrapper = document.getElementById('binomial-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -422,6 +430,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (polyRootsWrapper) polyRootsWrapper.style.display = 'none';
   if (multipleAngleExpandWrapper) multipleAngleExpandWrapper.style.display = 'none';
   if (powerReductionWrapper) powerReductionWrapper.style.display = 'none';
+  if (binomialWrapper) binomialWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -486,6 +495,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Expand trigonometric functions sin(nθ) and cos(nθ) of multiple angles into powers of sinθ and cosθ step-by-step.";
     } else if (calcId === 'power-reduction') {
       desc = "Express powers of trigonometric functions sinⁿθ and cosⁿθ in terms of multiple-angle functions step-by-step.";
+    } else if (calcId === 'binomial') {
+      desc = "Enter the number of trials, probability of success, and number of successes to calculate binomial probabilities.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -536,6 +547,8 @@ function openCalc(calcId, element, fromHistory = false) {
       if (multipleAngleExpandWrapper) multipleAngleExpandWrapper.style.display = 'flex';
     } else if (calcId === 'power-reduction') {
       if (powerReductionWrapper) powerReductionWrapper.style.display = 'flex';
+    } else if (calcId === 'binomial') {
+      if (binomialWrapper) binomialWrapper.style.display = 'flex';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -1092,7 +1105,11 @@ function calculateMatrix() {
   } else if (currentCalc === 'runge-kutta') {
     calculateRungeKutta();
     return;
+  } else if (currentCalc === 'binomial') {
+    calculateBinomial();
+    return;
   }
+  
   const output = document.getElementById('steps-output');
   output.innerHTML = '';
   output.classList.add('active');
@@ -11304,6 +11321,435 @@ function calculatePowerReduction() {
   `;
 
   output.innerHTML = resultSummaryHtml + stepsHtml + educationalHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ==========================================
+// BINOMIAL DISTRIBUTION CALCULATOR
+// ==========================================
+function calculateBinomial() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  const mode = document.getElementById('binomial-mode') ? document.getElementById('binomial-mode').value : 'exact';
+  const nStr = document.getElementById('binomial-n').value;
+  const pStr = document.getElementById('binomial-p').value;
+  const xStr = document.getElementById('binomial-x').value;
+  const x1Str = document.getElementById('binomial-x1') ? document.getElementById('binomial-x1').value : '0';
+  const x2Str = document.getElementById('binomial-x2') ? document.getElementById('binomial-x2').value : '0';
+
+  const n = parseInt(nStr);
+  const p = parseFloat(pStr);
+  const x = parseInt(xStr);
+  const x1 = parseInt(x1Str);
+  const x2 = parseInt(x2Str);
+
+  // Validation
+  if (isNaN(n) || isNaN(p)) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Please enter valid numerical values.</div>';
+    return;
+  }
+  if (mode === 'exact' && isNaN(x)) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Please enter a valid x value.</div>';
+    return;
+  }
+  if (mode === 'range' && (isNaN(x1) || isNaN(x2))) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Please enter valid lower and upper bounds.</div>';
+    return;
+  }
+  if (n < 0 || !Number.isInteger(parseFloat(nStr))) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Number of trials (n) must be a non-negative integer.</div>';
+    return;
+  }
+  if (p < 0 || p > 1) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Probability of success (p) must be between 0 and 1 inclusive.</div>';
+    return;
+  }
+  if (mode === 'exact' && (x < 0 || x > n || !Number.isInteger(parseFloat(xStr)))) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">x must be an integer between 0 and n.</div>';
+    return;
+  }
+  if (mode === 'range') {
+    if (x1 < 0 || x2 > n || !Number.isInteger(parseFloat(x1Str)) || !Number.isInteger(parseFloat(x2Str))) {
+      output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Bounds must be integers between 0 and n.</div>';
+      return;
+    }
+    if (x1 > x2) {
+      output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Lower bound (x₁) cannot be greater than Upper bound (x₂).</div>';
+      return;
+    }
+  }
+
+  // Math Helpers
+  function logFactorial(k) {
+    if (k <= 1) return 0;
+    let res = 0;
+    for (let i = 2; i <= k; i++) res += Math.log(i);
+    return res;
+  }
+  function exactFactorial(k) {
+    if (k <= 1) return 1n;
+    let res = 1n;
+    for (let i = 2n; i <= BigInt(k); i++) res *= i;
+    return res;
+  }
+  function logCombination(n, k) {
+    return logFactorial(n) - logFactorial(k) - logFactorial(n - k);
+  }
+  function binomialProb(n, p, k) {
+    if (p === 0) return k === 0 ? 1 : 0;
+    if (p === 1) return k === n ? 1 : 0;
+    return Math.exp(logCombination(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p));
+  }
+
+  const renderFraction = (num, den) => `
+    <div style="display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; padding: 0 4px; line-height: 1.2;">
+      <div style="border-bottom:1px solid currentColor; padding:0 4px; width: 100%; text-align: center;">${num}</div>
+      <div style="padding:0 4px;">${den}</div>
+    </div>
+  `;
+
+  let stepsHtml = '';
+  let stepCount = 1;
+  let q = 1 - p;
+
+  let mainResult = 0;
+  let isTargetFn;
+
+  if (mode === 'exact') {
+    const px = binomialProb(n, p, x);
+    mainResult = px;
+    isTargetFn = (k) => k === x;
+
+    stepsHtml += `<div class="step-card">
+      <div class="step-header">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">1. The Binomial Formula</div>
+      </div>
+      <div class="step-content">
+        <div class="step-desc" style="margin-bottom: 1rem;">
+          The Binomial Distribution calculates the probability of getting exactly <b>x</b> successes in <b>n</b> independent trials, where each trial has the same probability of success <b>p</b>.
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.4rem; text-align: center; color: var(--navy); margin-bottom: 1.5rem; background: var(--bg); padding: 1.5rem; border-radius: 8px; font-weight: 600;">
+          P(X = x) = C(n, x) &middot; p<sup>x</sup> &middot; (1-p)<sup>n-x</sup>
+        </div>
+        <div class="step-desc" style="margin-bottom: 0.5rem;">Variables: n = ${n}, x = ${x}, p = ${p}, q = ${parseFloat(q.toPrecision(10))}</div>
+      </div>
+    </div>`;
+
+    // Combinations calculation step
+    let combinationsVal;
+    let combinationStepsHtml = '';
+    if (n <= 170) {
+      combinationsVal = Math.round(Math.exp(logCombination(n, x)));
+      let factN = exactFactorial(n);
+      let factX = exactFactorial(x);
+      let factNX = exactFactorial(n-x);
+      let denom = factX * factNX;
+      combinationStepsHtml = `
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; text-align: center; color: var(--navy); margin-bottom: 1.5rem; background: var(--bg); padding: 1.5rem; border-radius: 8px;">
+          C(${n}, ${x}) = ${renderFraction(`n!`, `x!(n-x)!`)} = ${renderFraction(`${n}!`, `${x}! &middot; (${n}-${x})!`)}
+        </div>
+        <div class="step-desc" style="margin-bottom: 0.5rem;">Final Combinations Value:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.4rem; text-align: center; color: var(--teal); font-weight: 700;">
+          C(${n}, ${x}) = ${combinationsVal.toLocaleString()}
+        </div>
+      `;
+    } else {
+      combinationsVal = Math.exp(logCombination(n, x));
+      combinationStepsHtml = `
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; text-align: center; color: var(--navy); margin-bottom: 1.5rem; background: var(--bg); padding: 1.5rem; border-radius: 8px;">
+          C(${n}, ${x}) = ${renderFraction(`n!`, `x!(n-x)!`)}
+        </div>
+        <div class="step-desc" style="margin-bottom: 0.5rem;">Final Combinations Value:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.4rem; text-align: center; color: var(--teal); font-weight: 700;">
+          C(${n}, ${x}) &approx; ${combinationsVal.toExponential(6)}
+        </div>
+      `;
+    }
+
+    stepsHtml += `<div class="step-card">
+      <div class="step-header">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">2. Calculate Combinations (Number of Ways)</div>
+      </div>
+      <div class="step-content">
+        ${combinationStepsHtml}
+      </div>
+    </div>`;
+
+    // Exact Probability Calculation Step
+    let pXPart = (p === 0 || p === 1) ? ((p===0 && x===0) || (p===1 && x===n) ? 1 : 0) : Math.pow(p, x);
+    let qNXPart = (q === 0 || q === 1) ? ((q===0 && n-x===0) || (q===1 && n-x===n) ? 1 : 0) : Math.pow(q, n-x);
+    
+    stepsHtml += `<div class="step-card">
+      <div class="step-header">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">3. Calculate Exact Probability</div>
+      </div>
+      <div class="step-content">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; color: var(--navy); padding-left: 1.5rem; line-height: 2;">
+          <div style="margin-top: 1.5rem; border-top: 1px dashed var(--border); padding-top: 1.5rem;">
+            P(X = ${x}) = ${n <= 170 ? combinationsVal.toLocaleString() : combinationsVal.toExponential(4)} &times; ${pXPart.toExponential(4)} &times; ${qNXPart.toExponential(4)}
+          </div>
+          <div style="color: var(--teal); font-size: 1.5rem; font-weight: 700; margin-top: 1rem; background: rgba(13,148,136,0.08); display: inline-block; padding: 0.75rem 1.5rem; border-radius: 8px;">
+            P(X = ${x}) = ${px.toFixed(8)}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  } else {
+    // RANGE MODE
+    isTargetFn = (k) => k >= x1 && k <= x2;
+    let pRange = 0;
+    for(let i=x1; i<=x2; i++) {
+      pRange += binomialProb(n, p, i);
+    }
+    if (pRange > 1) pRange = 1;
+    mainResult = pRange;
+
+    stepsHtml += `<div class="step-card">
+      <div class="step-header">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">1. Range Probability Formula</div>
+      </div>
+      <div class="step-content">
+        <div class="step-desc" style="margin-bottom: 1rem;">
+          To find the probability of getting between <b>${x1}</b> and <b>${x2}</b> successes, we sum the exact probabilities for each outcome in that range.
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.4rem; text-align: center; color: var(--navy); margin-bottom: 1.5rem; background: var(--bg); padding: 1.5rem; border-radius: 8px; font-weight: 600;">
+          P(${x1} &le; X &le; ${x2}) = &Sigma; P(X = i)
+        </div>
+      </div>
+    </div>`;
+
+    let termsToShow = x2 - x1 + 1;
+    let sumBreakdown = '';
+    if (termsToShow <= 10) {
+      let termsHtml = [];
+      for(let i=x1; i<=x2; i++) {
+        termsHtml.push(`P(X=${i}) &approx; ${binomialProb(n, p, i).toFixed(5)}`);
+      }
+      sumBreakdown = `
+        <div class="step-desc" style="margin-bottom: 0.5rem;">Summing individual probabilities:</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--text); padding-left: 1.5rem; margin-bottom: 1rem; line-height: 1.8;">
+          ${termsHtml.join('<br>')}
+        </div>
+      `;
+    } else {
+      sumBreakdown = `
+        <div class="step-desc" style="margin-bottom: 0.5rem; background: rgba(13,148,136,0.1); padding: 1rem; border-left: 4px solid var(--teal);">
+          Summing ${termsToShow} individual probabilities from P(X=${x1}) to P(X=${x2}).
+        </div>
+      `;
+    }
+
+    stepsHtml += `<div class="step-card">
+      <div class="step-header">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">2. Calculate Sum</div>
+      </div>
+      <div class="step-content">
+        ${sumBreakdown}
+        <div style="color: var(--teal); font-size: 1.5rem; font-weight: 700; margin-top: 1rem; background: rgba(13,148,136,0.08); display: inline-block; padding: 0.75rem 1.5rem; border-radius: 8px;">
+          P(${x1} &le; X &le; ${x2}) = ${pRange.toFixed(8)}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Visualization Step
+  let mean = n * p;
+  let stdDev = Math.sqrt(n * p * q);
+  let vizStart = 0;
+  let vizEnd = n;
+  if (n > 50) {
+    vizStart = Math.max(0, Math.floor(mean - 3 * stdDev));
+    vizEnd = Math.min(n, Math.ceil(mean + 3 * stdDev));
+    if (vizEnd - vizStart > 50) {
+       vizStart = Math.max(0, Math.floor(mean - 25));
+       vizEnd = Math.min(n, vizStart + 50);
+    }
+  }
+  
+  let maxProb = 0;
+  let distPoints = [];
+  for (let i = vizStart; i <= vizEnd; i++) {
+    let prob = binomialProb(n, p, i);
+    if (prob > maxProb) maxProb = prob;
+    distPoints.push({ x: i, p: prob });
+  }
+  
+  if (maxProb === 0) maxProb = 1;
+
+  let barsHtml = '';
+  distPoints.forEach(pt => {
+    let heightPercent = (pt.p / maxProb) * 85;
+    let isTarget = isTargetFn(pt.x);
+    let color = isTarget ? 'var(--amber)' : 'var(--teal)';
+    let opacity = isTarget ? '1' : '0.6';
+    
+    barsHtml += `
+      <div style="display: flex; flex-direction: column; justify-content: flex-end; align-items: center; flex: 1; min-width: 28px; height: 100%; position: relative;" onmouseover="this.querySelector('.bar-tooltip').style.opacity=1; this.querySelector('.bar-tooltip').style.visibility='visible';" onmouseout="this.querySelector('.bar-tooltip').style.opacity=0; this.querySelector('.bar-tooltip').style.visibility='hidden';">
+        <div class="bar-tooltip" style="position: absolute; bottom: calc(${Math.max(0.5, heightPercent)}% + 10px); font-size: 0.75rem; color: var(--white); opacity: 0; visibility: hidden; transition: 0.2s; white-space: nowrap; z-index: 20; background: var(--navy); padding: 6px 10px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: center; pointer-events: none;">
+          <div style="font-weight:700; margin-bottom:2px; color: var(--amber);">x = ${pt.x}</div>
+          <div>P(X=${pt.x}) &approx; ${pt.p.toFixed(5)}</div>
+          <div style="font-size:0.7rem; opacity: 0.8; margin-top: 2px;">${(pt.p * 100).toFixed(2)}%</div>
+          <div style="position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid var(--navy);"></div>
+        </div>
+        <div style="width: 100%; max-width: 40px; height: ${Math.max(0.5, heightPercent)}%; background-color: ${color}; opacity: ${opacity}; border-radius: 4px 4px 0 0; min-height: 1px; transition: 0.3s; cursor: crosshair;"></div>
+        <div style="font-size: 0.75rem; color: var(--navy); margin-top: 6px; font-family: 'IBM Plex Mono', monospace; font-weight: ${isTarget ? '700' : '500'};">${pt.x}</div>
+      </div>
+    `;
+  });
+
+  let legendTargetText = mode === 'exact' ? `Selected P(X = ${x})` : `Selected P(${x1} &le; X &le; ${x2})`;
+
+  let vizHtml = `
+    <div class="step-card" style="margin-top: 1.5rem;">
+      <div class="step-header">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Distribution Visualization</div>
+      </div>
+      <div class="step-content" style="padding-top: 1rem;">
+        <div style="text-align: center; font-weight: 600; font-size: 1.1rem; color: var(--navy); margin-bottom: 0.5rem; font-family: 'Fraunces', serif;">
+          Probability Distribution Curve
+        </div>
+        <div class="step-desc" style="text-align: center; margin-bottom: 2rem;">Parameters: n = ${n}, p = ${p}</div>
+        
+        <div style="position: relative; width: 100%; padding-left: 2rem; padding-bottom: 2rem; box-sizing: border-box;">
+          <div style="position: absolute; left: -10px; top: 50%; transform: translateY(-50%) rotate(-90deg); font-size: 0.8rem; font-weight: 600; color: var(--muted); letter-spacing: 1px;">
+            PROBABILITY P(X=x)
+          </div>
+          <div style="width: 100%; overflow-x: auto; padding-top: 2rem;">
+            <div style="display: flex; height: 250px; min-width: 100%; width: fit-content; border-bottom: 2px solid var(--border); border-left: 2px solid var(--border); padding-bottom: 0; align-items: flex-end; gap: 4px; padding-left: 4px; padding-right: 1rem;">
+              ${barsHtml}
+            </div>
+          </div>
+          <div style="text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--muted); letter-spacing: 1px; margin-top: 0.5rem; margin-left: 2rem;">
+            NUMBER OF SUCCESSES (x)
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 2rem; font-size: 0.85rem; color: var(--text); margin-top: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="width: 14px; height: 14px; background: var(--teal); opacity: 0.6; border-radius: 3px;"></div>
+            P(X) for other values
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div style="width: 14px; height: 14px; background: var(--amber); border-radius: 3px;"></div>
+            ${legendTargetText}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Final Results Display
+  let resultsGridHtml = '';
+  if (mode === 'exact') {
+    let ple = 0; for (let i = 0; i <= x; i++) ple += binomialProb(n, p, i);
+    let plt = ple - mainResult; if (plt < 0 || x === 0) plt = 0;
+    let pge = 0; for (let i = x; i <= n; i++) pge += binomialProb(n, p, i);
+    let pgt = pge - mainResult; if (pgt < 0 || x === n) pgt = 0;
+    if (ple > 1) ple = 1; if (pge > 1) pge = 1; if (plt > 1) plt = 1; if (pgt > 1) pgt = 1;
+
+    resultsGridHtml = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>Less than</span><span>x < ${x}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">P(X < ${x})</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.3rem; color: var(--teal); margin-top: 0.5rem;">${plt.toFixed(6)}</div>
+        </div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>At most</span><span>x &le; ${x}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">P(X &le; ${x})</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.3rem; color: var(--teal); margin-top: 0.5rem;">${ple.toFixed(6)}</div>
+        </div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.12); border-radius: 12px; border: 2px solid var(--amber); box-shadow: 0 0 20px rgba(245, 158, 11, 0.15); display: flex; flex-direction: column; justify-content: space-between; transform: scale(1.02); z-index: 1;">
+          <div style="font-size:0.95rem; font-weight:600; color: var(--amber); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>Exactly</span><span>x = ${x}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.8rem; font-weight:700; color:#ffffff;">P(X = ${x})</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.4rem; color: var(--amber); margin-top: 0.5rem;">${mainResult.toFixed(6)}</div>
+        </div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>At least</span><span>x &ge; ${x}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">P(X &ge; ${x})</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.3rem; color: var(--teal); margin-top: 0.5rem;">${pge.toFixed(6)}</div>
+        </div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>More than</span><span>x > ${x}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">P(X > ${x})</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.3rem; color: var(--teal); margin-top: 0.5rem;">${pgt.toFixed(6)}</div>
+        </div>
+      </div>
+    `;
+  } else {
+    // Mode range grid
+    let pLessX1 = 0; for(let i=0; i<x1; i++) pLessX1 += binomialProb(n, p, i);
+    let pGreaterX2 = 0; for(let i=x2+1; i<=n; i++) pGreaterX2 += binomialProb(n, p, i);
+    
+    resultsGridHtml = `
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>Below Range</span><span>X < ${x1}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">P(X < ${x1})</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.3rem; color: var(--teal); margin-top: 0.5rem;">${pLessX1.toFixed(6)}</div>
+        </div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.12); border-radius: 12px; border: 2px solid var(--amber); box-shadow: 0 0 20px rgba(245, 158, 11, 0.15); display: flex; flex-direction: column; justify-content: space-between; transform: scale(1.02); z-index: 1;">
+          <div style="font-size:0.95rem; font-weight:600; color: var(--amber); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>Target Range</span><span>${x1} &le; X &le; ${x2}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.8rem; font-weight:700; color:#ffffff;">P(${x1} &le; X &le; ${x2})</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.4rem; color: var(--amber); margin-top: 0.5rem;">${mainResult.toFixed(6)}</div>
+        </div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>Above Range</span><span>X > ${x2}</span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">P(X > ${x2})</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.3rem; color: var(--teal); margin-top: 0.5rem;">${pGreaterX2.toFixed(6)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  let finalTargetText = mode === 'exact' ? `exactly <b>${x}</b> successes` : `between <b>${x1}</b> and <b>${x2}</b> successes (inclusive)`;
+
+  let resultsHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; width: 100%; box-sizing: border-box;">
+      <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif; margin-bottom: 2rem; text-align: center;">✅ Comprehensive Results</div>
+      
+      <!-- Summary Box -->
+      <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--amber); padding: 1.5rem; border-radius: 0 12px 12px 0; margin-bottom: 2rem;">
+        <div style="font-size: 1.05rem; line-height: 1.6; color: rgba(255,255,255,0.9);">
+          For a binomial experiment with <b>${n}</b> trials and probability <b>p = ${p}</b>, the probability of obtaining ${finalTargetText} is:
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.8rem; font-weight: 700; color: #ffffff; margin-top: 1rem; display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap;">
+          <span>${mainResult.toFixed(6)}</span>
+          <span style="font-size: 1.2rem; color: var(--amber); font-family: 'Figtree', sans-serif;">or</span>
+          <span style="color: var(--amber);">${(mainResult * 100).toFixed(4)}%</span>
+        </div>
+      </div>
+
+      <!-- Probability Grid -->
+      ${resultsGridHtml}
+    </div>
+  `;
+
+  output.innerHTML = resultsHtml + stepsHtml + vizHtml;
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 

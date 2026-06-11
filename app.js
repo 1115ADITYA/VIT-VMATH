@@ -176,6 +176,8 @@ document.addEventListener('DOMContentLoaded', () => {
             targetCardId = 'cat-matrices';
           } else if (catId === 'eigen' || catId === 'diag') {
             targetCardId = 'cat-eigen';
+          } else if (catId === 'probability') {
+            targetCardId = 'cat-stats';
           } else {
             targetCardId = `cat-${catId}`;
           }
@@ -245,7 +247,14 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Maxima & Minima', cat: 'partial_diff', desc: 'Calculate maxima and minima of two variables', calcId: 'maxima-minima' },
     { name: 'Euler Method', cat: 'ode_methods', desc: 'Solve ODEs using Euler Method', calcId: 'euler' },
     { name: 'Runge-Kutta Method', cat: 'ode_methods', desc: 'Solve initial value ODE problems using RK4', calcId: 'runge-kutta' },
-    { name: 'Advanced Mathematics', cat: 'advanced', desc: 'Advanced Mathematics Calculator', calcId: 'adv-math' },
+    { name: 'Binomial Distribution', cat: 'probability', desc: 'Binomial distribution calculator', calcId: 'binomial' },
+    { name: 'Uniform Distribution', cat: 'probability', desc: 'Uniform Distribution calculator', calcId: 'uniform' },
+    { name: 'Poisson Distribution', cat: 'probability', desc: 'Poisson Distribution calculator', calcId: 'poisson' },
+    { name: 'Normal Distribution', cat: 'probability', desc: 'Normal Distribution calculator', calcId: 'normal' },
+    { name: 'Gamma Distribution', cat: 'probability', desc: 'Gamma distribution calculator', calcId: 'gamma' },
+    { name: 'Beta Distribution', cat: 'probability', desc: 'Beta Distribution calculator', calcId: 'beta' },
+    { name: 'Exponential Distribution', cat: 'probability', desc: 'Exponential distribution calculator', calcId: 'exponential' },
+    { name: 'Geometric Distribution', cat: 'probability', desc: 'Geometric Distribution calculator', calcId: 'geometric' },
     { name: 'Hyperbolic Function Calculator', cat: 'trigonometry', desc: 'Evaluate hyperbolic functions sinh(x), cosh(x), and tanh(x) with steps', calcId: 'hyperbolic-calc' },
     { name: 'Polynomial Root Finder', cat: 'trigonometry', desc: 'Find all real and complex roots of a polynomial equation up to degree 10', calcId: 'poly-roots' },
     { name: 'Multiple Angle Expansion Calculator', cat: 'trigonometry', desc: 'Expand sin(nθ) and cos(nθ) into powers of sinθ and cosθ step-by-step', calcId: 'multiple-angle-expand' },
