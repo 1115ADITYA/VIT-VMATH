@@ -163,7 +163,6 @@ const data = {
       items: [
         { id: 'hyperbolic-calc', name: 'Hyperbolic Function Calculator', icon: 'M4 19c1.5-3 3.5-3 5-3s3.5 0 5 3m-10-8c1.5-3 3.5-3 5-3s3.5 0 5 3' },
         { id: 'poly-roots', name: 'Polynomial Root Finder', icon: 'M9 7h6m0 10v-3m-3 3v-6M4 4h16v16H4z' },
-        { id: 'root-calc', name: 'Root Calculator', icon: 'M9 7h6m0 10v-3m-3 3v-6M4 4h16v16H4z' },
         { id: 'trig-expand', name: 'Trigonometric Expansion Calculator', icon: 'M8 7h8M8 11h8M8 15h8' }
       ]
     }
@@ -478,8 +477,6 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Evaluate hyperbolic functions (sinh, cosh, tanh) step-by-step.";
     } else if (calcId === 'poly-roots') {
       desc = "Quickly find all real and complex roots of a polynomial equation up to degree 10.";
-    } else if (calcId === 'root-calc') {
-      desc = "Approximate real roots of equations using numerical methods.";
     } else if (calcId === 'trig-expand') {
       desc = "Expand trigonometric functions of multiple angles step-by-step.";
     }
@@ -528,7 +525,7 @@ function openCalc(calcId, element, fromHistory = false) {
       if (hyperbolicWrapper) hyperbolicWrapper.style.display = 'flex';
     } else if (calcId === 'poly-roots') {
       if (polyRootsWrapper) polyRootsWrapper.style.display = 'flex';
-    } else if (calcId === 'root-calc' || calcId === 'trig-expand') {
+    } else if (calcId === 'trig-expand') {
       if (comingSoonWrapper) comingSoonWrapper.style.display = 'flex';
       if (calcAction) calcAction.style.display = 'none';
       const comingSoonTitle = comingSoonWrapper.querySelector('h3');

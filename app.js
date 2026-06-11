@@ -248,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Advanced Mathematics', cat: 'advanced', desc: 'Advanced Mathematics Calculator', calcId: 'adv-math' },
     { name: 'Hyperbolic Function Calculator', cat: 'trigonometry', desc: 'Evaluate hyperbolic functions sinh(x), cosh(x), and tanh(x) with steps', calcId: 'hyperbolic-calc' },
     { name: 'Polynomial Root Finder', cat: 'trigonometry', desc: 'Find all real and complex roots of a polynomial equation up to degree 10', calcId: 'poly-roots' },
-    { name: 'Root Calculator', cat: 'trigonometry', desc: 'Approximate real roots of equations using numerical methods', calcId: 'root-calc' },
     { name: 'Trigonometric Expansion Calculator', cat: 'trigonometry', desc: 'Expand trigonometric functions of multiple angles step-by-step', calcId: 'trig-expand' },
     
     { name: 'Future Value Calculator', cat: 'finance', desc: 'Calculate the future value of an investment using compound interest', calcId: 'future-value' },
