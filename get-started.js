@@ -162,6 +162,7 @@ const data = {
       category: 'Trigonometry & Functions',
       items: [
         { id: 'hyperbolic-calc', name: 'Hyperbolic Function Calculator', icon: 'M4 19c1.5-3 3.5-3 5-3s3.5 0 5 3m-10-8c1.5-3 3.5-3 5-3s3.5 0 5 3' },
+        { id: 'poly-roots', name: 'Polynomial Root Finder', icon: 'M9 7h6m0 10v-3m-3 3v-6M4 4h16v16H4z' },
         { id: 'root-calc', name: 'Root Calculator', icon: 'M9 7h6m0 10v-3m-3 3v-6M4 4h16v16H4z' },
         { id: 'trig-expand', name: 'Trigonometric Expansion Calculator', icon: 'M8 7h8M8 11h8M8 15h8' }
       ]
@@ -393,6 +394,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const interestRateWrapper = document.getElementById('interest-rate-input-container');
   const emiWrapper = document.getElementById('emi-input-container');
   const hyperbolicWrapper = document.getElementById('hyperbolic-input-container');
+  const polyRootsWrapper = document.getElementById('poly-roots-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -415,6 +417,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (interestRateWrapper) interestRateWrapper.style.display = 'none';
   if (emiWrapper) emiWrapper.style.display = 'none';
   if (hyperbolicWrapper) hyperbolicWrapper.style.display = 'none';
+  if (polyRootsWrapper) polyRootsWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -473,6 +476,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Calculate Equated Monthly Installments (EMI) for loans.";
     } else if (calcId === 'hyperbolic-calc') {
       desc = "Evaluate hyperbolic functions (sinh, cosh, tanh) step-by-step.";
+    } else if (calcId === 'poly-roots') {
+      desc = "Quickly find all real and complex roots of a polynomial equation up to degree 10.";
     } else if (calcId === 'root-calc') {
       desc = "Approximate real roots of equations using numerical methods.";
     } else if (calcId === 'trig-expand') {
@@ -521,6 +526,8 @@ function openCalc(calcId, element, fromHistory = false) {
       if (emiWrapper) emiWrapper.style.display = 'flex';
     } else if (calcId === 'hyperbolic-calc') {
       if (hyperbolicWrapper) hyperbolicWrapper.style.display = 'flex';
+    } else if (calcId === 'poly-roots') {
+      if (polyRootsWrapper) polyRootsWrapper.style.display = 'flex';
     } else if (calcId === 'root-calc' || calcId === 'trig-expand') {
       if (comingSoonWrapper) comingSoonWrapper.style.display = 'flex';
       if (calcAction) calcAction.style.display = 'none';
@@ -995,6 +1002,10 @@ function formatMatrix(m) {
 
 // Rank Calculation Logic
 function calculateMatrix() {
+  if (currentCalc === 'poly-roots') {
+    calculatePolyRoots();
+    return;
+  }
   if (currentCalc === 'hyperbolic-calc') {
     calculateHyperbolic();
     return;
@@ -10039,6 +10050,371 @@ function calculateHyperbolic() {
 
   output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+function calculatePolyRoots() {
+  const output = document.getElementById('steps-output');
+  if (!output) return;
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  let exprRaw = document.getElementById('poly-expression').value;
+  let decimalsValStr = document.getElementById('poly-decimals').value.trim();
+
+  // Validate empty input
+  if (exprRaw === null || exprRaw === undefined || exprRaw.trim() === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let expr = exprRaw.trim();
+  let decimals = parseInt(decimalsValStr);
+
+  // Validate decimals
+  if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  // Expression Validation
+  let cleanExpr = expr.replace(/\s+/g, '');
+  
+  // Check for allowed characters: x, numbers, operators, dots
+  if (/[^x0-9\+\-\^\*\.]/.test(cleanExpr)) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Polynomial Syntax</div></div><div class="step-desc">The expression contains invalid characters. Only 'x', numbers, and operators (+, -, *, ^) are allowed.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  // Prevent consecutive operators
+  if (/[\+\-\^\*]{2,}/.test(cleanExpr)) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Polynomial Syntax</div></div><div class="step-desc">The expression contains consecutive operators (e.g. ++, +-, or ^*).</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  // Prevent starting or ending with bad operators
+  if (/^[\^\*]/.test(cleanExpr) || /[\+\-\^\*]$/.test(cleanExpr)) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Polynomial Syntax</div></div><div class="step-desc">The expression cannot start with '^' or '*' and cannot end with an operator.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  // Parse polynomial to coefficients
+  let coeffs = parsePolynomialInternal(expr);
+  if (!coeffs || coeffs.length < 3) {
+    let msg = "Invalid polynomial expression. Make sure it has a valid degree of at least 2.";
+    if (coeffs && coeffs.length > 11) {
+      msg = "Maximum supported polynomial degree is 10.";
+    }
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Polynomial</div></div><div class="step-desc">${msg}</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  let degree = coeffs.length - 1;
+  if (degree > 10) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Degree Too High</div></div><div class="step-desc">Maximum supported polynomial degree is 10.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  // Solve roots
+  let roots = solvePolynomialRootsInternal(coeffs);
+
+  // Classify and clean roots
+  let realRoots = [];
+  let complexRoots = [];
+
+  for (let r of roots) {
+    let re = r.re;
+    let im = r.im;
+
+    if (Math.abs(im) < 1e-9) {
+      im = 0;
+    }
+    if (Math.abs(re) < 1e-9) {
+      re = 0;
+    }
+
+    let cleanedRoot = { re, im };
+    if (im === 0) {
+      realRoots.push(cleanedRoot);
+    } else {
+      complexRoots.push(cleanedRoot);
+    }
+  }
+
+  // Sort real roots ascending
+  realRoots.sort((a, b) => a.re - b.re);
+
+  // Sort complex roots by real part, then by imaginary part
+  complexRoots.sort((a, b) => {
+    if (Math.abs(a.re - b.re) < 1e-8) {
+      return a.im - b.im;
+    }
+    return a.re - b.re;
+  });
+
+  let allRootsSorted = [...realRoots, ...complexRoots];
+
+  // Helper formatting function
+  function formatRoot(r, decimals) {
+    let re = r.re.toFixed(decimals);
+    let im = r.im.toFixed(decimals);
+
+    if (parseFloat(re) === 0) re = (0).toFixed(decimals);
+    if (parseFloat(im) === 0) im = (0).toFixed(decimals);
+
+    let reNum = parseFloat(re);
+    let imNum = parseFloat(im);
+
+    if (imNum === 0) {
+      return `${re}`;
+    } else {
+      let sign = imNum > 0 ? '+' : '-';
+      let absIm = Math.abs(imNum).toFixed(decimals);
+      
+      // Check if absIm is close to 1
+      let imStr = absIm;
+      if (Math.abs(Math.abs(imNum) - 1) < 1e-9) {
+        imStr = '';
+      }
+
+      if (reNum === 0) {
+        if (imNum === 1) return `i`;
+        if (imNum === -1) return `-i`;
+        return `${imNum > 0 ? '' : '-'}${imStr}i`;
+      } else {
+        if (imNum === 1) return `${re} + i`;
+        if (imNum === -1) return `${re} - i`;
+        return `${re} ${sign} ${imStr}i`;
+      }
+    }
+  }
+
+  // Root List HTML
+  let rootListHtml = '';
+  for (let i = 0; i < allRootsSorted.length; i++) {
+    rootListHtml += `<div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); margin: 0.5rem 0;">x<sub>${i + 1}</sub> = <b>${formatRoot(allRootsSorted[i], decimals)}</b></div>`;
+  }
+
+  // Result Summary Card
+  let finalResultHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; width: 100%; box-sizing: border-box;">
+      <div style="flex: 1 1 200px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Polynomial Root Analysis Complete</div>
+        </div>
+        <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Roots computed successfully using simultaneous iteration.</div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; font-size: 1rem; opacity: 0.95; line-height: 1.8;">
+            <div>Polynomial: <strong style="color:var(--amber); font-family:'IBM Plex Mono', monospace;">${expr}</strong></div>
+            <div>Detected Degree: <strong>${degree}</strong></div>
+            <div>Total Roots Found: <strong>${allRootsSorted.length}</strong></div>
+            <div>Real Roots Count: <strong style="color:var(--teal);">${realRoots.length}</strong></div>
+            <div>Complex Roots Count: <strong style="color:var(--amber);">${complexRoots.length}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Minimal Explanation Section
+  let stepsHtml = `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">1</div>
+        <div class="step-title">Computed Roots</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">All roots computed for polynomial of degree ${degree}:</div>
+      <div style="margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column;">
+        ${rootListHtml}
+      </div>
+    </div>
+  </div>`;
+
+  // Educational Note Card
+  let educationalHtml = `
+    <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
+      <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Fundamental Theorem of Algebra</div>
+      <div style="font-size: 1rem; line-height: 1.5; color: var(--navy);">
+        Polynomial equations of degree n have exactly n roots (counting multiplicities and complex roots).
+        <br><br>
+        Engineering applications include control systems, signal processing, numerical methods, and circuit analysis.
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // INTERNAL HELPERS
+  function parsePolynomialInternal(exprStr) {
+    let str = exprStr.toLowerCase().replace(/\s+/g, '');
+    str = str.replace(/-/g, '+-');
+    if (str.startsWith('+')) {
+      str = str.substring(1);
+    }
+
+    let terms = str.split('+').filter(t => t !== '');
+    let coefMap = {};
+    let maxDeg = 0;
+    const termRegex = /^([+-]?\d*(?:\.\d+)?)(?:\*?x(?:\^(\d+))?)?$/;
+
+    for (let term of terms) {
+      let match = term.match(termRegex);
+      if (!match) return null;
+
+      let coefStr = match[1];
+      let expStr = match[2];
+      let hasX = term.includes('x');
+
+      let coef = 1;
+      if (coefStr === '+') coef = 1;
+      else if (coefStr === '-') coef = -1;
+      else if (coefStr !== '') coef = parseFloat(coefStr);
+
+      if (isNaN(coef)) return null;
+
+      let exp = 0;
+      if (hasX) {
+        if (expStr !== undefined) {
+          exp = parseInt(expStr);
+          if (isNaN(exp) || exp < 0) return null;
+        } else {
+          exp = 1;
+        }
+      } else {
+        exp = 0;
+      }
+
+      if (coefMap[exp] !== undefined) {
+        coefMap[exp] += coef;
+      } else {
+        coefMap[exp] = coef;
+      }
+
+      if (exp > maxDeg) {
+        maxDeg = exp;
+      }
+    }
+
+    let coeffsArr = new Array(maxDeg + 1).fill(0);
+    for (let exp in coefMap) {
+      coeffsArr[exp] = coefMap[exp];
+    }
+    return coeffsArr;
+  }
+
+  function solvePolynomialRootsInternal(coeffsArr) {
+    const ComplexMath = {
+      create: (re, im = 0) => ({ re, im }),
+      add: (a, b) => ({ re: a.re + b.re, im: a.im + b.im }),
+      sub: (a, b) => ({ re: a.re - b.re, im: a.im - b.im }),
+      mul: (a, b) => ({
+        re: a.re * b.re - a.im * b.im,
+        im: a.re * b.im + a.im * b.re
+      }),
+      div: (a, b) => {
+        let denom = b.re * b.re + b.im * b.im;
+        if (denom === 0) return { re: NaN, im: NaN };
+        return {
+          re: (a.re * b.re + a.im * b.im) / denom,
+          im: (a.im * b.re - a.re * b.im) / denom
+        };
+      },
+      pow: (a, n) => {
+        let res = { re: 1, im: 0 };
+        for (let i = 0; i < n; i++) {
+          res = ComplexMath.mul(res, a);
+        }
+        return res;
+      },
+      abs: (a) => Math.sqrt(a.re * a.re + a.im * a.im)
+    };
+
+    function evalPolyHornerComplex(coeffs, x) {
+      let n = coeffs.length - 1;
+      let res = ComplexMath.create(coeffs[n], 0);
+      for (let i = n - 1; i >= 0; i--) {
+        res = ComplexMath.add(ComplexMath.mul(res, x), ComplexMath.create(coeffs[i], 0));
+      }
+      return res;
+    }
+
+    let n = coeffsArr.length - 1;
+    // Divide by coeffsArr[n] to make it monic
+    let monicCoeffs = coeffsArr.map(c => c / coeffsArr[n]);
+
+    let maxCoef = 0;
+    for (let i = 0; i < n; i++) {
+      maxCoef = Math.max(maxCoef, Math.abs(monicCoeffs[i]));
+    }
+    let R = Math.max(1, 1 + maxCoef);
+
+    // Initial estimates using staggered angles to break symmetry
+    let rootsArr = [];
+    for (let j = 0; j < n; j++) {
+      let angle = (2 * Math.PI * j) / n + Math.PI / (2 * n);
+      rootsArr.push({
+        re: R * Math.cos(angle) * 0.9,
+        im: R * Math.sin(angle) * 0.9
+      });
+    }
+
+    let maxIterations = 500;
+    let tolerance = 1e-12;
+
+    for (let iter = 0; iter < maxIterations; iter++) {
+      let maxChange = 0;
+      let newRoots = [];
+
+      for (let i = 0; i < n; i++) {
+        let xi = rootsArr[i];
+        let f_xi = evalPolyHornerComplex(monicCoeffs, xi);
+
+        let denom = ComplexMath.create(1, 0);
+        for (let j = 0; j < n; j++) {
+          if (i !== j) {
+            let diff = ComplexMath.sub(xi, rootsArr[j]);
+            denom = ComplexMath.mul(denom, diff);
+          }
+        }
+
+        let delta = ComplexMath.div(f_xi, denom);
+        if (isNaN(delta.re) || isNaN(delta.im)) {
+          break;
+        }
+
+        let next_xi = ComplexMath.sub(xi, delta);
+        newRoots.push(next_xi);
+
+        let change = ComplexMath.abs(delta);
+        if (change > maxChange) {
+          maxChange = change;
+        }
+      }
+
+      if (newRoots.length === n) {
+        rootsArr = newRoots;
+      } else {
+        break;
+      }
+
+      if (maxChange < tolerance) {
+        break;
+      }
+    }
+
+    return rootsArr;
+  }
 }
 
 

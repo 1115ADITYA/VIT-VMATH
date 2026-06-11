@@ -660,6 +660,25 @@
               </div>
             </div>
 
+            <!-- Polynomial Root Finder Inputs Container -->
+            <div id="poly-roots-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+              <div style="display: flex; gap: 1.5rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: flex-start;">
+                
+                <!-- Polynomial Expression -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 280px; flex-grow: 2; max-width: 450px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Polynomial Expression</span>
+                  <input type="text" id="poly-expression" value="x^4 - 5x^2 + 4" placeholder="e.g. x^2 - 5x + 6" style="width: 100%; padding: 0.6rem 1rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+
+                <!-- Decimal Places -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 120px; flex-grow: 1; max-width: 200px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Decimal Places</span>
+                  <input type="number" id="poly-decimals" value="4" step="1" min="0" max="15" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+
+              </div>
+            </div>
+
             <!-- Coming Soon Placeholder Container -->
             <div id="coming-soon-container" style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1.5rem; text-align: center; width: 100%;">
               <svg style="width: 64px; height: 64px; stroke: var(--amber); margin-bottom: 1.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">

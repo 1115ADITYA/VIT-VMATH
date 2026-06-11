@@ -528,7 +528,8 @@
       #newton-input-container > div,
       #false-position-input-container > div,
       #jacobi-grid-container > div,
-      #hyperbolic-input-container > div {
+      #hyperbolic-input-container > div,
+      #poly-roots-input-container > div {
         flex-direction: column !important;
         align-items: stretch !important;
         gap: 1rem !important;
@@ -538,7 +539,8 @@
       #newton-input-container div,
       #false-position-input-container div,
       #jacobi-grid-container div,
-      #hyperbolic-input-container div {
+      #hyperbolic-input-container div,
+      #poly-roots-input-container div {
         width: 100% !important;
         max-width: 100% !important;
         min-width: 0 !important;
@@ -548,7 +550,8 @@
       #false-position-input-container input,
       #jacobi-grid-container input,
       #hyperbolic-input-container input,
-      #hyperbolic-input-container select {
+      #hyperbolic-input-container select,
+      #poly-roots-input-container input {
         width: 100% !important;
       }
 
