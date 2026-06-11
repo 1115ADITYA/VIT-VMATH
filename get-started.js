@@ -405,6 +405,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const multipleAngleExpandWrapper = document.getElementById('multiple-angle-expand-input-container');
   const powerReductionWrapper = document.getElementById('power-reduction-input-container');
   const binomialWrapper = document.getElementById('binomial-input-container');
+  const uniformWrapper = document.getElementById('uniform-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -431,6 +432,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (multipleAngleExpandWrapper) multipleAngleExpandWrapper.style.display = 'none';
   if (powerReductionWrapper) powerReductionWrapper.style.display = 'none';
   if (binomialWrapper) binomialWrapper.style.display = 'none';
+  if (uniformWrapper) uniformWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -497,6 +499,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Express powers of trigonometric functions sinⁿθ and cosⁿθ in terms of multiple-angle functions step-by-step.";
     } else if (calcId === 'binomial') {
       desc = "Enter the number of trials, probability of success, and number of successes to calculate binomial probabilities.";
+    } else if (calcId === 'uniform') {
+      desc = "Enter the lower bound, upper bound, and target value(s) to calculate uniform distribution probabilities.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -549,6 +553,8 @@ function openCalc(calcId, element, fromHistory = false) {
       if (powerReductionWrapper) powerReductionWrapper.style.display = 'flex';
     } else if (calcId === 'binomial') {
       if (binomialWrapper) binomialWrapper.style.display = 'flex';
+    } else if (calcId === 'uniform') {
+      if (uniformWrapper) uniformWrapper.style.display = 'flex';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -1022,6 +1028,14 @@ function calculateMatrix() {
   }
   if (currentCalc === 'power-reduction') {
     calculatePowerReduction();
+    return;
+  }
+  if (currentCalc === 'binomial') {
+    calculateBinomial();
+    return;
+  }
+  if (currentCalc === 'uniform') {
+    calculateUniform();
     return;
   }
   if (currentCalc === 'poly-roots') {
@@ -11751,6 +11765,308 @@ function calculateBinomial() {
 
   output.innerHTML = resultsHtml + stepsHtml + vizHtml;
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function calculateUniform() {
+  const mode = document.getElementById('uniform-mode').value;
+  const aStr = document.getElementById('uniform-a').value;
+  const bStr = document.getElementById('uniform-b').value;
+  const xStr = document.getElementById('uniform-x').value;
+  const x1Str = document.getElementById('uniform-x1').value;
+  const x2Str = document.getElementById('uniform-x2').value;
+  const output = document.getElementById('steps-output');
+  output.classList.remove('active');
+
+  const a = parseFloat(aStr);
+  const b = parseFloat(bStr);
+
+  if (isNaN(a) || isNaN(b)) {
+    alert("Please enter valid numbers for lower bound (a) and upper bound (b).");
+    return;
+  }
+  if (b <= a) {
+    alert("Upper bound (b) must be strictly greater than lower bound (a).");
+    return;
+  }
+
+  let x = parseFloat(xStr);
+  let x1 = parseFloat(x1Str);
+  let x2 = parseFloat(x2Str);
+
+  if (mode === 'exact') {
+    if (isNaN(x)) {
+      alert("Please enter a valid number for Target Value (x).");
+      return;
+    }
+  } else {
+    if (isNaN(x1) || isNaN(x2)) {
+      alert("Please enter valid numbers for Lower Limit (x₁) and Upper Limit (x₂).");
+      return;
+    }
+    if (x1 > x2) {
+      alert("Lower Limit (x₁) cannot be greater than Upper Limit (x₂).");
+      return;
+    }
+  }
+
+  // Calculate parameters
+  const mean = (a + b) / 2;
+  const variance = Math.pow(b - a, 2) / 12;
+  const stdDev = Math.sqrt(variance);
+  const pdfValue = 1 / (b - a);
+
+  let probValue = 0;
+  let probFormula = '';
+  let probSub = '';
+  let probTitle = '';
+  let finalTargetText = '';
+
+  const renderFraction = (num, den) => `
+    <div style="display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; padding: 0 4px; line-height: 1.2;">
+      <div style="border-bottom:2px solid currentColor; padding:0 4px; width: 100%; text-align: center;">${num}</div>
+      <div style="padding:0 4px;">${den}</div>
+    </div>
+  `;
+
+  let cdf = (xVal) => {
+    if (xVal <= a) return 0;
+    if (xVal >= b) return 1;
+    return (xVal - a) / (b - a);
+  };
+
+  if (mode === 'exact') {
+    probValue = cdf(x);
+    probTitle = `P(X &le; ${x})`;
+    probFormula = `F(x) = ${renderFraction('x - a', 'b - a')}`;
+    
+    let subX = Math.max(a, Math.min(b, x));
+    probSub = renderFraction(`${subX} - ${a}`, `${b} - ${a}`);
+    if (x <= a) probSub = `0 &nbsp;&nbsp;<span style="font-size: 0.8rem; font-family: 'Figtree', sans-serif;">(since x &le; a)</span>`;
+    if (x >= b) probSub = `1 &nbsp;&nbsp;<span style="font-size: 0.8rem; font-family: 'Figtree', sans-serif;">(since x &ge; b)</span>`;
+    
+    finalTargetText = `a value less than or equal to <b>${x}</b>`;
+  } else {
+    probValue = cdf(x2) - cdf(x1);
+    probTitle = `P(${x1} &le; X &le; ${x2})`;
+    probFormula = `P(x₁ &le; X &le; x₂) = ${renderFraction('x₂ - x₁', 'b - a')}`;
+    
+    let subX2 = Math.max(a, Math.min(b, x2));
+    let subX1 = Math.max(a, Math.min(b, x1));
+    probSub = renderFraction(`${subX2} - ${subX1}`, `${b} - ${a}`);
+    
+    if (x2 <= a || x1 >= b) {
+       probSub = `0 &nbsp;&nbsp;<span style="font-size: 0.8rem; font-family: 'Figtree', sans-serif;">(range is outside [a, b])</span>`;
+    }
+    finalTargetText = `a value between <b>${x1}</b> and <b>${x2}</b>`;
+  }
+
+  output.classList.add('active');
+  output.style.display = 'block';
+
+  // 1. Educational Breakdown
+  let stepsHtml = `
+    <div class="animate-fade-in" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+      <h3 style="font-family: 'Fraunces', serif; color: var(--navy); font-size: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid rgba(var(--teal-rgb), 0.2); padding-bottom: 0.5rem;">Educational Breakdown</h3>
+      
+      <div style="margin-bottom: 1.5rem; font-size: 0.95rem; color: var(--text); line-height: 1.6;">
+        A Continuous Uniform Distribution over the interval <b>[a, b]</b> means that all outcomes in this interval are equally likely. 
+        Here we have <b>a = ${a}</b> and <b>b = ${b}</b>.
+      </div>
+
+      <!-- Step 1: PDF -->
+      <div class="step-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 1: Calculate Probability Density Function (PDF)</div>
+        <div style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">
+          The PDF <b>f(x)</b> is constant for all values within <b>[a, b]</b>, creating a rectangle with total area 1.
+        </div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 1rem;">
+          <div>f(x) = ${renderFraction('1', 'b - a')}</div>
+          <div>=</div>
+          <div>${renderFraction('1', `${b} - ${a}`)}</div>
+          <div>=</div>
+          <div>${renderFraction('1', `${b - a}`)}</div>
+          <div>&approx; ${pdfValue.toFixed(4)}</div>
+        </div>
+      </div>
+
+      <!-- Step 2: Mean -->
+      <div class="step-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 2: Calculate the Mean (Expected Value)</div>
+        <div style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">
+          The mean <b>&mu;</b> is simply the exact center (midpoint) of the interval.
+        </div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+          <div>&mu; = ${renderFraction('a + b', '2')}</div>
+          <div>=</div>
+          <div>${renderFraction(`${a} + ${b}`, '2')}</div>
+          <div>=</div>
+          <div>${renderFraction(`${a + b}`, '2')}</div>
+          <div>= ${mean}</div>
+        </div>
+      </div>
+
+      <!-- Step 3: Variance -->
+      <div class="step-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 3: Calculate Variance</div>
+        <div style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">
+          The variance <b>&sigma;&sup2;</b> measures how spread out the distribution is.
+        </div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+          <div>&sigma;&sup2; = ${renderFraction('(b - a)&sup2;', '12')}</div>
+          <div>=</div>
+          <div>${renderFraction(`(${b} - ${a})&sup2;`, '12')}</div>
+          <div>=</div>
+          <div>${renderFraction(`${(b - a)**2}`, '12')}</div>
+          <div>&approx; ${variance.toFixed(4)}</div>
+        </div>
+      </div>
+
+      <!-- Step 4: Std Dev -->
+      <div class="step-card" style="margin-bottom: 1.5rem; border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 4: Calculate Standard Deviation</div>
+        <div style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">
+          The standard deviation <b>&sigma;</b> is the square root of the variance.
+        </div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+          <div>&sigma; = &radic;<span style="border-top: 1px solid currentColor; padding-top: 2px;">&sigma;&sup2;</span></div>
+          <div>=</div>
+          <div>&radic;<span style="border-top: 1px solid currentColor; padding-top: 2px;">${variance.toFixed(4)}</span></div>
+          <div>&approx; ${stdDev.toFixed(4)}</div>
+        </div>
+      </div>
+
+      <!-- Step 5: Probability -->
+      <div class="step-card" style="border-left: 4px solid var(--teal); padding: 1rem 1.5rem; background: rgba(255,255,255,0.5); border-radius: 0 8px 8px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem; font-size: 1.05rem;">Step 5: Calculate Probability ${probTitle}</div>
+        <div style="color: var(--text); font-size: 0.95rem; line-height: 1.6;">
+          The probability corresponds to the area of the rectangle covering the selected range.
+        </div>
+        <div style="margin-top: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; color: var(--navy); background: rgba(var(--teal-rgb), 0.05); padding: 1.5rem; border-radius: 8px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+          <div>${probFormula}</div>
+          <div>=</div>
+          <div>${probSub}</div>
+          <div>= ${probValue.toFixed(4)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 2. Visualization
+  let shadeStart = a;
+  let shadeEnd = a;
+  if (mode === 'exact') {
+    shadeStart = a;
+    shadeEnd = Math.max(a, Math.min(b, x));
+  } else {
+    shadeStart = Math.max(a, Math.min(b, x1));
+    shadeEnd = Math.max(a, Math.min(b, x2));
+  }
+
+  let rangeLength = b - a;
+  let pctStart = ((shadeStart - a) / rangeLength) * 100;
+  let pctWidth = ((shadeEnd - shadeStart) / rangeLength) * 100;
+  
+  if (pctStart < 0) pctStart = 0;
+  if (pctWidth < 0) pctWidth = 0;
+  if (pctStart + pctWidth > 100) pctWidth = 100 - pctStart;
+
+  let vizHtml = `
+    <div class="viz-container animate-fade-in" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin-bottom: 2rem;">
+      <h3 style="font-family: 'Fraunces', serif; color: var(--navy); font-size: 1.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid rgba(var(--teal-rgb), 0.2); padding-bottom: 0.5rem;">Probability Distribution Curve</h3>
+      <div style="width: 100%; height: 250px; background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.05); border-radius: 8px; padding: 2rem 3rem; box-sizing: border-box; display: flex; flex-direction: column; justify-content: flex-end; position: relative;">
+        <!-- Y-Axis Label -->
+        <div style="position: absolute; left: 10px; top: 20px; font-size: 0.8rem; color: var(--navy); font-weight: 600;">f(x)</div>
+        <div style="position: absolute; left: 10px; top: 40px; font-size: 0.8rem; color: var(--text);">${pdfValue.toFixed(4)}</div>
+        <!-- Graph Area -->
+        <div style="width: 100%; height: 160px; border-bottom: 2px solid var(--navy); border-left: 2px solid var(--navy); position: relative; display: flex; align-items: flex-end;">
+          <!-- The Rectangle base -->
+          <div style="width: 100%; height: 80%; border: 2px solid var(--teal); border-bottom: none; position: absolute; left: 0; bottom: 0; background: rgba(var(--teal-rgb), 0.1);"></div>
+          <!-- Shaded Probability Region -->
+          <div style="height: 80%; background: rgba(245, 158, 11, 0.4); border: 2px solid var(--amber); border-bottom: none; position: absolute; left: ${pctStart}%; width: ${pctWidth}%; bottom: 0; display: flex; justify-content: center; align-items: center;">
+             <span style="color: #92400e; font-weight: 700; font-size: 0.9rem;">${(probValue * 100).toFixed(1)}%</span>
+          </div>
+        </div>
+        <!-- X-Axis Labels -->
+        <div style="width: 100%; display: flex; position: relative; margin-top: 10px; height: 20px;">
+          <div style="position: absolute; left: 0; transform: translateX(-50%); font-weight: 600; color: var(--navy); font-size: 0.9rem;">${a} (a)</div>
+          <div style="position: absolute; right: 0; transform: translateX(50%); font-weight: 600; color: var(--navy); font-size: 0.9rem;">${b} (b)</div>
+          <div style="position: absolute; left: 50%; transform: translateX(-50%); font-weight: 600; color: var(--teal); font-size: 0.9rem;">μ = ${mean}</div>
+        </div>
+      </div>
+      <div style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 2rem; font-size: 0.9rem; font-weight: 600; color: var(--navy);">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="width: 14px; height: 14px; background: rgba(var(--teal-rgb), 0.1); border: 2px solid var(--teal); border-radius: 3px;"></div>
+          Uniform Density PDF
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="width: 14px; height: 14px; background: rgba(245, 158, 11, 0.4); border: 2px solid var(--amber); border-radius: 3px;"></div>
+          Target Region ${probTitle}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 3. Final Results
+  let pLess = probValue;
+  let pGreater = 1 - probValue;
+
+  let resultsGridHtml = `
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem;">Mean &mu;</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">${mean.toFixed(4)}</div>
+      </div>
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem;">Variance &sigma;&sup2;</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">${variance.toFixed(4)}</div>
+      </div>
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem;">Standard Dev &sigma;</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">${stdDev.toFixed(4)}</div>
+      </div>
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
+        <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.6); margin-bottom: 0.5rem;">PDF f(x)</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.6rem; font-weight:700; color:#ffffff;">${pdfValue.toFixed(4)}</div>
+      </div>
+      <div style="padding: 1.5rem; background: rgba(255,255,255,0.12); border-radius: 12px; border: 2px solid var(--amber); box-shadow: 0 0 20px rgba(245, 158, 11, 0.15); display: flex; flex-direction: column; justify-content: space-between; transform: scale(1.02); z-index: 1;">
+        <div style="font-size:0.95rem; font-weight:600; color: var(--amber); margin-bottom: 0.5rem;">${probTitle}</div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.8rem; font-weight:700; color:var(--amber);">${probValue.toFixed(4)}</div>
+      </div>
+    </div>
+  `;
+
+  let resultsHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; width: 100%; box-sizing: border-box;">
+      <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif; margin-bottom: 2rem; text-align: center;">✅ Comprehensive Results</div>
+      
+      <!-- Summary Box -->
+      <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--amber); padding: 1.5rem; border-radius: 0 12px 12px 0; margin-bottom: 2rem;">
+        <div style="font-size: 1.05rem; line-height: 1.6; color: rgba(255,255,255,0.9);">
+          For a uniform distribution on the interval <b>[${a}, ${b}]</b>, every value is equally likely. The probability of observing ${finalTargetText} is:
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.8rem; font-weight: 700; color: #ffffff; margin-top: 1rem; display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap;">
+          <span>${probValue.toFixed(6)}</span>
+          <span style="font-size: 1.2rem; color: var(--amber); font-family: 'Figtree', sans-serif;">or</span>
+          <span style="color: var(--amber);">${(probValue * 100).toFixed(4)}%</span>
+        </div>
+      </div>
+
+      <!-- Probability Grid -->
+      ${resultsGridHtml}
+    </div>
+  `;
+
+  output.innerHTML = resultsHtml + stepsHtml + vizHtml;
+  
+  setTimeout(() => {
+    if (window.MathJax) {
+      MathJax.typesetPromise().then(() => {
+        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } else {
+      output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 50);
 }
 
 

@@ -483,6 +483,46 @@
               </div>
             </div>
 
+            <!-- Uniform Distribution Inputs Container -->
+            <div id="uniform-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+              <div style="display: flex; gap: 1.5rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: flex-start;">
+                <!-- Probability Mode -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 200px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Probability Mode</span>
+                  <select id="uniform-mode" onchange="document.getElementById('uniform-x-container').style.display = this.value === 'exact' ? 'flex' : 'none'; document.getElementById('uniform-range-container').style.display = this.value === 'range' ? 'flex' : 'none';" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600; cursor: pointer;">
+                    <option value="exact">P(X &le; x) or P(X &ge; x)</option>
+                    <option value="range">P(x₁ ≤ X ≤ x₂)</option>
+                  </select>
+                </div>
+                <!-- Lower Bound (a) -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 200px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Lower Bound (a)</span>
+                  <input type="number" id="uniform-a" value="0" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+                <!-- Upper Bound (b) -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 200px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Upper Bound (b)</span>
+                  <input type="number" id="uniform-b" value="10" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+                <!-- Target Value (x) -->
+                <div id="uniform-x-container" style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 200px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Target Value (x)</span>
+                  <input type="number" id="uniform-x" value="5" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+                <!-- Range successes (x1, x2) -->
+                <div id="uniform-range-container" style="display: none; gap: 1.5rem; flex-wrap: wrap; justify-content: center; min-width: 250px; flex-grow: 1; max-width: 350px;">
+                  <div style="display: flex; flex-direction: column; align-items: center; min-width: 100px; flex-grow: 1;">
+                    <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Lower Limit (x₁)</span>
+                    <input type="number" id="uniform-x1" value="2" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center; min-width: 100px; flex-grow: 1;">
+                    <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Upper Limit (x₂)</span>
+                    <input type="number" id="uniform-x2" value="8" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Future Value Inputs Container -->
             <div id="future-value-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
               <div style="display: flex; gap: 1.5rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: flex-start;">
