@@ -248,7 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Advanced Mathematics', cat: 'advanced', desc: 'Advanced Mathematics Calculator', calcId: 'adv-math' },
     { name: 'Hyperbolic Function Calculator', cat: 'trigonometry', desc: 'Evaluate hyperbolic functions sinh(x), cosh(x), and tanh(x) with steps', calcId: 'hyperbolic-calc' },
     { name: 'Polynomial Root Finder', cat: 'trigonometry', desc: 'Find all real and complex roots of a polynomial equation up to degree 10', calcId: 'poly-roots' },
-    { name: 'Trigonometric Expansion Calculator', cat: 'trigonometry', desc: 'Expand trigonometric functions of multiple angles step-by-step', calcId: 'trig-expand' },
+    { name: 'Multiple Angle Expansion Calculator', cat: 'trigonometry', desc: 'Expand sin(nθ) and cos(nθ) into powers of sinθ and cosθ step-by-step', calcId: 'multiple-angle-expand' },
+    { name: 'Power Reduction Calculator', cat: 'trigonometry', desc: 'Express sinⁿθ and cosⁿθ in terms of multiple-angle functions step-by-step', calcId: 'power-reduction' },
     
     { name: 'Future Value Calculator', cat: 'finance', desc: 'Calculate the future value of an investment using compound interest', calcId: 'future-value' },
     { name: 'Present Value Calculator', cat: 'finance', desc: 'Calculate the present value of a future sum', calcId: 'present-value' },

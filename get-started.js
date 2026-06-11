@@ -163,7 +163,8 @@ const data = {
       items: [
         { id: 'hyperbolic-calc', name: 'Hyperbolic Function Calculator', icon: 'M4 19c1.5-3 3.5-3 5-3s3.5 0 5 3m-10-8c1.5-3 3.5-3 5-3s3.5 0 5 3' },
         { id: 'poly-roots', name: 'Polynomial Root Finder', icon: 'M9 7h6m0 10v-3m-3 3v-6M4 4h16v16H4z' },
-        { id: 'trig-expand', name: 'Trigonometric Expansion Calculator', icon: 'M8 7h8M8 11h8M8 15h8' }
+        { id: 'multiple-angle-expand', name: 'Multiple Angle Expansion Calculator', icon: 'M8 7h8M8 11h8M8 15h8' },
+        { id: 'power-reduction', name: 'Power Reduction Calculator', icon: 'M4 6h16M4 12h10M4 18h4' }
       ]
     }
   ],
@@ -394,6 +395,8 @@ function openCalc(calcId, element, fromHistory = false) {
   const emiWrapper = document.getElementById('emi-input-container');
   const hyperbolicWrapper = document.getElementById('hyperbolic-input-container');
   const polyRootsWrapper = document.getElementById('poly-roots-input-container');
+  const multipleAngleExpandWrapper = document.getElementById('multiple-angle-expand-input-container');
+  const powerReductionWrapper = document.getElementById('power-reduction-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -417,6 +420,8 @@ function openCalc(calcId, element, fromHistory = false) {
   if (emiWrapper) emiWrapper.style.display = 'none';
   if (hyperbolicWrapper) hyperbolicWrapper.style.display = 'none';
   if (polyRootsWrapper) polyRootsWrapper.style.display = 'none';
+  if (multipleAngleExpandWrapper) multipleAngleExpandWrapper.style.display = 'none';
+  if (powerReductionWrapper) powerReductionWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -477,8 +482,10 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Evaluate hyperbolic functions (sinh, cosh, tanh) step-by-step.";
     } else if (calcId === 'poly-roots') {
       desc = "Quickly find all real and complex roots of a polynomial equation up to degree 10.";
-    } else if (calcId === 'trig-expand') {
-      desc = "Expand trigonometric functions of multiple angles step-by-step.";
+    } else if (calcId === 'multiple-angle-expand') {
+      desc = "Expand trigonometric functions sin(nθ) and cos(nθ) of multiple angles into powers of sinθ and cosθ step-by-step.";
+    } else if (calcId === 'power-reduction') {
+      desc = "Express powers of trigonometric functions sinⁿθ and cosⁿθ in terms of multiple-angle functions step-by-step.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -525,13 +532,10 @@ function openCalc(calcId, element, fromHistory = false) {
       if (hyperbolicWrapper) hyperbolicWrapper.style.display = 'flex';
     } else if (calcId === 'poly-roots') {
       if (polyRootsWrapper) polyRootsWrapper.style.display = 'flex';
-    } else if (calcId === 'trig-expand') {
-      if (comingSoonWrapper) comingSoonWrapper.style.display = 'flex';
-      if (calcAction) calcAction.style.display = 'none';
-      const comingSoonTitle = comingSoonWrapper.querySelector('h3');
-      const comingSoonDesc = comingSoonWrapper.querySelector('p');
-      if (comingSoonTitle) comingSoonTitle.innerText = "Calculator Coming Soon";
-      if (comingSoonDesc) comingSoonDesc.innerText = "We are working hard to bring this trigonometry tool to VMath. Stay tuned for updates!";
+    } else if (calcId === 'multiple-angle-expand') {
+      if (multipleAngleExpandWrapper) multipleAngleExpandWrapper.style.display = 'flex';
+    } else if (calcId === 'power-reduction') {
+      if (powerReductionWrapper) powerReductionWrapper.style.display = 'flex';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -999,6 +1003,14 @@ function formatMatrix(m) {
 
 // Rank Calculation Logic
 function calculateMatrix() {
+  if (currentCalc === 'multiple-angle-expand') {
+    calculateMultipleAngleExpand();
+    return;
+  }
+  if (currentCalc === 'power-reduction') {
+    calculatePowerReduction();
+    return;
+  }
   if (currentCalc === 'poly-roots') {
     calculatePolyRoots();
     return;
@@ -10412,6 +10424,887 @@ function calculatePolyRoots() {
 
     return rootsArr;
   }
+}
+
+// ============================================================================
+// MULTIPLE ANGLE EXPANSION & POWER REDUCTION CALCULATORS IMPLEMENTATION
+// ============================================================================
+
+const maeFormulas = {
+  sin: {
+    2: {
+      formula: "2sinθcosθ",
+      latex: "2\\sin\\theta\\cos\\theta",
+      eval: (s, c) => 2 * s * c,
+      steps: `
+        Compare the imaginary parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">sin(2θ) = 2sinθcosθ</div>
+        Since it already contains only powers of sinθ and cosθ, no further trigonometric substitution is required.
+      `
+    },
+    3: {
+      formula: "3sinθ − 4sin³θ",
+      latex: "3\\sin\\theta - 4\\sin^3\\theta",
+      eval: (s, c) => 3 * s - 4 * Math.pow(s, 3),
+      steps: `
+        Compare the imaginary parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">sin(3θ) = 3cos²θsinθ − sin³θ</div>
+        Substitute <b>cos²θ = 1 − sin²θ</b> to express the formula in terms of sinθ only:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); line-height: 1.6; font-weight: 600;">
+          sin(3θ) = 3(1 − sin²θ)sinθ − sin³θ <br>
+          = 3sinθ − 3sin³θ − sin³θ <br>
+          = 3sinθ − 4sin³θ
+        </div>
+      `
+    },
+    4: {
+      formula: "cosθ(4sinθ − 8sin³θ)",
+      latex: "\\cos\\theta(4\\sin\\theta - 8\\sin^3\\theta)",
+      eval: (s, c) => c * (4 * s - 8 * Math.pow(s, 3)),
+      steps: `
+        Compare the imaginary parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">sin(4θ) = 4cos³θsinθ − 4cosθsin³θ</div>
+        Factor out <b>cosθ</b> from the terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">sin(4θ) = cosθ(4cos²θsinθ − 4sin³θ)</div>
+        Substitute <b>cos²θ = 1 − sin²θ</b> into the brackets:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); line-height: 1.6; font-weight: 600;">
+          sin(4θ) = cosθ(4(1 − sin²θ)sinθ − 4sin³θ) <br>
+          = cosθ(4sinθ − 4sin³θ − 4sin³θ) <br>
+          = cosθ(4sinθ − 8sin³θ)
+        </div>
+      `
+    },
+    5: {
+      formula: "16sin⁵θ − 20sin³θ + 5sinθ",
+      latex: "16\\sin^5\\theta - 20\\sin^3\\theta + 5\\sin\\theta",
+      eval: (s, c) => 16 * Math.pow(s, 5) - 20 * Math.pow(s, 3) + 5 * s,
+      steps: `
+        Compare the imaginary parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">sin(5θ) = 5cos⁴θsinθ − 10cos²θsin³θ + sin⁵θ</div>
+        Substitute <b>cos²θ = 1 − sin²θ</b> (and thus <b>cos⁴θ = (1 − sin²θ)²</b>):
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); line-height: 1.6; font-weight: 600;">
+          sin(5θ) = 5(1 − sin²θ)²sinθ − 10(1 − sin²θ)sin³θ + sin⁵θ <br>
+          = 5(1 − 2sin²θ + sin⁴θ)sinθ − 10(sin³θ − sin⁵θ) + sin⁵θ <br>
+          = (5sinθ − 10sin³θ + 5sin⁵θ) − 10sin³θ + 10sin⁵θ + sin⁵θ <br>
+          = 16sin⁵θ − 20sin³θ + 5sinθ
+        </div>
+      `
+    },
+    6: {
+      formula: "cosθ(32sin⁵θ − 32sin³θ + 6sinθ)",
+      latex: "\\cos\\theta(32\\sin^5\\theta - 32\\sin^3\\theta + 6\\sin\\theta)",
+      eval: (s, c) => c * (32 * Math.pow(s, 5) - 32 * Math.pow(s, 3) + 6 * s),
+      steps: `
+        Compare the imaginary parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">sin(6θ) = 6cos⁵θsinθ − 20cos³θsin³θ + 6cosθsin⁵θ</div>
+        Factor out <b>cosθ</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">sin(6θ) = cosθ(6cos⁴θsinθ − 20cos²θsin³θ + 6sin⁵θ)</div>
+        Substitute <b>cos²θ = 1 − sin²θ</b> and <b>cos⁴θ = (1 − sin²θ)²</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); line-height: 1.6; font-weight: 600;">
+          sin(6θ) = cosθ( 6(1 − 2sin²θ + sin⁴θ)sinθ − 20(1 − sin²θ)sin³θ + 6sin⁵θ ) <br>
+          = cosθ( (6sinθ − 12sin³θ + 6sin⁵θ) − (20sin³θ − 20sin⁵θ) + 6sin⁵θ ) <br>
+          = cosθ( 32sin⁵θ − 32sin³θ + 6sinθ )
+        </div>
+      `
+    }
+  },
+  cos: {
+    2: {
+      formula: "2cos²θ − 1",
+      latex: "2\\cos^2\\theta - 1",
+      eval: (s, c) => 2 * c * c - 1,
+      steps: `
+        Compare the real parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">cos(2θ) = cos²θ − sin²θ</div>
+        Substitute <b>sin²θ = 1 − cos²θ</b> to express the formula in terms of cosθ only:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); line-height: 1.6; font-weight: 600;">
+          cos(2θ) = cos²θ − (1 − cos²θ) <br>
+          = 2cos²θ − 1
+        </div>
+      `
+    },
+    3: {
+      formula: "4cos³θ − 3cosθ",
+      latex: "4\\cos^3\\theta - 3\\cos\\theta",
+      eval: (s, c) => 4 * Math.pow(c, 3) - 3 * c,
+      steps: `
+        Compare the real parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">cos(3θ) = cos³θ − 3cosθsin²θ</div>
+        Substitute <b>sin²θ = 1 − cos²θ</b> to express the formula in terms of cosθ only:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); line-height: 1.6; font-weight: 600;">
+          cos(3θ) = cos³θ − 3cosθ(1 − cos²θ) <br>
+          = cos³θ − 3cosθ + 3cos³θ <br>
+          = 4cos³θ − 3cosθ
+        </div>
+      `
+    },
+    4: {
+      formula: "8cos⁴θ − 8cos²θ + 1",
+      latex: "8\\cos^4\\theta - 8\\cos^2\\theta + 1",
+      eval: (s, c) => 8 * Math.pow(c, 4) - 8 * Math.pow(c, 2) + 1,
+      steps: `
+        Compare the real parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">cos(4θ) = cos⁴θ − 6cos²θsin²θ + sin⁴θ</div>
+        Substitute <b>sin²θ = 1 − cos²θ</b> (and thus <b>sin⁴θ = (1 − cos²θ)²</b>):
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); line-height: 1.6; font-weight: 600;">
+          cos(4θ) = cos⁴θ − 6cos²θ(1 − cos²θ) + (1 − cos²θ)² <br>
+          = cos⁴θ − 6cos²θ + 6cos⁴θ + (1 − 2cos²θ + cos⁴θ) <br>
+          = 8cos⁴θ − 8cos²θ + 1
+        </div>
+      `
+    },
+    5: {
+      formula: "16cos⁵θ − 20cos³θ + 5cosθ",
+      latex: "16\\cos^5\\theta - 20\\cos^3\\theta + 5\\cos\\theta",
+      eval: (s, c) => 16 * Math.pow(c, 5) - 20 * Math.pow(c, 3) + 5 * c,
+      steps: `
+        Compare the real parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">cos(5θ) = cos⁵θ − 10cos³θsin²θ + 5cosθsin⁴θ</div>
+        Substitute <b>sin²θ = 1 − cos²θ</b> and <b>sin⁴θ = (1 − cos²θ)²</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); line-height: 1.6; font-weight: 600;">
+          cos(5θ) = cos⁵θ − 10cos³θ(1 − cos²θ) + 5cosθ(1 − cos²θ)² <br>
+          = cos⁵θ − 10cos³θ + 10cos⁵θ + 5cosθ(1 − 2cos²θ + cos⁴θ) <br>
+          = 11cos⁵θ − 10cos³θ + 5cosθ − 10cos³θ + 5cos⁵θ <br>
+          = 16cos⁵θ − 20cos³θ + 5cosθ
+        </div>
+      `
+    },
+    6: {
+      formula: "32cos⁶θ − 48cos⁴θ + 18cos²θ − 1",
+      latex: "32\\cos^6\\theta - 48\\cos^4\\theta + 18\\cos^2\\theta - 1",
+      eval: (s, c) => 32 * Math.pow(c, 6) - 48 * Math.pow(c, 4) + 18 * Math.pow(c, 2) - 1,
+      steps: `
+        Compare the real parts from both sides:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">cos(6θ) = cos⁶θ − 15cos⁴θsin²θ + 15cos²θsin⁴θ − sin⁶θ</div>
+        Substitute <b>sin²θ = 1 − cos²θ</b>, <b>sin⁴θ = (1 − cos²θ)²</b>, and <b>sin⁶θ = (1 − cos²θ)³</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); line-height: 1.6; font-weight: 600;">
+          cos(6θ) = cos⁶θ − 15cos⁴θ(1 − cos²θ) + 15cos²θ(1 − 2cos²θ + cos⁴θ) − (1 − 3cos²θ + 3cos⁴θ − cos⁶θ) <br>
+          = cos⁶θ − 15cos⁴θ + 15cos⁶θ + 15cos²θ − 30cos⁴θ + 15cos⁶θ − 1 + 3cos²θ − 3cos⁴θ + cos⁶θ <br>
+          = 32cos⁶θ − 48cos⁴θ + 18cos²θ − 1
+        </div>
+      `
+    }
+  }
+};
+
+const prFormulas = {
+  sin: {
+    2: {
+      formula: "(1 − cos2θ) / 2",
+      latex: "\\frac{1 - \\cos 2\\theta}{2}",
+      eval: (t) => (1 - Math.cos(2 * t)) / 2,
+      steps: `
+        Raise both sides to power 2:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2isinθ)² = (z − 1/z)²</div>
+        Expand the right hand side:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">−4sin²θ = z² − 2 + 1/z²</div>
+        Pair the reciprocal terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">−4sin²θ = (z² + 1/z²) − 2</div>
+        Substitute <b>z² + 1/z² = 2cos2θ</b> (from De Moivre's relation):
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">−4sin²θ = 2cos2θ − 2</div>
+        Divide by −4 to obtain the final power reduction identity:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">sin²θ = (1 − cos2θ) / 2</div>
+      `
+    },
+    3: {
+      formula: "(3sinθ − sin3θ) / 4",
+      latex: "\\frac{3\\sin\\theta - \\sin 3\\theta}{4}",
+      eval: (t) => (3 * Math.sin(t) - Math.sin(3 * t)) / 4,
+      steps: `
+        Raise both sides to power 3:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2isinθ)³ = (z − 1/z)³</div>
+        Expand the right hand side using the Binomial Theorem:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">−8isin³θ = z³ − 3z + 3/z − 1/z³</div>
+        Pair the reciprocal terms from the ends:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">−8isin³θ = (z³ − 1/z³) − 3(z − 1/z)</div>
+        Substitute <b>zᵐ − 1/zᵐ = 2isin(mθ)</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">−8isin³θ = 2isin3θ − 3(2isinθ) = 2isin3θ − 6isinθ</div>
+        Divide by −8i to solve for sin³θ:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">sin³θ = (3sinθ − sin3θ) / 4</div>
+      `
+    },
+    4: {
+      formula: "(3 − 4cos2θ + cos4θ) / 8",
+      latex: "\\frac{3 - 4\\cos 2\\theta + \\cos 4\\theta}{8}",
+      eval: (t) => (3 - 4 * Math.cos(2 * t) + Math.cos(4 * t)) / 8,
+      steps: `
+        Raise both sides to power 4:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2isinθ)⁴ = (z − 1/z)⁴</div>
+        Expand using the Binomial Theorem:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">16sin⁴θ = z⁴ − 4z² + 6 − 4/z² + 1/z⁴</div>
+        Pair reciprocal terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">16sin⁴θ = (z⁴ + 1/z⁴) − 4(z² + 1/z²) + 6</div>
+        Substitute <b>zᵐ + 1/zᵐ = 2cos(mθ)</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">16sin⁴θ = 2cos4θ − 4(2cos2θ) + 6 = 2cos4θ − 8cos2θ + 6</div>
+        Divide by 16 to get the simplified identity:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">sin⁴θ = (3 − 4cos2θ + cos4θ) / 8</div>
+      `
+    },
+    5: {
+      formula: "(10sinθ − 5sin3θ + sin5θ) / 16",
+      latex: "\\frac{10\\sin\\theta - 5\\sin 3\\theta + \\sin 5\\theta}{16}",
+      eval: (t) => (10 * Math.sin(t) - 5 * Math.sin(3 * t) + Math.sin(5 * t)) / 16,
+      steps: `
+        Raise both sides to power 5:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2isinθ)⁵ = (z − 1/z)⁵</div>
+        Expand using the Binomial Theorem:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">32isin⁵θ = z⁵ − 5z³ + 10z − 10/z + 5/z³ − 1/z⁵</div>
+        Pair reciprocal terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">32isin⁵θ = (z⁵ − 1/z⁵) − 5(z³ − 1/z³) + 10(z − 1/z)</div>
+        Substitute <b>zᵐ − 1/zᵐ = 2isin(mθ)</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">32isin⁵θ = 2isin5θ − 5(2isin3θ) + 10(2isinθ) = 2isin5θ − 10isin3θ + 20isinθ</div>
+        Divide by 32i to isolate sin⁵θ:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">sin⁵θ = (10sinθ − 5sin3θ + sin5θ) / 16</div>
+      `
+    },
+    6: {
+      formula: "(10 − 15cos2θ + 6cos4θ − cos6θ) / 32",
+      latex: "\\frac{10 - 15\\cos 2\\theta + 6\\cos 4\\theta - \\cos 6\\theta}{32}",
+      eval: (t) => (10 - 15 * Math.cos(2 * t) + 6 * Math.cos(4 * t) - Math.cos(6 * t)) / 32,
+      steps: `
+        Raise both sides to power 6:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2isinθ)⁶ = (z − 1/z)⁶</div>
+        Expand using the Binomial Theorem:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">−64sin⁶θ = z⁶ − 6z⁴ + 15z² − 20 + 15/z² − 6/z⁴ + 1/z⁶</div>
+        Pair reciprocal terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">−64sin⁶θ = (z⁶ + 1/z⁶) − 6(z⁴ + 1/z⁴) + 15(z² + 1/z²) − 20</div>
+        Substitute De Moivre cosine relations:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">−64sin⁶θ = 2cos6θ − 6(2cos4θ) + 15(2cos2θ) − 20 = 2cos6θ − 12cos4θ + 30cos2θ − 20</div>
+        Divide by −64 to simplify:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">sin⁶θ = (10 − 15cos2θ + 6cos4θ − cos6θ) / 32</div>
+      `
+    }
+  },
+  cos: {
+    2: {
+      formula: "(cos2θ + 1) / 2",
+      latex: "\\frac{\\cos 2\\theta + 1}{2}",
+      eval: (t) => (Math.cos(2 * t) + 1) / 2,
+      steps: `
+        Raise both sides to power 2:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2cosθ)² = (z + 1/z)²</div>
+        Expand the right hand side:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">4cos²θ = z² + 2 + 1/z²</div>
+        Pair reciprocal terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">4cos²θ = (z² + 1/z²) + 2</div>
+        Substitute <b>z² + 1/z² = 2cos2θ</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">4cos²θ = 2cos2θ + 2</div>
+        Divide by 4 to simplify:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">cos²θ = (cos2θ + 1) / 2</div>
+      `
+    },
+    3: {
+      formula: "(cos3θ + 3cosθ) / 4",
+      latex: "\\frac{\\cos 3\\theta + 3\\cos\\theta}{4}",
+      eval: (t) => (Math.cos(3 * t) + 3 * Math.cos(t)) / 4,
+      steps: `
+        Raise both sides to power 3:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2cosθ)³ = (z + 1/z)³</div>
+        Expand the right hand side:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">8cos³θ = z³ + 3z + 3/z + 1/z³</div>
+        Pair matching terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">8cos³θ = (z³ + 1/z³) + 3(z + 1/z)</div>
+        Substitute <b>zᵐ + 1/zᵐ = 2cos(mθ)</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">8cos³θ = 2cos3θ + 3(2cosθ) = 2cos3θ + 6cosθ</div>
+        Divide by 8 to simplify:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">cos³θ = (cos3θ + 3cosθ) / 4</div>
+      `
+    },
+    4: {
+      formula: "(cos4θ + 4cos2θ + 3) / 8",
+      latex: "\\frac{\\cos 4\\theta + 4\\cos 2\\theta + 3}{8}",
+      eval: (t) => (Math.cos(4 * t) + 4 * Math.cos(2 * t) + 3) / 8,
+      steps: `
+        Raise both sides to power 4:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2cosθ)⁴ = (z + 1/z)⁴</div>
+        Expand using the Binomial Theorem:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">16cos⁴θ = z⁴ + 4z² + 6 + 4/z² + 1/z⁴</div>
+        Pair reciprocal terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">16cos⁴θ = (z⁴ + 1/z⁴) + 4(z² + 1/z²) + 6</div>
+        Substitute <b>zᵐ + 1/zᵐ = 2cos(mθ)</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">16cos⁴θ = 2cos4θ + 4(2cos2θ) + 6 = 2cos4θ + 8cos2θ + 6</div>
+        Divide by 16 to simplify:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">cos⁴θ = (cos4θ + 4cos2θ + 3) / 8</div>
+      `
+    },
+    5: {
+      formula: "(cos5θ + 5cos3θ + 10cosθ) / 16",
+      latex: "\\frac{\\cos 5\\theta + 5\\cos 3\\theta + 10\\cos\\theta}{16}",
+      eval: (t) => (Math.cos(5 * t) + 5 * Math.cos(3 * t) + 10 * Math.cos(t)) / 16,
+      steps: `
+        Raise both sides to power 5:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2cosθ)⁵ = (z + 1/z)⁵</div>
+        Expand using the Binomial Theorem:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">32cos⁵θ = z⁵ + 5z³ + 10z + 10/z + 5/z³ + 1/z⁵</div>
+        Pair reciprocal terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">32cos⁵θ = (z⁵ + 1/z⁵) + 5(z³ + 1/z³) + 10(z + 1/z)</div>
+        Substitute <b>zᵐ + 1/zᵐ = 2cos(mθ)</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">32cos⁵θ = 2cos5θ + 5(2cos3θ) + 10(2cosθ) = 2cos5θ + 10cos3θ + 20cosθ</div>
+        Divide by 32 to simplify:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">cos⁵θ = (cos5θ + 5cos3θ + 10cosθ) / 16</div>
+      `
+    },
+    6: {
+      formula: "(cos6θ + 6cos4θ + 15cos2θ + 10) / 32",
+      latex: "\\frac{\\cos 6\\theta + 6\\cos 4\\theta + 15\\cos 2\\theta + 10}{32}",
+      eval: (t) => (Math.cos(6 * t) + 6 * Math.cos(4 * t) + 15 * Math.cos(2 * t) + 10) / 32,
+      steps: `
+        Raise both sides to power 6:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">(2cosθ)⁶ = (z + 1/z)⁶</div>
+        Expand using the Binomial Theorem:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">64cos⁶θ = z⁶ + 6z⁴ + 15z² + 20 + 15/z² + 6/z⁴ + 1/z⁶</div>
+        Pair reciprocal terms:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">64cos⁶θ = (z⁶ + 1/z⁶) + 6(z⁴ + 1/z⁴) + 15(z² + 1/z²) + 20</div>
+        Substitute <b>zᵐ + 1/zᵐ = 2cos(mθ)</b>:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; font-weight: 600;">64cos⁶θ = 2cos6θ + 6(2cos4θ) + 15(2cos2θ) + 20 = 2cos6θ + 12cos4θ + 30cos2θ + 20</div>
+        Divide by 64 to simplify:
+        <div style="font-family:'IBM Plex Mono', monospace; font-size:1.15rem; margin:1rem 0; color:var(--amber); font-weight: 600;">cos⁶θ = (cos6θ + 6cos4θ + 15cos2θ + 10) / 32</div>
+      `
+    }
+  }
+};
+
+function getMaeBinomialCoeffs(n) {
+  let coeffs = [1];
+  for (let i = 1; i <= n; i++) {
+    coeffs.push(coeffs[i - 1] * (n - i + 1) / i);
+  }
+  return coeffs;
+}
+
+function calculateMultipleAngleExpand() {
+  const output = document.getElementById('steps-output');
+  if (!output) return;
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  const funcType = document.getElementById('mae-function-type').value;
+  const nValStr = document.getElementById('mae-n').value;
+  const thetaValStr = document.getElementById('mae-theta').value.trim();
+  const decimalsValStr = document.getElementById('mae-decimals').value.trim();
+
+  // Validate empty input
+  if (thetaValStr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  const n = parseInt(nValStr);
+  const thetaDeg = parseFloat(thetaValStr);
+  const decimals = parseInt(decimalsValStr);
+
+  if (isNaN(thetaDeg)) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Angle</div></div><div class="step-desc">The angle θ must be a valid number.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(decimals) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  const thetaRad = thetaDeg * Math.PI / 180;
+  const s = Math.sin(thetaRad);
+  const c = Math.cos(thetaRad);
+
+  const lookup = maeFormulas[funcType][n];
+  const finalFormula = funcType === 'sin' ? `sin(${n}θ) = ${lookup.formula}` : `cos(${n}θ) = ${lookup.formula}`;
+
+  let stepsHtml = '';
+  let stepCount = 1;
+
+  // STEP 1: Given Function
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Given Function</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Identify the parameters for expansion:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>Function to expand = <b>${funcType}(${n}θ)</b></div>
+        <div>Value of n = <b>${n}</b></div>
+        <div>Test Evaluation Angle (θ) = <b>${thetaDeg}° (${thetaRad.toFixed(6)} rad)</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 2: De Moivre's Theorem
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">De Moivre's Theorem</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">According to De Moivre's Theorem, for any integer n:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; text-align: center; margin: 1.5rem 0; color: var(--amber); font-weight: 600;">
+        cos(nθ) + i sin(nθ) = (cosθ + i sinθ)ⁿ
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 3: Substitution of n
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Substitution of n = ${n}</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Substituting n = ${n} into De Moivre's relation:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; text-align: center; margin: 1.5rem 0; color: var(--navy); font-weight: 600;">
+        cos(${n}θ) + i sin(${n}θ) = (cosθ + i sinθ)<sup>${n}</sup>
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 4: Binomial Expansion
+  const coeffs = getMaeBinomialCoeffs(n);
+  let termsList = [];
+  let evaluatedTermsList = [];
+
+  for (let k = 0; k <= n; k++) {
+    let coeff = coeffs[k];
+    let cosPower = n - k;
+    let sinPower = k;
+
+    let cosPart = cosPower === 0 ? "" : (cosPower === 1 ? "cosθ" : `cos<sup>${cosPower}</sup>θ`);
+    let sinPart = sinPower === 0 ? "" : (sinPower === 1 ? "sinθ" : `sin<sup>${sinPower}</sup>θ`);
+    let coeffStr = coeff === 1 && k > 0 && k < n ? "" : coeff;
+
+    let termText = `${coeffStr}${cosPart}(i sinθ)<sup>${sinPower}</sup>`;
+    termsList.push(termText);
+
+    // Evaluate power of i
+    let iTerm = "";
+    let sign = " + ";
+    if (k === 0) {
+      sign = "";
+      iTerm = "";
+    } else {
+      if (k % 4 === 0) { sign = " + "; iTerm = ""; }
+      else if (k % 4 === 1) { sign = " + "; iTerm = "i"; }
+      else if (k % 4 === 2) { sign = " − "; iTerm = ""; }
+      else if (k % 4 === 3) { sign = " − "; iTerm = "i"; }
+    }
+    
+    let displayCoeff = coeff === 1 ? "" : coeff;
+    let termTextEval = `${sign}${iTerm}${displayCoeff}${cosPart}${sinPart}`;
+    if (k === 0) termTextEval = `${cosPart}`;
+    
+    evaluatedTermsList.push(termTextEval);
+  }
+
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Binomial Expansion</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Expand (cosθ + i sinθ)<sup>${n}</sup> using Binomial Theorem:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; margin: 1.5rem 0; line-height: 1.6; word-break: break-all;">
+        = ${termsList.join(" + ")}
+      </div>
+      <div class="step-desc">Evaluate the powers of i (where i² = −1, i³ = −i, etc.):</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; margin: 1.5rem 0; color: var(--navy); line-height: 1.6; word-break: break-all;">
+        = ${evaluatedTermsList.join("").trim()}
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 5: Real / Imaginary Part Comparison
+  let realPartHtml = [];
+  let imagPartHtml = [];
+
+  for (let k = 0; k <= n; k++) {
+    let coeff = coeffs[k];
+    let cosPower = n - k;
+    let sinPower = k;
+    let cosPart = cosPower === 0 ? "" : (cosPower === 1 ? "cosθ" : `cos<sup>${cosPower}</sup>θ`);
+    let sinPart = sinPower === 0 ? "" : (sinPower === 1 ? "sinθ" : `sin<sup>${sinPower}</sup>θ`);
+    let displayCoeff = coeff === 1 ? "" : coeff;
+
+    if (k % 2 === 0) {
+      // Real Part
+      let sign = " + ";
+      if (k === 0) sign = "";
+      else if (k % 4 === 2) sign = " − ";
+      realPartHtml.push(`${sign}${displayCoeff}${cosPart}${sinPart}`);
+    } else {
+      // Imaginary Part
+      let sign = " + ";
+      if (k === 1) sign = "";
+      else if (k % 4 === 3) sign = " − ";
+      imagPartHtml.push(`${sign}${displayCoeff}${cosPart}${sinPart}`);
+    }
+  }
+
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Real & Imaginary Comparison</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Equating the Real and Imaginary parts from both sides:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; margin: 1.5rem 0; line-height: 1.8;">
+        <div><b>Real Part (cos(${n}θ)):</b><br>
+        cos(${n}θ) = ${realPartHtml.join("").trim()}</div>
+        <div style="margin-top: 1rem;"><b>Imaginary Part (sin(${n}θ)):</b><br>
+        sin(${n}θ) = ${imagPartHtml.join("").trim()}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 6: Simplification
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Simplification</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Simplify the target function using trigonometric identities:</div>
+      ${lookup.steps}
+    </div>
+  </div>`;
+
+  // STEP 7: Final Expansion Formula
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Final Expansion Formula</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.35rem; color: var(--teal); font-weight: 700; text-align: center; margin: 1rem 0;">
+        ${finalFormula}
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 8: Numerical Verification
+  let lhsVal = funcType === 'sin' ? Math.sin(n * thetaRad) : Math.cos(n * thetaRad);
+  let rhsVal = lookup.eval(s, c);
+  let lhsValStr = lhsVal.toFixed(decimals);
+  let rhsValStr = rhsVal.toFixed(decimals);
+
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Numerical Verification</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Evaluate both sides at θ = ${thetaDeg}° for validation:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+        <div>LHS: ${funcType}(${n} × ${thetaDeg}°) = ${funcType}(${n * thetaDeg}°) = <b>${lhsValStr}</b></div>
+        <div>RHS: ${lookup.formula.replace(/θ/g, `(${thetaDeg}°)`)} = <b>${rhsValStr}</b></div>
+        <div style="color: var(--teal); font-weight: 700; margin-top: 0.5rem;">✓ LHS and RHS match exactly to ${decimals} decimal places!</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Final Result Summary Card
+  let resultSummaryHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; width: 100%; box-sizing: border-box;">
+      <div style="flex: 1 1 200px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Expansion Completed!</div>
+          <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
+          </button>
+        </div>
+        <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Multiple Angle Expansion Identity.</div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Expansion Formula:</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.8rem; font-weight:700; color:var(--amber); margin: 0.6rem 0; line-height: 1.4;">
+            ${funcType === 'sin' ? 'sin' : 'cos'}(${n}θ) = <span style="color:#ffffff;">${lookup.formula}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.25rem; font-size: 0.95rem; opacity: 0.85; line-height:1.6;">
+            <div>Target Function: <strong>${funcType}(${n}θ)</strong></div>
+            <div>Numerical Check (θ = ${thetaDeg}°): <strong>${rhsValStr}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Educational Note Card
+  let educationalHtml = `
+    <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
+      <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Multiple-Angle Expansion</div>
+      <div style="font-size: 1rem; line-height: 1.6; color: var(--navy);">
+        <strong>Multiple-Angle Identities:</strong> Expressing trig functions of multiple angles like cos(nθ) and sin(nθ) in terms of single-angle powers (cosθ, sinθ) is a key algebraic simplification technique in calculus and waves.
+        <div style="margin: 0.75rem 0;">
+          <strong>De Moivre's Theorem:</strong>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; margin: 0.25rem 0;">cos(nθ) + i sin(nθ) = (cosθ + i sinθ)ⁿ</div>
+          Provides a beautiful bridge between trigonometric multiple-angles and complex number binomial expansions.
+        </div>
+        <strong>Real and Imaginary Part Comparison:</strong> Because the LHS and RHS must be equivalent as complex numbers, the real part on the LHS (cos(nθ)) must equal the real part on the RHS, and the imaginary coefficient on the LHS (sin(nθ)) must equal the imaginary coefficient on the RHS.
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = resultSummaryHtml + stepsHtml + educationalHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function calculatePowerReduction() {
+  const output = document.getElementById('steps-output');
+  if (!output) return;
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  const funcType = document.getElementById('pr-function-type').value;
+  const nValStr = document.getElementById('pr-n').value;
+  const thetaValStr = document.getElementById('pr-theta').value.trim();
+  const decimalsValStr = document.getElementById('pr-decimals').value.trim();
+
+  // Validate empty input
+  if (thetaValStr === '' || decimalsValStr === '') {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  const n = parseInt(nValStr);
+  const thetaDeg = parseFloat(thetaValStr);
+  const decimals = parseInt(decimalsValStr);
+
+  if (isNaN(thetaDeg)) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Angle</div></div><div class="step-desc">The angle θ must be a valid number.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  if (isNaN(decimals) || decimals < 0 || decimals > 15) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
+  const thetaRad = thetaDeg * Math.PI / 180;
+  const lookup = prFormulas[funcType][n];
+  const finalFormula = funcType === 'sin' ? `sin<sup>${n}</sup>θ = ${lookup.formula}` : `cos<sup>${n}</sup>θ = ${lookup.formula}`;
+
+  let stepsHtml = '';
+  let stepCount = 1;
+
+  // STEP 1: Given Function
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Given Function</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Identify the parameters for power reduction:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div>Function to reduce = <b>${funcType}<sup>${n}</sup>θ</b></div>
+        <div>Value of n (Power) = <b>${n}</b></div>
+        <div>Test Evaluation Angle (θ) = <b>${thetaDeg}° (${thetaRad.toFixed(6)} rad)</b></div>
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 2: Complex Variable Setup
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Complex Variable Setup</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Let us represent the single angle in Euler complex form:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem; color: var(--navy);">
+        <div>z = cosθ + i sinθ</div>
+        <div>1/z = z⁻¹ = cosθ − i sinθ</div>
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 3: Standard Relations
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Standard Relations</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">By adding and subtracting these relations, we obtain the base conversions:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem; color: var(--navy);">
+        <div>z + 1/z = 2cosθ</div>
+        <div>z − 1/z = 2isinθ</div>
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 4: Raise to Required Power
+  let powerLhs = "";
+  let powerRhs = "";
+  if (funcType === 'cos') {
+    powerLhs = `(2cosθ)<sup>${n}</sup> = 2<sup>${n}</sup>cos<sup>${n}</sup>θ = ${Math.pow(2, n)}cos<sup>${n}</sup>θ`;
+    powerRhs = `(z + 1/z)<sup>${n}</sup>`;
+  } else {
+    // i^n evaluation
+    let coeffVal = Math.pow(2, n);
+    let iPower = "";
+    if (n % 4 === 0) iPower = "";
+    else if (n % 4 === 1) iPower = "i";
+    else if (n % 4 === 2) { iPower = ""; coeffVal = -coeffVal; }
+    else if (n % 4 === 3) { iPower = "i"; coeffVal = -coeffVal; }
+    
+    let signCoeff = coeffVal < 0 ? `−${Math.abs(coeffVal)}` : `${coeffVal}`;
+    powerLhs = `(2isinθ)<sup>${n}</sup> = ${signCoeff}${iPower}sin<sup>${n}</sup>θ`;
+    powerRhs = `(z − 1/z)<sup>${n}</sup>`;
+  }
+
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Raise to Required Power (n = ${n})</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Raise the relation to the power of ${n}:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.15rem; margin: 1.5rem 0; padding-left: 2rem; display: flex; flex-direction: column; gap: 0.5rem; color: var(--navy);">
+        <div>LHS = ${powerLhs}</div>
+        <div>RHS = ${powerRhs}</div>
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 5: Binomial Expansion, Pairing, Conversion & Simplification
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Derivation & Power Reduction</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Algebraic steps using the Binomial Expansion:</div>
+      ${lookup.steps}
+    </div>
+  </div>`;
+
+  // STEP 6: Final Expansion Formula
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Final Expansion Formula</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.35rem; color: var(--teal); font-weight: 700; text-align: center; margin: 1rem 0;">
+        ${finalFormula}
+      </div>
+    </div>
+  </div>`;
+
+  // STEP 7: Numerical Verification
+  let lhsVal = funcType === 'sin' ? Math.pow(Math.sin(thetaRad), n) : Math.pow(Math.cos(thetaRad), n);
+  let rhsVal = lookup.eval(thetaRad);
+  let lhsValStr = lhsVal.toFixed(decimals);
+  let rhsValStr = rhsVal.toFixed(decimals);
+
+  stepsHtml += `<div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Numerical Verification</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content">
+      <div class="step-desc">Evaluate both sides at θ = ${thetaDeg}° for validation:</div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
+        <div>LHS: [${funcType}(${thetaDeg}°)]<sup>${n}</sup> = [${(funcType === 'sin' ? s : c).toFixed(6)}]<sup>${n}</sup> = <b>${lhsValStr}</b></div>
+        <div>RHS: ${lookup.formula.replace(/θ/g, `(${thetaDeg}°)`)} = <b>${rhsValStr}</b></div>
+        <div style="color: var(--teal); font-weight: 700; margin-top: 0.5rem;">✓ LHS and RHS match exactly to ${decimals} decimal places!</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Final Result Summary Card
+  let resultSummaryHtml = `
+    <div class="final-result animate-fade-in" style="padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-bottom: 2rem; display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; width: 100%; box-sizing: border-box;">
+      <div style="flex: 1 1 200px; text-align: left;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
+          <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Power Reduction Completed!</div>
+          <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
+          </button>
+        </div>
+        <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Power Reduction Identity.</div>
+        <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
+          <div style="font-size:0.95rem; font-weight:600; color: rgba(255,255,255,0.7); border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">Reduction Formula:</div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size: 1.8rem; font-weight:700; color:var(--amber); margin: 0.6rem 0; line-height: 1.4;">
+            ${funcType}<sup>${n}</sup>θ = <span style="color:#ffffff;">${lookup.formula}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.25rem; font-size: 0.95rem; opacity: 0.85; line-height:1.6;">
+            <div>Target Function: <strong>${funcType}<sup>${n}</sup>θ</strong></div>
+            <div>Numerical Check (θ = ${thetaDeg}°): <strong>${rhsValStr}</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Educational Note Card
+  let educationalHtml = `
+    <div class="step-card" style="border-left: 4px solid var(--teal); background: rgba(13, 148, 136, 0.05); margin-top: 2rem;">
+      <div style="font-weight: 700; color: var(--teal); font-size: 1.1rem; margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✦ Educational Note: Power Reduction</div>
+      <div style="font-size: 1rem; line-height: 1.6; color: var(--navy);">
+        <strong>Power Reduction:</strong> Power reduction identities express higher powers of sinⁿθ and cosⁿθ in terms of linear multiple-angle trig functions (e.g. cos(2θ), sin(3θ)). This is a crucial tool in engineering mathematics.
+        <div style="margin: 0.75rem 0;">
+          <strong>Method of Derivation:</strong> Representing 2cosθ and 2isinθ as complex sums/differences z ± z⁻¹ enables simple algebraic binomial expansions, matching pairs into multiple angles easily via De Moivre.
+        </div>
+        <strong>Applications:</strong>
+        <ul>
+          <li><b>Integration:</b> Direct integration of terms like $\\int \\sin^4\\theta \\, d\\theta$ is complex, but becomes trivial once expanded into power-reduced multiple-angle linear terms.</li>
+          <li><b>Fourier Series:</b> Crucial for decomposing signals and evaluating trigonometric integrals in periodic wave analyses.</li>
+        </ul>
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = resultSummaryHtml + stepsHtml + educationalHtml;
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 
