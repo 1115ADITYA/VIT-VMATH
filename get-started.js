@@ -9709,10 +9709,11 @@ function calculateAnnuity() {
             Future Value = <span style="color:#ffffff;">₹${formatCurrency(fv)}</span>
           </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; font-size: 0.9rem; opacity: 0.85;">
-            <div>Periodic Payment (PMT): <strong>₹${pmt.toLocaleString('en-IN')}</strong></div>
+            <div>Periodic Contribution: <strong>₹${pmt.toLocaleString('en-IN')}</strong></div>
             <div>Interest Rate: <strong>${rate}%</strong></div>
-            <div>Time Period: <strong>${years} Years</strong></div>
-            <div>Compounding Frequency: <strong>${freqName}</strong></div>
+            <div>Number of Periods: <strong>${nt}</strong></div>
+            <div>Total Deposits: <strong>₹${formatCurrency(pmt * nt)}</strong></div>
+            <div style="grid-column: span 2;">Interest Earned: <strong style="color:var(--amber);">₹${formatCurrency(fv - (pmt * nt))}</strong></div>
           </div>
         </div>
       </div>
@@ -9737,7 +9738,152 @@ function calculateAnnuity() {
     </div>
   `;
 
-  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  let graphContainerHtml = `
+    <div style="background: #111827; border-radius: 16px; border: 1px solid var(--border); padding: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+      <div id="annuity-plot-container" style="width: 100%; height: 500px;"></div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + graphContainerHtml + stepsHtml + educationalHtml;
+
+  // Calculate arrays for Plotly
+  let xPeriods = [];
+  let yAccumulated = [];
+  let yDeposits = [];
+  let hoverTextArray = [];
+  
+  for (let p = 0; p <= nt; p++) {
+    let depositsAtP = pmt * p;
+    let accumulatedAtP = 0;
+    if (p > 0) {
+      accumulatedAtP = pmt * ((Math.pow(1 + i, p) - 1) / i);
+    }
+    let interestAtP = accumulatedAtP - depositsAtP;
+    
+    xPeriods.push(p);
+    yAccumulated.push(accumulatedAtP);
+    yDeposits.push(depositsAtP);
+    
+    hoverTextArray.push(
+      `<b>Period: ${p}</b><br>Total Deposits: ₹${formatCurrency(depositsAtP)}<br>Accumulated Value: ₹${formatCurrency(accumulatedAtP)}<br>Interest Earned: ₹${formatCurrency(interestAtP)}`
+    );
+  }
+
+  // Plotly traces
+  let traceAccumulated = {
+    x: xPeriods,
+    y: yAccumulated,
+    name: 'Accumulated Value',
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: { color: '#22c55e', width: 3, shape: 'spline' },
+    marker: { size: 4 },
+    hoverinfo: 'text',
+    hovertext: hoverTextArray
+  };
+  
+  let traceDeposits = {
+    x: xPeriods,
+    y: yDeposits,
+    name: 'Total Deposits',
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: { color: '#3b82f6', width: 3, shape: 'spline' },
+    marker: { size: 4 },
+    hoverinfo: 'text',
+    hovertext: hoverTextArray
+  };
+
+  let midIdx = Math.floor(nt / 2);
+  let layout = {
+    title: {
+      text: '📈 Wealth Accumulation Journey',
+      font: { color: '#ffffff', family: 'Fraunces, serif', size: 24 }
+    },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: '#9ca3af', family: 'Figtree, sans-serif' },
+    xaxis: {
+      title: { text: 'Period', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' }
+    },
+    yaxis: {
+      title: { text: 'Amount (₹)', font: { color: '#d1d5db', size: 14 } },
+      tickprefix: '₹',
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' }
+    },
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#111827',
+      font: { family: 'Figtree, sans-serif', color: '#ffffff', size: 14 },
+      bordercolor: 'rgba(255,255,255,0.2)',
+      padding: { t: 12, b: 12, l: 16, r: 16 }
+    },
+    legend: { orientation: 'h', y: -0.2, x: 0.5, xanchor: 'center', font: { color: '#d1d5db', size: 14 } },
+    margin: { l: 80, r: 40, t: 80, b: 80 },
+    annotations: [
+      {
+        x: xPeriods[1] || 1,
+        y: yAccumulated[1] || 0,
+        xref: 'x', yref: 'y',
+        text: 'Savings Started',
+        showarrow: true,
+        arrowhead: 2,
+        ax: 50,
+        ay: -40,
+        font: { color: '#ffffff', size: 13, family: 'Figtree, sans-serif', weight: 600 },
+        bgcolor: 'rgba(59,130,246,0.1)',
+        bordercolor: '#3b82f6',
+        borderpad: 4
+      },
+      {
+        x: xPeriods[midIdx],
+        y: yAccumulated[midIdx],
+        xref: 'x', yref: 'y',
+        text: 'Halfway to Goal',
+        showarrow: true,
+        arrowhead: 2,
+        ax: 0,
+        ay: -60,
+        font: { color: '#ffffff', size: 13, family: 'Figtree, sans-serif' },
+        bgcolor: 'rgba(255,255,255,0.1)',
+        bordercolor: 'rgba(255,255,255,0.3)',
+        borderpad: 4
+      },
+      {
+        x: xPeriods[nt],
+        y: yAccumulated[nt],
+        xref: 'x', yref: 'y',
+        text: 'Final Accumulated Value',
+        showarrow: true,
+        arrowhead: 2,
+        ax: -60,
+        ay: -40,
+        font: { color: '#22c55e', size: 13, family: 'Figtree, sans-serif', weight: 600 },
+        bgcolor: 'rgba(34,197,94,0.1)',
+        bordercolor: '#22c55e',
+        borderpad: 4
+      }
+    ]
+  };
+
+  let config = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+
+  if (typeof Plotly !== 'undefined') {
+    Plotly.newPlot('annuity-plot-container', [traceAccumulated, traceDeposits], layout, config);
+  } else {
+    document.getElementById('annuity-plot-container').innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Unable to load Plotly.js for interactive chart visualization.</div>';
+  }
+
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
