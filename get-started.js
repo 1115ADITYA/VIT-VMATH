@@ -1064,11 +1064,19 @@ function calculateMatrix() {
     calculateUniform();
     return;
   }
-  if (currentCalc === 'rank-calculator' || currentCalc === 'pearson-rank' || currentCalc === 'regression-calculator') {
+  if (currentCalc === 'rank-calculator') {
     const output = document.getElementById('steps-output');
     output.innerHTML = `<div class="step-card" style="border-left: 4px solid var(--amber);"><div class="step-header"><div class="step-title" style="color: var(--amber);">⚙ Calculator Logic Coming Soon</div></div><div class="step-desc" style="margin-top: 0.5rem;">The calculation engine for this tool is under development. The input UI is ready — logic will be wired up next.</div></div>`;
     output.classList.add('active');
     output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  if (currentCalc === 'regression-calculator') {
+    calculateRegression();
+    return;
+  }
+  if (currentCalc === 'pearson-rank') {
+    calculatePearsonRank();
     return;
   }
   if (currentCalc === 'poly-roots') {
@@ -12100,6 +12108,1525 @@ function calculateUniform() {
       output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, 50);
+}
+
+// ==========================================
+// PEARSON RANK CORRELATION CALCULATOR
+// ==========================================
+
+function calculatePearsonRank() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  
+  // Helper to handle error display
+  const showError = (msg) => {
+    output.innerHTML = `
+      <div class="step-card" style="border-left-color: #dc2626;">
+        <div class="step-header">
+          <div class="step-title" style="color: #dc2626;">Error</div>
+        </div>
+        <div class="step-desc">${msg}</div>
+      </div>
+    `;
+    output.classList.add('active');
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Helper to format fraction safely
+  const fmt = (num, dec) => Number.isInteger(num) ? num.toString() : Number(num).toFixed(dec);
+
+  // Read Inputs
+  const decimals = parseInt(document.getElementById('pearson-decimals').value) || 4;
+  const rawData = [];
+  
+  for (let i = 1; i <= 8; i++) {
+    const xVal = document.getElementById(`pearson-x-${i}`).value;
+    const yVal = document.getElementById(`pearson-y-${i}`).value;
+    
+    if (xVal !== '' || yVal !== '') {
+      rawData.push({ row: i, xStr: xVal, yStr: yVal });
+    }
+  }
+
+  // Phase 2: Input Validation
+  if (rawData.length === 0) {
+    return showError("No data entered. Please fill at least 2 pairs of X and Y values.");
+  }
+
+  const xs = [];
+  const ys = [];
+  const origOrder = [];
+  
+  for (let r of rawData) {
+    if (r.xStr === '' || r.yStr === '') {
+      return showError(`Mismatched data: Row ${r.row} has a value for X but not Y (or vice versa). Each row must have both X and Y, or be left completely empty.`);
+    }
+    const x = parseFloat(r.xStr);
+    const y = parseFloat(r.yStr);
+    
+    if (isNaN(x) || isNaN(y)) {
+      return showError(`Non-numeric value detected in row ${r.row}. All entries must be numbers.`);
+    }
+    
+    xs.push(x);
+    ys.push(y);
+    origOrder.push(r.row);
+  }
+
+  if (xs.length < 2) {
+    return showError("At least 2 data pairs are required to compute a correlation coefficient.");
+  }
+
+  let warningHtml = '';
+  const xAllSame = xs.every(v => v === xs[0]);
+  const yAllSame = ys.every(v => v === ys[0]);
+  if (xAllSame || yAllSame) {
+    warningHtml = `
+      <div class="step-card" style="border-left-color: var(--amber); background: rgba(245, 158, 11, 0.05); margin-bottom: 1.5rem;">
+        <div class="step-header" style="margin-bottom: 0;">
+          <svg style="width: 20px; height: 20px; stroke: var(--amber); margin-right: 0.5rem;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          <div class="step-title" style="color: var(--amber); font-size: 0.95rem;">Warning: Identical Values</div>
+        </div>
+        <div class="step-desc" style="margin-top: 0.5rem; margin-bottom: 0; color: var(--navy);">
+          All X values (or all Y values) are identical. This means all observations receive the exact same rank, leaving no variation to correlate. The formula will compute ρ = 0, but this result may not be meaningful.
+        </div>
+      </div>
+    `;
+  }
+
+  const n = xs.length;
+  const denom = n * (n * n - 1);
+  if (denom === 0) {
+     return showError("Denominator evaluates to zero. Cannot compute correlation.");
+  }
+
+  // Phase 3: Average Rank Algorithm
+  function computeRanks(arr, varName) {
+    const indices = arr.map((val, idx) => idx);
+    indices.sort((a, b) => arr[a] - arr[b]);
+    
+    const ranks = new Array(n);
+    const tieNotes = [];
+    
+    let i = 0;
+    while (i < n) {
+      let j = i;
+      while (j < n && arr[indices[j]] === arr[indices[i]]) {
+        j++;
+      }
+      const k = j - i;
+      const avgRank = (i + 1) + (k - 1) / 2;
+      
+      for (let m = i; m < j; m++) {
+        ranks[indices[m]] = avgRank;
+      }
+      
+      if (k > 1) {
+        tieNotes.push(`Value ${fmt(arr[indices[i]], decimals)} appears ${k} times (positions ${i+1} to ${j}) &rarr; assigned average rank <b>${avgRank}</b>.`);
+      }
+      
+      i = j;
+    }
+    
+    return { ranks, tieNotes };
+  }
+
+  const rankXInfo = computeRanks(xs, 'X');
+  const rankYInfo = computeRanks(ys, 'Y');
+  
+  const Rx = rankXInfo.ranks;
+  const Ry = rankYInfo.ranks;
+
+  // Phase 4: Compute d and d^2
+  const d = new Array(n);
+  const d2 = new Array(n);
+  let sumD2 = 0;
+  
+  for (let i = 0; i < n; i++) {
+    d[i] = Rx[i] - Ry[i];
+    d2[i] = d[i] * d[i];
+    sumD2 += d2[i];
+  }
+
+  // Phase 5: Compute rho
+  let rho = 1 - (6 * sumD2) / denom;
+  if (rho > 1) rho = 1;
+  if (rho < -1) rho = -1;
+
+  // Phase 6: HTML Building
+  const th = (content) => `<th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--muted); border-bottom: 2px solid var(--border);">${content}</th>`;
+  const td = (content, color) => `<td style="padding: 0.5rem 0.75rem; text-align: center; border-bottom: 1px solid var(--border); ${color ? `color: ${color}; font-weight: 500;` : ''}">${content}</td>`;
+  const tieHighlight = `style="background: rgba(245,158,11,0.1); color: var(--amber); padding: 0.5rem 0.75rem; text-align: center; border-bottom: 1px solid var(--border); font-weight: 500;"`;
+  const tieTrHighlight = (isTied) => isTied ? `style="background: rgba(245,158,11,0.03);"` : '';
+
+  let interpText = "";
+  let interpColor = "";
+  let interpDesc = "";
+  
+  if (rho === 1) { interpText = "Perfect Positive"; interpColor = "var(--teal)"; interpDesc = "X and Y increase together in perfect monotonicity."; }
+  else if (rho >= 0.7) { interpText = "Strong Positive"; interpColor = "var(--teal)"; interpDesc = "High ranks in X strongly correspond to high ranks in Y."; }
+  else if (rho >= 0.4) { interpText = "Moderate Positive"; interpColor = "var(--teal)"; interpDesc = "Higher X ranks generally correspond to higher Y ranks."; }
+  else if (rho >= 0.1) { interpText = "Weak Positive"; interpColor = "var(--muted)"; interpDesc = "Slight tendency for higher X to pair with higher Y."; }
+  else if (rho > -0.1) { interpText = "No / Negligible"; interpColor = "var(--muted)"; interpDesc = "No monotonic relationship between X and Y."; }
+  else if (rho > -0.4) { interpText = "Weak Negative"; interpColor = "#f87171"; interpDesc = "Slight tendency for higher X to pair with lower Y."; }
+  else if (rho > -0.7) { interpText = "Moderate Negative"; interpColor = "#dc2626"; interpDesc = "Higher X ranks generally correspond to lower Y ranks."; }
+  else if (rho > -1) { interpText = "Strong Negative"; interpColor = "#dc2626"; interpDesc = "High ranks in X strongly correspond to low ranks in Y."; }
+  else { interpText = "Perfect Negative"; interpColor = "#dc2626"; interpDesc = "X and Y move in perfectly opposite directions."; }
+
+  let html = `
+    ${warningHtml}
+    <div class="card" style="background: #111827; border-color: #374151; padding: 2rem;">
+      <h3 style="color: #9CA3AF; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Result Summary</h3>
+      <div style="color: var(--amber); font-family: 'Fraunces', serif; font-size: 2.5rem; margin-bottom: 1.5rem;">
+        ρ = ${rho.toFixed(decimals)}
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;">
+          <div style="color: #6B7280; font-size: 0.85rem; margin-bottom: 0.25rem;">Observations (n)</div>
+          <div style="color: white; font-weight: 600; font-size: 1.2rem;">${n}</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;">
+          <div style="color: #6B7280; font-size: 0.85rem; margin-bottom: 0.25rem;">Σd²</div>
+          <div style="color: white; font-weight: 600; font-size: 1.2rem;">${fmt(sumD2, decimals)}</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; grid-column: 1 / -1;">
+          <div style="color: #6B7280; font-size: 0.85rem; margin-bottom: 0.25rem;">Interpretation</div>
+          <div style="color: ${interpColor}; font-weight: 600; font-size: 1.1rem;">${interpText} Correlation</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Step 1: Data Table
+  html += `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-title">Original Data</div>
+      </div>
+      <div style="overflow-x: auto; max-width: 400px; margin: 0 auto;">
+        <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; font-size: 0.95rem;">
+          <thead><tr>${th('No.')}${th('X')}${th('Y')}</tr></thead>
+          <tbody>
+  `;
+  for (let i = 0; i < n; i++) {
+    html += `<tr>${td(origOrder[i])}${td(fmt(xs[i], decimals))}${td(fmt(ys[i], decimals))}</tr>`;
+  }
+  html += `</tbody></table></div></div>`;
+
+  // Step 2 & 3: Rank X and Rank Y tables
+  const buildRankTable = (stepNum, title, arr, ranks, notes, varLabel) => {
+    let rHtml = `
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-number">${stepNum}</div>
+          <div class="step-title">${title}</div>
+        </div>
+        <div style="overflow-x: auto; max-width: 400px; margin: 0 auto 1rem auto;">
+          <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; font-size: 0.95rem;">
+            <thead><tr>${th('No.')}${th(varLabel)}${th('Rank')}</tr></thead>
+            <tbody>
+    `;
+    
+    const rankCounts = {};
+    ranks.forEach(r => rankCounts[r] = (rankCounts[r] || 0) + 1);
+
+    for (let i = 0; i < n; i++) {
+      const isTied = rankCounts[ranks[i]] > 1;
+      rHtml += `<tr ${tieTrHighlight(isTied)}>${td(origOrder[i])}${td(fmt(arr[i], decimals))}<td ${isTied ? tieHighlight : td(ranks[i])}>${ranks[i]}</td></tr>`;
+    }
+    rHtml += `</tbody></table></div>`;
+    
+    if (notes.length > 0) {
+      rHtml += `<div style="background: var(--bg2); padding: 1rem; border-radius: 8px; font-size: 0.9rem; color: var(--navy); border: 1px dashed var(--border);">`;
+      rHtml += `<div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--amber);">Tie Handling Notes:</div>`;
+      rHtml += `<ul style="margin: 0; padding-left: 1.5rem; line-height: 1.6;">`;
+      notes.forEach(note => rHtml += `<li>${note}</li>`);
+      rHtml += `</ul></div>`;
+    }
+    rHtml += `</div>`;
+    return rHtml;
+  };
+
+  html += buildRankTable(2, "Assign Ranks for X", xs, Rx, rankXInfo.tieNotes, "X");
+  html += buildRankTable(3, "Assign Ranks for Y", ys, Ry, rankYInfo.tieNotes, "Y");
+
+  // Step 4 & 5 combined table visual
+  html += `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">4 & 5</div>
+        <div class="step-title">Compute d and d²</div>
+      </div>
+      <div class="step-desc">d = R<sub>x</sub> − R<sub>y</sub></div>
+      <div style="overflow-x: auto; max-width: 500px; margin: 0 auto;">
+        <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; font-size: 0.95rem;">
+          <thead><tr>${th('No.')}${th('R<sub>x</sub>')}${th('R<sub>y</sub>')}${th('d')}${th('d²')}</tr></thead>
+          <tbody>
+  `;
+  for (let i = 0; i < n; i++) {
+    const dColor = d[i] < 0 ? '#dc2626' : 'var(--navy)';
+    html += `<tr>
+      ${td(origOrder[i])}
+      ${td(Rx[i])}
+      ${td(Ry[i])}
+      ${td(fmt(d[i], decimals), dColor)}
+      ${td(fmt(d2[i], decimals), 'var(--teal)')}
+    </tr>`;
+  }
+  html += `</tbody></table></div></div>`;
+
+  // Step 6: Sum
+  html += `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">6</div>
+        <div class="step-title">Sum of Squared Differences (Σd²)</div>
+      </div>
+      <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); text-align: center; padding: 1rem; background: var(--bg); border-radius: 8px;">
+        Σd² = ${d2.map(val => fmt(val, decimals)).join(' + ')} = <span style="color: var(--teal); font-weight: 700;">${fmt(sumD2, decimals)}</span>
+      </div>
+    </div>
+  `;
+
+  // Step 7: Formula
+  html += `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">7</div>
+        <div class="step-title">Formula</div>
+      </div>
+      <div style="text-align: center; font-size: 1.5rem; font-family: 'Fraunces', serif; color: var(--navy); padding: 1.5rem; border: 2px dashed var(--border); border-radius: 8px;">
+        ρ = 1 − <span style="display: inline-block; vertical-align: middle; text-align: center; font-size: 1.3rem;">
+          <span style="border-bottom: 2px solid var(--navy); padding: 0 0.5rem; display: block;">6 Σd²</span>
+          <span style="padding: 0 0.5rem; display: block;">n(n² − 1)</span>
+        </span>
+      </div>
+    </div>
+  `;
+
+  // Step 8: Substitution
+  html += `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">8</div>
+        <div class="step-title">Substitution</div>
+      </div>
+      <div style="text-align: center; font-size: 1.4rem; font-family: 'IBM Plex Mono', monospace; color: var(--navy); padding: 1.5rem; background: var(--bg); border-radius: 8px; line-height: 2;">
+        ρ = 1 − <span style="display: inline-block; vertical-align: middle; text-align: center;">
+          <span style="border-bottom: 2px solid var(--navy); padding: 0 0.5rem; display: block;">6 × ${fmt(sumD2, decimals)}</span>
+          <span style="padding: 0 0.5rem; display: block;">${n} × (${n}² − 1)</span>
+        </span><br>
+        ρ = 1 − <span style="display: inline-block; vertical-align: middle; text-align: center;">
+          <span style="border-bottom: 2px solid var(--navy); padding: 0 0.5rem; display: block;">${fmt(6 * sumD2, decimals)}</span>
+          <span style="padding: 0 0.5rem; display: block;">${denom}</span>
+        </span><br>
+        ρ = 1 − ${fmt((6 * sumD2) / denom, decimals + 2)}
+      </div>
+    </div>
+  `;
+
+  // Step 9: Final Answer
+  html += `
+    <div class="step-card" style="border-left: 4px solid ${interpColor};">
+      <div class="step-header">
+        <div class="step-number" style="background: rgba(0,0,0,0.05); color: ${interpColor};">9</div>
+        <div class="step-title" style="color: ${interpColor};">Final Answer & Interpretation</div>
+      </div>
+      <div style="text-align: center;">
+        <div style="font-family: 'Fraunces', serif; font-size: 2.5rem; color: ${interpColor}; margin-bottom: 1rem;">
+          ρ = ${rho.toFixed(decimals)}
+        </div>
+        <div style="font-weight: 600; font-size: 1.2rem; color: var(--navy); margin-bottom: 0.5rem;">
+          ${interpText} Correlation
+        </div>
+        <div style="color: var(--muted); font-size: 1rem;">
+          ${interpDesc}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Visualizations: Strength Meter
+  const getMeterPercent = (r) => ((r + 1) / 2) * 100;
+  html += `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-title">Correlation Strength Meter</div>
+      </div>
+      <div style="margin-top: 1rem; position: relative; padding-top: 2rem;">
+        <svg width="100%" height="70" viewBox="0 0 100 70" preserveAspectRatio="none" style="overflow: visible;">
+          <defs>
+            <linearGradient id="gradMeter" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#ef4444" />
+              <stop offset="50%" stop-color="#e5e7eb" />
+              <stop offset="100%" stop-color="#10b981" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="30" width="100" height="16" rx="8" fill="url(#gradMeter)" />
+          <path d="M 0 30 v 20 M 25 30 v 20 M 50 30 v 20 M 75 30 v 20 M 100 30 v 20" stroke="var(--navy)" stroke-width="0.5" opacity="0.3" />
+          <text x="0" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">-1</text>
+          <text x="25" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">-0.5</text>
+          <text x="50" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">0</text>
+          <text x="75" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">+0.5</text>
+          <text x="100" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">+1</text>
+          <g transform="translate(${getMeterPercent(rho)}, 30)">
+            <polygon points="-3,-10 3,-10 0,0" fill="var(--navy)" />
+            <text x="0" y="-14" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="6" font-weight="bold" fill="var(--navy)">${rho.toFixed(2)}</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  `;
+
+  // Visualizations: Scatter Plot
+  const pad = 40;
+  const svgW = 460;
+  const svgH = 320;
+  const plotW = svgW - 2 * pad;
+  const plotH = svgH - 2 * pad;
+  
+  const mapX = (r) => pad + ((r - 1) / (n - 1 || 1)) * plotW;
+  const mapY = (r) => pad + plotH - ((r - 1) / (n - 1 || 1)) * plotH;
+  
+  let scatterHtml = '';
+  for (let i = 1; i <= n; i++) {
+    const px = mapX(i);
+    const py = mapY(i);
+    scatterHtml += `<line x1="${px}" y1="${pad}" x2="${px}" y2="${pad+plotH}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4" />`;
+    scatterHtml += `<line x1="${pad}" y1="${py}" x2="${pad+plotW}" y2="${py}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4" />`;
+    scatterHtml += `<text x="${px}" y="${svgH - pad + 15}" text-anchor="middle" font-family="sans-serif" font-size="10" fill="var(--muted)">${i}</text>`;
+    scatterHtml += `<text x="${pad - 10}" y="${py + 4}" text-anchor="end" font-family="sans-serif" font-size="10" fill="var(--muted)">${i}</text>`;
+  }
+  scatterHtml += `<line x1="${pad}" y1="${pad+plotH}" x2="${pad+plotW}" y2="${pad+plotH}" stroke="var(--navy)" stroke-width="2" />`;
+  scatterHtml += `<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${pad+plotH}" stroke="var(--navy)" stroke-width="2" />`;
+  scatterHtml += `<text x="${pad + plotW/2}" y="${svgH - 5}" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="var(--navy)">Rank of X</text>`;
+  scatterHtml += `<text x="12" y="${pad + plotH/2}" transform="rotate(-90 12,${pad + plotH/2})" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="var(--navy)">Rank of Y</text>`;
+  
+  let sumRx = 0, sumRy = 0, sumRxRy = 0, sumRx2 = 0;
+  for (let i=0; i<n; i++) {
+    sumRx += Rx[i]; sumRy += Ry[i]; sumRxRy += Rx[i]*Ry[i]; sumRx2 += Rx[i]*Rx[i];
+  }
+  const trendDenom = (n * sumRx2 - sumRx * sumRx);
+  if (trendDenom !== 0) {
+    const slope = (n * sumRxRy - sumRx * sumRy) / trendDenom;
+    const intercept = (sumRy - slope * sumRx) / n;
+    
+    const yAt1 = slope * 1 + intercept;
+    const yAtN = slope * n + intercept;
+    
+    const lineX1 = mapX(1);
+    const lineY1 = mapY(Math.max(1, Math.min(n, yAt1)));
+    const lineX2 = mapX(n);
+    const lineY2 = mapY(Math.max(1, Math.min(n, yAtN)));
+    
+    scatterHtml += `<line x1="${lineX1}" y1="${lineY1}" x2="${lineX2}" y2="${lineY2}" stroke="var(--teal)" stroke-width="3" />`;
+  }
+  
+  for (let i = 0; i < n; i++) {
+    scatterHtml += `<circle cx="${mapX(Rx[i])}" cy="${mapY(Ry[i])}" r="6" fill="var(--amber)" stroke="#fff" stroke-width="2" />`;
+  }
+
+  html += `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-title">Rank Scatter Plot</div>
+      </div>
+      <div style="overflow-x: auto; text-align: center; padding: 1rem 0;">
+        <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="max-width: 100%; height: auto;">
+          ${scatterHtml}
+        </svg>
+      </div>
+      <div style="display: flex; justify-content: center; gap: 2rem; font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem;">
+        <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--amber);"></span> Data Point</span>
+        <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="display: inline-block; width: 20px; height: 3px; background: var(--teal);"></span> Trend</span>
+      </div>
+    </div>
+  `;
+
+  // Theory Section
+  html += `
+    <div class="step-card" style="border-left-color: var(--amber);">
+      <div class="step-header">
+        <svg style="width: 24px; height: 24px; stroke: var(--amber); margin-right: 0.5rem;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        <div class="step-title">Theory: Spearman Rank Correlation</div>
+      </div>
+      <div style="font-size: 0.95rem; color: var(--navy); line-height: 1.6;">
+        <p style="margin-top: 0;"><strong>What is it?</strong> It is a non-parametric measure of rank correlation (statistical dependence between the rankings of two variables). It assesses how well the relationship between two variables can be described using a monotonic function.</p>
+        <p><strong>When to use:</strong> When data is ordinal, not normally distributed, or to detect non-linear monotonic relationships. It is highly resistant to outliers.</p>
+        <div style="margin: 1.5rem 0;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; border: 1px solid var(--border);">
+            <thead>
+              <tr style="background: var(--bg); border-bottom: 2px solid var(--border);">
+                <th style="padding: 0.5rem; text-align: left;">ρ Range</th>
+                <th style="padding: 0.5rem; text-align: left;">Interpretation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">ρ = 1.0</td><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Perfect Positive Correlation</td></tr>
+              <tr><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">0.7 ≤ ρ &lt; 1.0</td><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Strong Positive Correlation</td></tr>
+              <tr><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">0.4 ≤ ρ &lt; 0.7</td><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Moderate Positive Correlation</td></tr>
+              <tr><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">0.1 ≤ ρ &lt; 0.4</td><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Weak Positive Correlation</td></tr>
+              <tr><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">−0.1 &lt; ρ &lt; 0.1</td><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">No / Negligible Correlation</td></tr>
+              <tr><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">−0.4 &lt; ρ ≤ −0.1</td><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Weak Negative Correlation</td></tr>
+              <tr><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">−0.7 &lt; ρ ≤ −0.4</td><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Moderate Negative Correlation</td></tr>
+              <tr><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">−1.0 &lt; ρ ≤ −0.7</td><td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Strong Negative Correlation</td></tr>
+              <tr><td style="padding: 0.5rem;">ρ = −1.0</td><td style="padding: 0.5rem;">Perfect Negative Correlation</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Export Section
+  html += `
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+      <button onclick="exportPearsonCSV()" class="btn-primary" style="background: var(--bg2); color: var(--navy); border: 1px solid var(--border);">
+        <svg style="width: 18px; height: 18px; stroke: currentColor;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        Download CSV
+      </button>
+      <button onclick="exportPearsonPDF()" class="btn-primary" style="background: var(--bg2); color: var(--navy); border: 1px solid var(--border);">
+        <svg style="width: 18px; height: 18px; stroke: currentColor;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        Save as PDF
+      </button>
+    </div>
+  `;
+
+  // Store globally for CSV export
+  window._pearsonData = { xs, ys, Rx, Ry, d, d2, rho, n, origOrder };
+
+  output.innerHTML = html;
+  output.classList.add('active');
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Global Exports Handlers
+window.exportPearsonCSV = function() {
+  const data = window._pearsonData;
+  if (!data) return;
+  
+  let csv = "No.,X,Y,Rank_X,Rank_Y,d,d^2\n";
+  for (let i = 0; i < data.n; i++) {
+    csv += `${data.origOrder[i]},${data.xs[i]},${data.ys[i]},${data.Rx[i]},${data.Ry[i]},${data.d[i]},${data.d2[i]}\n`;
+  }
+  csv += `\nSpearman Rank Correlation (rho),${data.rho}\n`;
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "pearson_rank_correlation.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+window.exportPearsonPDF = function() {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @media print {
+      body * { visibility: hidden; }
+      #steps-output, #steps-output * { visibility: visible; }
+      #steps-output { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+      .btn-primary { display: none !important; }
+      @page { margin: 1cm; }
+    }
+  `;
+  document.head.appendChild(style);
+  window.print();
+  setTimeout(() => document.head.removeChild(style), 1000);
+};
+
+// ==========================================
+// REGRESSION CALCULATOR ENGINE
+// ==========================================
+
+window.toggleRegressionInputMethod = function(method) {
+  const tableContainer = document.getElementById('regression-table-input-sub');
+  const rawContainer = document.getElementById('regression-raw-input-sub');
+  if (method === 'table') {
+    if (tableContainer) tableContainer.style.display = 'flex';
+    if (rawContainer) rawContainer.style.display = 'none';
+  } else {
+    if (tableContainer) tableContainer.style.display = 'none';
+    if (rawContainer) rawContainer.style.display = 'flex';
+  }
+};
+
+window.addRegressionRow = function() {
+  const tbody = document.getElementById('regression-table-body');
+  if (!tbody) return;
+  const rowCount = tbody.rows.length + 1;
+  const newRow = document.createElement('tr');
+  newRow.innerHTML = `
+    <td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">${rowCount}</td>
+    <td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-${rowCount}" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td>
+    <td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-${rowCount}" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td>
+  `;
+  tbody.appendChild(newRow);
+};
+
+window.clearRegressionTable = function() {
+  const tbody = document.getElementById('regression-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  for (let i = 1; i <= 8; i++) {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">${i}</td>
+      <td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-${i}" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td>
+      <td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-${i}" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td>
+    `;
+    tbody.appendChild(row);
+  }
+};
+
+window.runRegressionPredictY = function(xValStr) {
+  const out = document.getElementById('predicted-y-output');
+  if (!out || !window._regressionCoeffs) return;
+  const x = parseFloat(xValStr);
+  if (isNaN(x)) {
+    out.innerText = '--';
+    return;
+  }
+  const { a, b, decimals } = window._regressionCoeffs;
+  const y = a + b * x;
+  out.innerText = Number.isInteger(y) ? y.toString() : y.toFixed(decimals);
+};
+
+window.runRegressionPredictX = function(yValStr) {
+  const out = document.getElementById('predicted-x-output');
+  if (!out || !window._regressionCoeffs) return;
+  const y = parseFloat(yValStr);
+  if (isNaN(y)) {
+    out.innerText = '--';
+    return;
+  }
+  const { c, d, decimals } = window._regressionCoeffs;
+  const x = c + d * y;
+  out.innerText = Number.isInteger(x) ? x.toString() : x.toFixed(decimals);
+};
+
+window.exportRegressionCSV = function() {
+  const data = window._regressionData;
+  if (!data) return;
+  
+  let csv = "No.,X,Y";
+  if (data.mode === 'y-on-x' || data.mode === 'both') {
+    csv += ",Fitted_Y,Residual_Y";
+  }
+  if (data.mode === 'x-on-y' || data.mode === 'both') {
+    csv += ",Fitted_X,Residual_X";
+  }
+  csv += "\n";
+  
+  for (let i = 0; i < data.n; i++) {
+    csv += `${data.origOrder[i]},${data.xs[i]},${data.ys[i]}`;
+    if (data.mode === 'y-on-x' || data.mode === 'both') {
+      csv += `,${data.fitY[i]},${data.resY[i]}`;
+    }
+    if (data.mode === 'x-on-y' || data.mode === 'both') {
+      csv += `,${data.fitX[i]},${data.resX[i]}`;
+    }
+    csv += "\n";
+  }
+  
+  csv += `\nSummary Statistics\n`;
+  csv += `n,${data.n}\n`;
+  csv += `Pearson Correlation (r),${data.r}\n`;
+  csv += `R-squared (R^2),${data.r2}\n`;
+  if (data.mode === 'y-on-x' || data.mode === 'both') {
+    csv += `Y on X Equation,Y = ${data.a} + (${data.b}) * X\n`;
+    csv += `Y on X Std Error,${data.seY}\n`;
+  }
+  if (data.mode === 'x-on-y' || data.mode === 'both') {
+    csv += `X on Y Equation,X = ${data.c} + (${data.d}) * Y\n`;
+    csv += `X on Y Std Error,${data.seX}\n`;
+  }
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", "regression_analysis.csv");
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+window.exportRegressionPDF = function() {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @media print {
+      body * { visibility: hidden; }
+      #steps-output, #steps-output * { visibility: visible; }
+      #steps-output { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
+      .btn-primary { display: none !important; }
+      @page { margin: 1cm; }
+    }
+  `;
+  document.head.appendChild(style);
+  window.print();
+  setTimeout(() => document.head.removeChild(style), 1000);
+};
+
+function calculateRegression() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+
+  const showError = (msg) => {
+    output.innerHTML = `
+      <div class="step-card" style="border-left-color: #dc2626;">
+        <div class="step-header">
+          <div class="step-title" style="color: #dc2626;">Error</div>
+        </div>
+        <div class="step-desc">${msg}</div>
+      </div>
+    `;
+    output.classList.add('active');
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const fmt = (num, dec) => {
+    if (isNaN(num) || num === null || num === undefined) return 'NaN';
+    return Number.isInteger(num) ? num.toString() : Number(num).toFixed(dec);
+  };
+
+  const decimals = parseInt(document.getElementById('regression-decimals').value) || 4;
+  const mode = document.getElementById('regression-mode').value;
+  const inputMethod = document.getElementById('regression-input-method').value;
+
+  const xs = [];
+  const ys = [];
+  const origOrder = [];
+
+  if (inputMethod === 'table') {
+    const tbody = document.getElementById('regression-table-body');
+    const rows = tbody.getElementsByTagName('tr');
+    
+    for (let i = 0; i < rows.length; i++) {
+      const idx = i + 1;
+      const xValStr = document.getElementById(`regression-x-${idx}`).value.trim();
+      const yValStr = document.getElementById(`regression-y-${idx}`).value.trim();
+      
+      if (xValStr !== '' || yValStr !== '') {
+        if (xValStr === '' || yValStr === '') {
+          return showError(`Mismatched data: Row ${idx} has a value for X but not Y (or vice versa). Each row must have both X and Y, or be left completely empty.`);
+        }
+        const x = parseFloat(xValStr);
+        const y = parseFloat(yValStr);
+        if (isNaN(x) || isNaN(y)) {
+          return showError(`Non-numeric value detected in row ${idx}. All entries must be valid numbers.`);
+        }
+        xs.push(x);
+        ys.push(y);
+        origOrder.push(idx);
+      }
+    }
+  } else {
+    const rawText = document.getElementById('regression-raw-data').value.trim();
+    if (rawText === '') {
+      return showError("No data entered. Please enter at least 2 pairs of X and Y values in the text area.");
+    }
+    const lines = rawText.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line === '') continue;
+      const parts = line.split(/[\s,]+/);
+      if (parts.length < 2) {
+        return showError(`Mismatched data: Line ${i + 1} has fewer than 2 values. Each line must have both X and Y values.`);
+      }
+      if (parts.length > 2) {
+        return showError(`Extra data: Line ${i + 1} has more than 2 values. Please enter exactly one X and Y pair per line.`);
+      }
+      const x = parseFloat(parts[0]);
+      const y = parseFloat(parts[1]);
+      if (isNaN(x) || isNaN(y)) {
+        return showError(`Non-numeric value detected in line ${i + 1} ("${parts[0]}", "${parts[1]}"). All entries must be numbers.`);
+      }
+      xs.push(x);
+      ys.push(y);
+      origOrder.push(i + 1);
+    }
+  }
+
+  const n = xs.length;
+  if (n === 0) {
+    return showError("No data entered. Please fill at least 2 pairs of X and Y values.");
+  }
+  if (n < 2) {
+    return showError("At least 2 data pairs are required to compute a regression model.");
+  }
+
+  let sumX = 0, sumY = 0, sumX2 = 0, sumY2 = 0, sumXY = 0;
+  for (let i = 0; i < n; i++) {
+    const x = xs[i];
+    const y = ys[i];
+    sumX += x;
+    sumY += y;
+    sumX2 += x * x;
+    sumY2 += y * y;
+    sumXY += x * y;
+  }
+
+  const meanX = sumX / n;
+  const meanY = sumY / n;
+
+  const Sxx = sumX2 - (sumX * sumX) / n;
+  const Syy = sumY2 - (sumY * sumY) / n;
+  const Sxy = sumXY - (sumX * sumY) / n;
+
+  const xAllSame = xs.every(v => v === xs[0]);
+  const yAllSame = ys.every(v => v === ys[0]);
+
+  if (xAllSame) {
+    if (mode === 'y-on-x' || mode === 'both') {
+      return showError("All X values are identical (variance of X is 0). Division by zero occurs in slope calculation of Y on X (vertical regression line). Cannot compute regression.");
+    }
+  }
+  if (yAllSame) {
+    if (mode === 'x-on-y' || mode === 'both') {
+      return showError("All Y values are identical (variance of Y is 0). Division by zero occurs in slope calculation of X on Y (horizontal regression line). Cannot compute regression.");
+    }
+  }
+
+  if ((mode === 'y-on-x' || mode === 'both') && Sxx === 0) {
+    return showError("Standard deviation of X is zero. Cannot compute slope b of Y on X due to division by zero.");
+  }
+  if ((mode === 'x-on-y' || mode === 'both') && Syy === 0) {
+    return showError("Standard deviation of Y is zero. Cannot compute slope d of X on Y due to division by zero.");
+  }
+
+  let b = 0, a = 0, d = 0, c = 0;
+  let fitY = [], resY = [], SSE_Y = 0;
+  let fitX = [], resX = [], SSE_X = 0;
+  let seY = 0, seX = 0;
+
+  if (mode === 'y-on-x' || mode === 'both') {
+    b = Sxy / Sxx;
+    a = meanY - b * meanX;
+    for (let i = 0; i < n; i++) {
+      const fy = a + b * xs[i];
+      const ry = ys[i] - fy;
+      fitY.push(fy);
+      resY.push(ry);
+      SSE_Y += ry * ry;
+    }
+    seY = n > 2 ? Math.sqrt(SSE_Y / (n - 2)) : 0;
+  }
+
+  if (mode === 'x-on-y' || mode === 'both') {
+    d = Sxy / Syy;
+    c = meanX - d * meanY;
+    for (let i = 0; i < n; i++) {
+      const fx = c + d * ys[i];
+      const rx = xs[i] - fx;
+      fitX.push(fx);
+      resX.push(rx);
+      SSE_X += rx * rx;
+    }
+    seX = n > 2 ? Math.sqrt(SSE_X / (n - 2)) : 0;
+  }
+
+  let r = 0;
+  if (Sxx * Syy > 0) {
+    r = Sxy / Math.sqrt(Sxx * Syy);
+    if (r > 1) r = 1;
+    if (r < -1) r = -1;
+  }
+  const r2 = r * r;
+
+  window._regressionCoeffs = { a, b, c, d, decimals };
+  window._regressionData = { xs, ys, fitY, resY, fitX, resX, n, r, r2, a, b, c, d, seY, seX, mode, origOrder };
+
+  let warningHtml = '';
+  if (n > 500) {
+    warningHtml = `
+      <div class="step-card" style="border-left-color: var(--amber); background: rgba(245, 158, 11, 0.05); margin-bottom: 1.5rem;">
+        <div class="step-header" style="margin-bottom: 0;">
+          <svg style="width: 20px; height: 20px; stroke: var(--amber); margin-right: 0.5rem;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+          <div class="step-title" style="color: var(--amber); font-size: 0.95rem;">Performance Note</div>
+        </div>
+        <div class="step-desc" style="margin-top: 0.5rem; margin-bottom: 0; color: var(--navy);">
+          You have entered a large dataset of ${n} pairs. The step calculation table has been condensed to optimize display speed. All statistics and visualizations are fully computed.
+        </div>
+      </div>
+    `;
+  }
+
+  let interpText = "";
+  let interpColor = "";
+  if (r === 1) { interpText = "Perfect Positive"; interpColor = "var(--teal)"; }
+  else if (r >= 0.7) { interpText = "Strong Positive"; interpColor = "var(--teal)"; }
+  else if (r >= 0.4) { interpText = "Moderate Positive"; interpColor = "var(--teal)"; }
+  else if (r >= 0.1) { interpText = "Weak Positive"; interpColor = "var(--muted)"; }
+  else if (r > -0.1) { interpText = "No / Negligible"; interpColor = "var(--muted)"; }
+  else if (r > -0.4) { interpText = "Weak Negative"; interpColor = "#f87171"; }
+  else if (r > -0.7) { interpText = "Moderate Negative"; interpColor = "#dc2626"; }
+  else if (r > -1) { interpText = "Strong Negative"; interpColor = "#dc2626"; }
+  else { interpText = "Perfect Negative"; interpColor = "#dc2626"; }
+
+  let equationsHtml = '';
+  if (mode === 'y-on-x') {
+    equationsHtml = `<div style="color: var(--teal); font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 0.25rem;">Y = ${fmt(a, decimals)} + (${fmt(b, decimals)}) &middot; X</div>`;
+  } else if (mode === 'x-on-y') {
+    equationsHtml = `<div style="color: var(--amber); font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 0.25rem;">X = ${fmt(c, decimals)} + (${fmt(d, decimals)}) &middot; Y</div>`;
+  } else {
+    equationsHtml = `
+      <div style="color: var(--teal); font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 700; margin-bottom: 0.5rem;">Y = ${fmt(a, decimals)} + (${fmt(b, decimals)}) &middot; X <span style="font-size: 1rem; color: var(--muted); font-family: sans-serif; font-weight: normal;">(Y on X)</span></div>
+      <div style="color: var(--amber); font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 700; margin-bottom: 0.25rem;">X = ${fmt(c, decimals)} + (${fmt(d, decimals)}) &middot; Y <span style="font-size: 1rem; color: var(--muted); font-family: sans-serif; font-weight: normal;">(X on Y)</span></div>
+    `;
+  }
+
+  let html = `
+    ${warningHtml}
+    <div class="card" style="background: #111827; border-color: #374151; padding: 2rem; margin-bottom: 1.5rem;">
+      <h3 style="color: #9CA3AF; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Fitted Regression Model</h3>
+      <div style="margin-bottom: 1.5rem;">
+        ${equationsHtml}
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(255,255,255,0.05); padding: 0.75rem 1rem; border-radius: 8px;">
+          <div style="color: #6B7280; font-size: 0.8rem; margin-bottom: 0.25rem;">Observations (n)</div>
+          <div style="color: white; font-weight: 600; font-size: 1.15rem;">${n}</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 0.75rem 1rem; border-radius: 8px;">
+          <div style="color: #6B7280; font-size: 0.8rem; margin-bottom: 0.25rem;">Correlation (r)</div>
+          <div style="color: white; font-weight: 600; font-size: 1.15rem;">${fmt(r, decimals)}</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 0.75rem 1rem; border-radius: 8px;">
+          <div style="color: #6B7280; font-size: 0.8rem; margin-bottom: 0.25rem;">R² (Det. Coeff.)</div>
+          <div style="color: white; font-weight: 600; font-size: 1.15rem;">${fmt(r2, decimals)}</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 0.75rem 1rem; border-radius: 8px; grid-column: 1 / -1;">
+          <div style="color: #6B7280; font-size: 0.8rem; margin-bottom: 0.25rem;">Linear Relationship strength</div>
+          <div style="color: ${interpColor}; font-weight: 600; font-size: 1.1rem;">${interpText} Linear Correlation</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const renderRow = (idx, x, y) => {
+    const x2 = x * x;
+    const y2 = y * y;
+    const xy = x * y;
+    return `<tr>
+      <td style="padding: 0.4rem 0.75rem; text-align: center; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.85rem; color: var(--muted);">${idx}</td>
+      <td style="padding: 0.4rem 0.75rem; text-align: center; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace;">${fmt(x, decimals)}</td>
+      <td style="padding: 0.4rem 0.75rem; text-align: center; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace;">${fmt(y, decimals)}</td>
+      <td style="padding: 0.4rem 0.75rem; text-align: center; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; color: var(--muted);">${fmt(x2, decimals)}</td>
+      <td style="padding: 0.4rem 0.75rem; text-align: center; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; color: var(--muted);">${fmt(y2, decimals)}</td>
+      <td style="padding: 0.4rem 0.75rem; text-align: center; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; color: var(--teal); font-weight: 500;">${fmt(xy, decimals)}</td>
+    </tr>`;
+  };
+
+  let tableRowsHtml = '';
+  const rowsToShow = Math.min(n, 10);
+  for (let i = 0; i < rowsToShow; i++) {
+    tableRowsHtml += renderRow(origOrder[i], xs[i], ys[i]);
+  }
+
+  let remainingRowsHtml = '';
+  if (n > 10) {
+    for (let i = 10; i < n; i++) {
+      remainingRowsHtml += renderRow(origOrder[i], xs[i], ys[i]);
+    }
+  }
+
+  const th = (title, color) => `<th style="padding: 0.5rem 0.75rem; text-align: center; font-weight: 600; border-bottom: 2px solid var(--border); font-size: 0.85rem; ${color ? `color: ${color};` : 'color: var(--muted);'}">${title}</th>`;
+
+  let step1Html = `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-title">Summation and Calculation Table</div>
+      </div>
+      <div style="overflow-x: auto; width: 100%; margin-bottom: 1rem;">
+        <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; font-size: 0.9rem;">
+          <thead>
+            <tr>
+              ${th('No.')}
+              ${th('X', 'var(--navy)')}
+              ${th('Y', 'var(--navy)')}
+              ${th('X²')}
+              ${th('Y²')}
+              ${th('XY', 'var(--teal)')}
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRowsHtml}
+          </tbody>
+        </table>
+      </div>
+  `;
+
+  if (n > 10) {
+    step1Html += `
+      <details style="margin-top: 0.5rem; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem;">
+        <summary style="font-weight: 600; color: var(--navy); cursor: pointer; user-select: none; font-size: 0.9rem;">📂 Show remaining ${n - 10} data observations</summary>
+        <div style="overflow-x: auto; width: 100%; margin-top: 0.5rem;">
+          <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; font-size: 0.9rem;">
+            <tbody>
+              ${remainingRowsHtml}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    `;
+  }
+
+  step1Html += `
+      <div style="background: var(--bg); border-radius: 8px; border: 1px solid var(--border); padding: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.9rem;">
+        <div>&Sigma;X = <strong style="color: var(--navy);">${fmt(sumX, decimals)}</strong></div>
+        <div>&Sigma;Y = <strong style="color: var(--navy);">${fmt(sumY, decimals)}</strong></div>
+        <div>&Sigma;X² = <strong style="color: var(--muted);">${fmt(sumX2, decimals)}</strong></div>
+        <div>&Sigma;Y² = <strong style="color: var(--muted);">${fmt(sumY2, decimals)}</strong></div>
+        <div style="grid-column: span 2;">&Sigma;XY = <strong style="color: var(--teal);">${fmt(sumXY, decimals)}</strong></div>
+      </div>
+    </div>
+  `;
+  html += step1Html;
+
+  html += `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-title">Calculate Means of X and Y</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 1rem; font-size: 0.95rem; line-height: 1.6; color: var(--navy);">
+        <div>
+          <strong>Mean X (&mu;<sub>X</sub> or X̄):</strong>
+          <div style="font-family: 'IBM Plex Mono', monospace; background: var(--bg); padding: 0.75rem; border-radius: 6px; margin-top: 0.25rem; font-size: 1.1rem; text-align: center;">
+            X̄ = &Sigma;X / n = ${fmt(sumX, decimals)} / ${n} = <span style="color: var(--teal); font-weight: 700;">${fmt(meanX, decimals)}</span>
+          </div>
+        </div>
+        <div>
+          <strong>Mean Y (&mu;<sub>Y</sub> or Ȳ):</strong>
+          <div style="font-family: 'IBM Plex Mono', monospace; background: var(--bg); padding: 0.75rem; border-radius: 6px; margin-top: 0.25rem; font-size: 1.1rem; text-align: center;">
+            Ȳ = &Sigma;Y / n = ${fmt(sumY, decimals)} / ${n} = <span style="color: var(--teal); font-weight: 700;">${fmt(meanY, decimals)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const htmlFraction = (num, den) => `
+    <span style="display:inline-block; vertical-align:middle; text-align:center; padding: 0 4px; font-size: 0.95em; line-height: 1.1;">
+      <span style="border-bottom: 2px solid currentColor; display:block; padding: 0 4px;">${num}</span>
+      <span style="display:block; padding: 0 4px;">${den}</span>
+    </span>
+  `;
+
+  let step3Html = `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">3 & 4</div>
+        <div class="step-title">Calculate Slopes and Intercepts</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2rem;">
+  `;
+
+  if (mode === 'y-on-x' || mode === 'both') {
+    const numStr = `n&Sigma;XY &minus; &Sigma;X&Sigma;Y`;
+    const denStr = `n&Sigma;X² &minus; (&Sigma;X)²`;
+    const subNum = `${n}(${fmt(sumXY, decimals)}) &minus; (${fmt(sumX, decimals)})(${fmt(sumY, decimals)})`;
+    const subDen = `${n}(${fmt(sumX2, decimals)}) &minus; (${fmt(sumX, decimals)})²`;
+    const valNum = n * sumXY - sumX * sumY;
+    const valDen = n * sumX2 - sumX * sumX;
+
+    step3Html += `
+      <div>
+        <h4 style="color: var(--teal); font-size: 1.1rem; margin-top: 0; margin-bottom: 0.5rem; font-weight: 600;">1. Y on X Coefficient (y = a + bx)</h4>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; line-height: 1.6;">
+          <div>
+            <strong>Slope b (b<sub>yx</sub>):</strong>
+            <div style="font-family: 'IBM Plex Mono', monospace; background: var(--bg); padding: 1rem; border-radius: 8px; margin-top: 0.25rem; font-size: 1.1rem; text-align: center;">
+              b = ${htmlFraction(numStr, denStr)} = ${htmlFraction(subNum, subDen)} = ${htmlFraction(fmt(valNum, decimals), fmt(valDen, decimals))} = <span style="color: var(--teal); font-weight: 700;">${fmt(b, decimals)}</span>
+            </div>
+          </div>
+          <div>
+            <strong>Intercept a (a<sub>yx</sub>):</strong>
+            <div style="font-family: 'IBM Plex Mono', monospace; background: var(--bg); padding: 1rem; border-radius: 8px; margin-top: 0.25rem; font-size: 1.1rem; text-align: center;">
+              a = Ȳ &minus; bX̄ = ${fmt(meanY, decimals)} &minus; (${fmt(b, decimals)} &times; ${fmt(meanX, decimals)}) = ${fmt(meanY, decimals)} &minus; (${fmt(b * meanX, decimals)}) = <span style="color: var(--teal); font-weight: 700;">${fmt(a, decimals)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (mode === 'x-on-y' || mode === 'both') {
+    const numStr = `n&Sigma;XY &minus; &Sigma;X&Sigma;Y`;
+    const denStr = `n&Sigma;Y² &minus; (&Sigma;Y)²`;
+    const subNum = `${n}(${fmt(sumXY, decimals)}) &minus; (${fmt(sumX, decimals)})(${fmt(sumY, decimals)})`;
+    const subDen = `${n}(${fmt(sumY2, decimals)}) &minus; (${fmt(sumY, decimals)})²`;
+    const valNum = n * sumXY - sumX * sumY;
+    const valDen = n * sumY2 - sumY * sumY;
+
+    step3Html += `
+      <div style="${mode === 'both' ? 'border-top: 1px dashed var(--border); padding-top: 1.5rem;' : ''}">
+        <h4 style="color: var(--amber); font-size: 1.1rem; margin-top: 0; margin-bottom: 0.5rem; font-weight: 600;">${mode === 'both' ? '2. ' : ''}X on Y Coefficient (x = c + dy)</h4>
+        <div style="display: flex; flex-direction: column; gap: 0.75rem; line-height: 1.6;">
+          <div>
+            <strong>Slope d (b<sub>xy</sub>):</strong>
+            <div style="font-family: 'IBM Plex Mono', monospace; background: var(--bg); padding: 1rem; border-radius: 8px; margin-top: 0.25rem; font-size: 1.1rem; text-align: center;">
+              d = ${htmlFraction(numStr, denStr)} = ${htmlFraction(subNum, subDen)} = ${htmlFraction(fmt(valNum, decimals), fmt(valDen, decimals))} = <span style="color: var(--amber); font-weight: 700;">${fmt(d, decimals)}</span>
+            </div>
+          </div>
+          <div>
+            <strong>Intercept c (a<sub>xy</sub>):</strong>
+            <div style="font-family: 'IBM Plex Mono', monospace; background: var(--bg); padding: 1rem; border-radius: 8px; margin-top: 0.25rem; font-size: 1.1rem; text-align: center;">
+              c = X̄ &minus; dȲ = ${fmt(meanX, decimals)} &minus; (${fmt(d, decimals)} &times; ${fmt(meanY, decimals)}) = ${fmt(meanX, decimals)} &minus; (${fmt(d * meanY, decimals)}) = <span style="color: var(--amber); font-weight: 700;">${fmt(c, decimals)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  step3Html += `
+      </div>
+    </div>
+  `;
+  html += step3Html;
+
+  let predictionFormHtml = '';
+  if (mode === 'y-on-x' || mode === 'both') {
+    predictionFormHtml += `
+      <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+        <label style="font-weight: 600; color: var(--navy); font-size: 0.9rem; text-align: left;">Predict Y from X (Ŷ = a + b &middot; X):</label>
+        <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: center; width: 100%;">
+          <input type="number" id="predict-x-val" step="any" oninput="runRegressionPredictY(this.value)" placeholder="Input X..." style="flex-grow: 1; max-width: 160px; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; background: var(--bg); color: var(--navy); outline: none;">
+          <span style="font-weight: 700; color: var(--teal); font-size: 1.2rem;">&rarr;</span>
+          <div id="predicted-y-output" style="width: 120px; padding: 0.5rem; background: var(--bg2); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: var(--teal); text-align: center; border: 1px solid var(--border); font-size: 1rem;">--</div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (mode === 'x-on-y' || mode === 'both') {
+    predictionFormHtml += `
+      <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%; ${mode === 'both' ? 'border-top: 1px dashed var(--border); padding-top: 1rem;' : ''}">
+        <label style="font-weight: 600; color: var(--navy); font-size: 0.9rem; text-align: left;">Predict X from Y (X̂ = c + d &middot; Y):</label>
+        <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: center; width: 100%;">
+          <input type="number" id="predict-y-val" step="any" oninput="runRegressionPredictX(this.value)" placeholder="Input Y..." style="flex-grow: 1; max-width: 160px; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; background: var(--bg); color: var(--navy); outline: none;">
+          <span style="font-weight: 700; color: var(--amber); font-size: 1.2rem;">&rarr;</span>
+          <div id="predicted-x-output" style="width: 120px; padding: 0.5rem; background: var(--bg2); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-weight: 700; color: var(--amber); text-align: center; border: 1px solid var(--border); font-size: 1rem;">--</div>
+        </div>
+      </div>
+    `;
+  }
+
+  html += `
+    <div class="step-card" style="border-left-color: var(--teal);">
+      <div class="step-header">
+        <svg style="width: 22px; height: 22px; stroke: var(--teal); margin-right: 0.5rem;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+        <div class="step-title">Interactive Prediction Tool</div>
+      </div>
+      <div class="step-desc" style="margin-bottom: 1rem;">Enter values below to instantly project points using your calculated regression model.</div>
+      <div style="display: flex; flex-direction: column; gap: 1.25rem; max-width: 360px; margin: 0 auto; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; text-align: center;">
+        ${predictionFormHtml}
+      </div>
+    </div>
+  `;
+
+  const pad = 45;
+  const svgW = 460;
+  const svgH = 320;
+  const plotW = svgW - 2 * pad;
+  const plotH = svgH - 2 * pad;
+
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+
+  const deltaX = (maxX - minX) * 0.1 || 1.0;
+  const deltaY = (maxY - minY) * 0.1 || 1.0;
+
+  const xMin = minX - deltaX;
+  const xMax = maxX + deltaX;
+  const yMin = minY - deltaY;
+  const yMax = maxY + deltaY;
+
+  const mapX = (x) => pad + ((x - xMin) / (xMax - xMin)) * plotW;
+  const mapY = (y) => pad + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+
+  const getTicks = (minVal, maxVal, count = 5) => {
+    const ticks = [];
+    const step = (maxVal - minVal) / (count - 1);
+    for (let i = 0; i < count; i++) {
+      ticks.push(minVal + step * i);
+    }
+    return ticks;
+  };
+
+  const xTicks = getTicks(xMin, xMax);
+  const yTicks = getTicks(yMin, yMax);
+
+  let scatterHtml = '';
+  for (let t of xTicks) {
+    const px = mapX(t);
+    scatterHtml += `<line x1="${px}" y1="${pad}" x2="${px}" y2="${pad + plotH}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
+    scatterHtml += `<text x="${px}" y="${svgH - pad + 15}" text-anchor="middle" font-family="sans-serif" font-size="9" fill="var(--muted)">${fmt(t, decimals - 2 > 0 ? decimals - 2 : 1)}</text>`;
+  }
+  for (let t of yTicks) {
+    const py = mapY(t);
+    scatterHtml += `<line x1="${pad}" y1="${py}" x2="${pad + plotW}" y2="${py}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
+    scatterHtml += `<text x="${pad - 8}" y="${py + 3}" text-anchor="end" font-family="sans-serif" font-size="9" fill="var(--muted)">${fmt(t, decimals - 2 > 0 ? decimals - 2 : 1)}</text>`;
+  }
+
+  if (mode === 'y-on-x' || mode === 'both') {
+    const y1 = a + b * xMin;
+    const y2 = a + b * xMax;
+    scatterHtml += `<line x1="${mapX(xMin)}" y1="${mapY(y1)}" x2="${mapX(xMax)}" y2="${mapY(y2)}" stroke="var(--teal)" stroke-width="3.5" opacity="0.9" />`;
+  }
+
+  if (mode === 'x-on-y' || mode === 'both') {
+    const x1 = c + d * yMin;
+    const x2 = c + d * yMax;
+    scatterHtml += `<line x1="${mapX(x1)}" y1="${mapY(yMin)}" x2="${mapX(x2)}" y2="${mapY(yMax)}" stroke="var(--amber)" stroke-width="3.5" opacity="0.9" />`;
+  }
+
+  scatterHtml += `<circle cx="${mapX(meanX)}" cy="${mapY(meanY)}" r="7" fill="none" stroke="#2563eb" stroke-width="2.5" />`;
+  scatterHtml += `<line x1="${mapX(meanX) - 10}" y1="${mapY(meanY)}" x2="${mapX(meanX) + 10}" y2="${mapY(meanY)}" stroke="#2563eb" stroke-width="1.5" />`;
+  scatterHtml += `<line x1="${mapX(meanX)}" y1="${mapY(meanY) - 10}" x2="${mapX(meanX)}" y2="${mapY(meanY) + 10}" stroke="#2563eb" stroke-width="1.5" />`;
+
+  const ptRadius = n > 150 ? 3.0 : 5.0;
+  const ptOpacity = n > 150 ? 0.7 : 1.0;
+  for (let i = 0; i < n; i++) {
+    scatterHtml += `<circle cx="${mapX(xs[i])}" cy="${mapY(ys[i])}" r="${ptRadius}" fill="var(--amber)" stroke="#fff" stroke-width="1.5" opacity="${ptOpacity}" />`;
+  }
+
+  scatterHtml += `<line x1="${pad}" y1="${pad + plotH}" x2="${pad + plotW}" y2="${pad + plotH}" stroke="var(--navy)" stroke-width="1.5" />`;
+  scatterHtml += `<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${pad + plotH}" stroke="var(--navy)" stroke-width="1.5" />`;
+
+  scatterHtml += `<text x="${pad + plotW / 2}" y="${svgH - 5}" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="var(--navy)">Variable X</text>`;
+  scatterHtml += `<text x="12" y="${pad + plotH / 2}" transform="rotate(-90 12,${pad + plotH / 2})" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="var(--navy)">Variable Y</text>`;
+
+  const buildResidualSVG = (resArr, fitArr, label, lineCol) => {
+    let resHtml = '';
+    const minRes = Math.min(...resArr);
+    const maxRes = Math.max(...resArr);
+    const absResMax = Math.max(Math.abs(minRes), Math.abs(maxRes)) || 1.0;
+    
+    const minFit = Math.min(...fitArr);
+    const maxFit = Math.max(...fitArr);
+    const deltaFit = (maxFit - minFit) * 0.1 || 1.0;
+    const fMin = minFit - deltaFit;
+    const fMax = maxFit + deltaFit;
+
+    const rMin = -absResMax * 1.15;
+    const rMax = absResMax * 1.15;
+
+    const mapFitX = (f) => pad + ((f - fMin) / (fMax - fMin)) * plotW;
+    const mapResY = (r) => pad + plotH - ((r - rMin) / (rMax - rMin)) * plotH;
+
+    const fitTicks = getTicks(fMin, fMax);
+    const resTicks = [rMin, -absResMax * 0.5, 0, absResMax * 0.5, rMax];
+
+    for (let t of fitTicks) {
+      const px = mapFitX(t);
+      resHtml += `<line x1="${px}" y1="${pad}" x2="${px}" y2="${pad + plotH}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
+      resHtml += `<text x="${px}" y="${svgH - pad + 15}" text-anchor="middle" font-family="sans-serif" font-size="9" fill="var(--muted)">${fmt(t, decimals - 2 > 0 ? decimals - 2 : 1)}</text>`;
+    }
+    for (let t of resTicks) {
+      const py = mapResY(t);
+      resHtml += `<line x1="${pad}" y1="${py}" x2="${pad + plotW}" y2="${py}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
+      resHtml += `<text x="${pad - 8}" y="${py + 3}" text-anchor="end" font-family="sans-serif" font-size="9" fill="var(--muted)">${fmt(t, decimals - 2 > 0 ? decimals - 2 : 1)}</text>`;
+    }
+
+    resHtml += `<line x1="${pad}" y1="${mapResY(0)}" x2="${pad + plotW}" y2="${mapResY(0)}" stroke="var(--navy)" stroke-width="2" stroke-dasharray="5 3" />`;
+
+    for (let i = 0; i < n; i++) {
+      resHtml += `<circle cx="${mapFitX(fitArr[i])}" cy="${mapResY(resArr[i])}" r="${ptRadius}" fill="${lineCol}" stroke="#fff" stroke-width="1" opacity="${ptOpacity}" />`;
+    }
+
+    resHtml += `<line x1="${pad}" y1="${pad + plotH}" x2="${pad + plotW}" y2="${pad + plotH}" stroke="var(--navy)" stroke-width="1.5" />`;
+    resHtml += `<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${pad + plotH}" stroke="var(--navy)" stroke-width="1.5" />`;
+
+    resHtml += `<text x="${pad + plotW / 2}" y="${svgH - 5}" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="var(--navy)">Fitted Values (Ŷ)</text>`;
+    resHtml += `<text x="12" y="${pad + plotH / 2}" transform="rotate(-90 12,${pad + plotH / 2})" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="var(--navy)">Residuals (e)</text>`;
+
+    return `
+      <div style="text-align: center; margin-top: 1rem; flex-grow: 1;">
+        <div style="font-weight: 600; font-size: 0.95rem; color: var(--navy); margin-bottom: 0.5rem;">Residual Plot (${label})</div>
+        <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; background: var(--bg2);">
+          ${resHtml}
+        </svg>
+      </div>
+    `;
+  };
+
+  let residualsContainersHtml = '';
+  if (mode === 'y-on-x' || mode === 'both') {
+    residualsContainersHtml += buildResidualSVG(resY, fitY, 'Y on X', 'var(--teal)');
+  }
+  if (mode === 'x-on-y' || mode === 'both') {
+    residualsContainersHtml += buildResidualSVG(resX, fitX, 'X on Y', 'var(--amber)');
+  }
+
+  const strengthMeterPercent = ((r + 1) / 2) * 100;
+  let visualCardHtml = `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-title">Regression Visualizations</div>
+      </div>
+      
+      <div style="border-bottom: 1px dashed var(--border); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+        <div style="font-weight: 600; font-size: 0.95rem; color: var(--navy); margin-bottom: 0.5rem; text-align: center;">Pearson Correlation Strength Meter</div>
+        <div style="position: relative; max-width: 440px; margin: 0 auto;">
+          <svg width="100%" height="70" viewBox="0 0 100 70" preserveAspectRatio="none" style="overflow: visible;">
+            <defs>
+              <linearGradient id="gradMeter" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#ef4444" />
+                <stop offset="50%" stop-color="#e5e7eb" />
+                <stop offset="100%" stop-color="#10b981" />
+              </linearGradient>
+            </defs>
+            <rect x="0" y="30" width="100" height="16" rx="8" fill="url(#gradMeter)" />
+            <path d="M 0 30 v 20 M 25 30 v 20 M 50 30 v 20 M 75 30 v 20 M 100 30 v 20" stroke="var(--navy)" stroke-width="0.5" opacity="0.3" />
+            <text x="0" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">-1</text>
+            <text x="25" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">-0.5</text>
+            <text x="50" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">0</text>
+            <text x="75" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">+0.5</text>
+            <text x="100" y="65" text-anchor="middle" font-family="sans-serif" font-size="5" fill="var(--muted)">+1</text>
+            <g transform="translate(${strengthMeterPercent}, 30)">
+              <polygon points="-3,-10 3,-10 0,0" fill="var(--navy)" />
+              <text x="0" y="-14" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="6" font-weight="bold" fill="var(--navy)">${r.toFixed(2)}</text>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="font-weight: 600; font-size: 0.95rem; color: var(--navy); margin-bottom: 0.5rem;">Scatter Plot & OLS Fit Lines</div>
+        <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; background: var(--bg2);">
+          ${scatterHtml}
+        </svg>
+        
+        <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 1.5rem; font-size: 0.85rem; color: var(--muted); margin-top: 0.75rem;">
+          <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--amber); border: 1px solid #fff;"></span> Observations</span>
+          <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid #2563eb; background: transparent; position: relative;"><span style="position: absolute; left: 6px; top: 1px; width: 1px; height: 10px; background: #2563eb;"></span><span style="position: absolute; left: 1px; top: 6px; width: 10px; height: 1px; background: #2563eb;"></span></span> Mean intersection (X̄, Ȳ)</span>
+          ${(mode === 'y-on-x' || mode === 'both') ? `<span style="display: flex; align-items: center; gap: 0.25rem;"><span style="display: inline-block; width: 18px; height: 3px; background: var(--teal);"></span> Y on X line</span>` : ''}
+          ${(mode === 'x-on-y' || mode === 'both') ? `<span style="display: flex; align-items: center; gap: 0.25rem;"><span style="display: inline-block; width: 18px; height: 3px; background: var(--amber);"></span> X on Y line</span>` : ''}
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 1.5rem; border-top: 1px dashed var(--border); padding-top: 1.5rem;">
+        ${residualsContainersHtml}
+      </div>
+    </div>
+  `;
+  html += visualCardHtml;
+
+  let advCardHtml = `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-title">Advanced Statistics & Diagnostics</div>
+      </div>
+      <div class="step-content">
+  `;
+
+  const makeDecompTable = (label, sst, sse, ssr, se, decimals) => {
+    return `
+      <div style="margin-bottom: 1.5rem;">
+        <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--navy); font-weight: 600;">Analysis of Variance (${label})</h4>
+        <div style="overflow-x: auto; width: 100%;">
+          <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; font-size: 0.85rem; border: 1px solid var(--border); text-align: left;">
+            <thead>
+              <tr style="background: var(--bg2); border-bottom: 2px solid var(--border);">
+                <th style="padding: 0.5rem; font-weight: 600;">Source of Variance</th>
+                <th style="padding: 0.5rem; font-weight: 600; text-align: center;">Sum of Squares (SS)</th>
+                <th style="padding: 0.5rem; font-weight: 600; text-align: center;">Variance Explained</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Model (Regression - SSR)</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); text-align: center; font-family: 'IBM Plex Mono', monospace;">${fmt(ssr, decimals)}</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); text-align: center; color: var(--teal); font-weight: 600;">${fmt((ssr / sst) * 100, 2)}%</td>
+              </tr>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Error (Residual - SSE)</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); text-align: center; font-family: 'IBM Plex Mono', monospace;">${fmt(sse, decimals)}</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); text-align: center; color: #dc2626; font-weight: 600;">${fmt((sse / sst) * 100, 2)}%</td>
+              </tr>
+              <tr style="font-weight: 600; background: var(--bg);">
+                <td style="padding: 0.5rem;">Total (SST)</td>
+                <td style="padding: 0.5rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">${fmt(sst, decimals)}</td>
+                <td style="padding: 0.5rem; text-align: center;">100.00%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.5;">
+          Standard Error of Estimate (s<sub>e</sub>): <strong style="color: var(--navy); font-family: 'IBM Plex Mono', monospace;">${se > 0 ? fmt(se, decimals) : 'N/A'}</strong> (Standard deviation of residuals with df = n &minus; 2).
+        </div>
+      </div>
+    `;
+  };
+
+  if (mode === 'y-on-x' || mode === 'both') {
+    advCardHtml += makeDecompTable('Y on X Model', Syy, SSE_Y, Syy - SSE_Y, seY, decimals);
+  }
+  if (mode === 'x-on-y' || mode === 'both') {
+    advCardHtml += makeDecompTable('X on Y Model', Sxx, SSE_X, Sxx - SSE_X, seX, decimals);
+  }
+
+  let resTableRows = '';
+  for (let i = 0; i < rowsToShow; i++) {
+    resTableRows += `<tr>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${origOrder[i]}</td>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;">${fmt(xs[i], decimals)}</td>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;">${fmt(ys[i], decimals)}</td>
+      ${(mode === 'y-on-x' || mode === 'both') ? `
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${fmt(fitY[i], decimals)}</td>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: ${resY[i] < 0 ? '#dc2626' : 'var(--teal)'}; font-weight: 500;">${fmt(resY[i], decimals)}</td>
+      ` : ''}
+      ${(mode === 'x-on-y' || mode === 'both') ? `
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${fmt(fitX[i], decimals)}</td>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: ${resX[i] < 0 ? '#dc2626' : 'var(--teal)'}; font-weight: 500;">${fmt(resX[i], decimals)}</td>
+      ` : ''}
+    </tr>`;
+  }
+
+  let hiddenResRows = '';
+  if (n > 10) {
+    for (let i = 10; i < n; i++) {
+      hiddenResRows += `<tr>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${origOrder[i]}</td>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;">${fmt(xs[i], decimals)}</td>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;">${fmt(ys[i], decimals)}</td>
+        ${(mode === 'y-on-x' || mode === 'both') ? `
+          <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${fmt(fitY[i], decimals)}</td>
+          <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: ${resY[i] < 0 ? '#dc2626' : 'var(--teal)'}; font-weight: 500;">${fmt(resY[i], decimals)}</td>
+        ` : ''}
+        ${(mode === 'x-on-y' || mode === 'both') ? `
+          <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${fmt(fitX[i], decimals)}</td>
+          <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: ${resX[i] < 0 ? '#dc2626' : 'var(--teal)'}; font-weight: 500;">${fmt(resX[i], decimals)}</td>
+        ` : ''}
+      </tr>`;
+    }
+  }
+
+  advCardHtml += `
+      <div style="border-top: 1px dashed var(--border); padding-top: 1.5rem; margin-top: 1.5rem;">
+        <h4 style="margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--navy); font-weight: 600;">Residual Diagnostics Table</h4>
+        <div style="overflow-x: auto; width: 100%;">
+          <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; font-size: 0.8rem; border: 1px solid var(--border); text-align: center;">
+            <thead>
+              <tr style="background: var(--bg2); border-bottom: 2px solid var(--border);">
+                <th style="padding: 0.4rem; color: var(--muted); font-weight: 600;">No.</th>
+                <th style="padding: 0.4rem; color: var(--navy); font-weight: 600;">X</th>
+                <th style="padding: 0.4rem; color: var(--navy); font-weight: 600;">Y</th>
+                ${(mode === 'y-on-x' || mode === 'both') ? `
+                  <th style="padding: 0.4rem; color: var(--muted); font-weight: 600;">Fitted Ŷ</th>
+                  <th style="padding: 0.4rem; color: var(--teal); font-weight: 600;">Residual e<sub>y</sub></th>
+                ` : ''}
+                ${(mode === 'x-on-y' || mode === 'both') ? `
+                  <th style="padding: 0.4rem; color: var(--muted); font-weight: 600;">Fitted X̂</th>
+                  <th style="padding: 0.4rem; color: var(--teal); font-weight: 600;">Residual e<sub>x</sub></th>
+                ` : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${resTableRows}
+            </tbody>
+          </table>
+        </div>
+  `;
+
+  if (n > 10) {
+    advCardHtml += `
+        <details style="margin-top: 0.5rem; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem;">
+          <summary style="font-weight: 600; color: var(--navy); cursor: pointer; user-select: none; font-size: 0.85rem;">📂 Show remaining ${n - 10} observations diagnostic residuals</summary>
+          <div style="overflow-x: auto; width: 100%; margin-top: 0.5rem;">
+            <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; font-size: 0.8rem; text-align: center;">
+              <tbody>
+                ${hiddenResRows}
+              </tbody>
+            </table>
+          </div>
+        </details>
+    `;
+  }
+
+  advCardHtml += `
+      </div>
+    </div>
+  </div>
+  `;
+  html += advCardHtml;
+
+  html += `
+    <div class="step-card" style="border-left-color: var(--amber);">
+      <div class="step-header">
+        <svg style="width: 24px; height: 24px; stroke: var(--amber); margin-right: 0.5rem;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        <div class="step-title">Theory: Simple Linear Regression</div>
+      </div>
+      <div style="font-size: 0.95rem; color: var(--navy); line-height: 1.6;">
+        <p style="margin-top: 0;"><strong>What is Linear Regression?</strong> It is a statistical method used to model and analyze the relationship between a dependent (target) variable and one or more independent (predictor) variables using OLS (Ordinary Least Squares).</p>
+        
+        <h4 style="margin: 1rem 0 0.5rem 0; font-size: 1rem;">Correlation vs Regression</h4>
+        <div style="overflow-x: auto; width: 100%; margin-bottom: 1.5rem;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; border: 1px solid var(--border);">
+            <thead>
+              <tr style="background: var(--bg); border-bottom: 2px solid var(--border);">
+                <th style="padding: 0.5rem; text-align: left; font-weight:600;">Feature</th>
+                <th style="padding: 0.5rem; text-align: left; font-weight:600;">Correlation</th>
+                <th style="padding: 0.5rem; text-align: left; font-weight:600;">Regression</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Purpose</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Measures strength & direction of linear association.</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Fits a mathematical line to predict values.</td>
+              </tr>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Variables</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">No distinction (symmetric). X vs Y is same as Y vs X.</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Strict Independent vs Dependent roles.</td>
+              </tr>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Coefficient</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">r (ranges between &minus;1 and +1).</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Slope coefficients (b or d) representing rate of change.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4 style="margin: 1rem 0 0.5rem 0; font-size: 1rem;">Interpretation of Coefficients</h4>
+        <ul style="margin: 0; padding-left: 1.25rem; line-height: 1.6;">
+          <li><strong>Slope (b / d)</strong>: The amount of change in the predicted variable for a 1-unit increase in the independent variable.</li>
+          <li><strong>Intercept (a / c)</strong>: The predicted value of the dependent variable when the independent variable is zero.</li>
+          <li><strong>R-squared (R²)</strong>: The percentage of the variance in the dependent variable that is predictable from the independent variable.</li>
+        </ul>
+      </div>
+    </div>
+  `;
+
+  html += `
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+      <button onclick="exportRegressionCSV()" class="btn-primary" style="background: var(--bg2); color: var(--navy); border: 1px solid var(--border);">
+        <svg style="width: 18px; height: 18px; stroke: currentColor;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        Download CSV
+      </button>
+      <button onclick="exportRegressionPDF()" class="btn-primary" style="background: var(--bg2); color: var(--navy); border: 1px solid var(--border);">
+        <svg style="width: 18px; height: 18px; stroke: currentColor;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        Save as PDF
+      </button>
+    </div>
+  `;
+
+  output.innerHTML = html;
+  output.classList.add('active');
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 
