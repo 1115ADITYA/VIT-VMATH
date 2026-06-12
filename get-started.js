@@ -10152,7 +10152,7 @@ function calculateInterestRate() {
     `;
   }
   
-  let insightText = `A 2% increase in interest rate (to ${(calculatedRate + 2).toFixed(decimals)}%) increases the future value by <strong>${formatCurrency(differencePlus2)}</strong> over ${years} years.`;
+  let insightText = `A <strong style="color: var(--amber);">2% increase</strong> in interest rate (to <strong style="color: var(--amber);">${(calculatedRate + 2).toFixed(decimals)}%</strong>) increases the future value by <strong style="color: var(--amber);">${formatCurrency(differencePlus2)}</strong> over ${years} years.`;
 
   let sensitivityHtml = `
     <div class="step-card" style="margin-bottom: 2rem;">
@@ -10175,8 +10175,12 @@ function calculateInterestRate() {
         </table>
       </div>
       
-      <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--amber); padding: 1rem; border-radius: 4px; margin-bottom: 2rem; color: #e5e7eb;">
-        <strong>Key Observation:</strong> ${insightText}
+      <div style="background: #0f172a; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); padding: 1.5rem; margin-bottom: 2rem; color: #ffffff; display: flex; align-items: flex-start; gap: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+        <div style="font-size: 1.5rem; flex-shrink: 0;">💡</div>
+        <div style="font-size: 1.05rem; line-height: 1.6; font-weight: 500;">
+          <div style="font-weight: 700; color: rgba(255,255,255,0.7); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Key Observation</div>
+          ${insightText}
+        </div>
       </div>
       
       <div style="background: #111827; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); padding: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
