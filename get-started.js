@@ -1,3 +1,12 @@
+// Global Helper Functions
+function formatCurrency(value) {
+    return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 2
+    }).format(value);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Theme Toggle Logic
   const themeToggleBtn = document.getElementById('theme-toggle');
@@ -10102,7 +10111,140 @@ function calculateInterestRate() {
     </div>
   `;
 
-  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  let calculatedRate = r;
+  let testRates = [calculatedRate - 2, calculatedRate - 1, calculatedRate, calculatedRate + 1, calculatedRate + 2];
+  
+  let tableRows = '';
+  let plotRates = [];
+  let plotFVs = [];
+  let hoverTexts = [];
+  
+  // Calculate +2% effect to display in insights card
+  let fvPlus2 = pv * Math.pow(1 + (calculatedRate + 2) / 100, years);
+  let differencePlus2 = fvPlus2 - fv;
+  
+  for (let tr of testRates) {
+    if (tr < 0) tr = 0; // Prevent negative rates
+    
+    let simulatedFv = pv * Math.pow(1 + tr / 100, years);
+    let diff = simulatedFv - fv;
+    let isCalculated = Math.abs(tr - calculatedRate) < 0.0001;
+    
+    plotRates.push(tr);
+    plotFVs.push(simulatedFv);
+    
+    let diffStr = diff >= 0 ? '+' + formatCurrency(diff) : '-' + formatCurrency(Math.abs(diff));
+    if (isCalculated) diffStr = '₹0.00';
+    
+    hoverTexts.push(
+      `<b>Interest Rate: ${tr.toFixed(decimals)}%</b><br>Future Value: ${formatCurrency(simulatedFv)}<br>Difference from Calculated Scenario: ${diffStr}`
+    );
+    
+    let rowStyle = isCalculated ? 'background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); font-weight: bold; color: var(--amber);' : 'border-bottom: 1px solid rgba(255,255,255,0.05);';
+    let icon = isCalculated ? '⭐ ' : '';
+    let label = isCalculated ? ' <span style="font-size:0.85em; opacity:0.8;">(Calculated Rate)</span>' : '';
+    
+    tableRows += `
+      <tr style="${rowStyle}">
+        <td style="padding: 1rem; text-align: left;">${icon}${tr.toFixed(decimals)}%${label}</td>
+        <td style="padding: 1rem; text-align: right;">${formatCurrency(simulatedFv)}</td>
+      </tr>
+    `;
+  }
+  
+  let insightText = `A 2% increase in interest rate (to ${(calculatedRate + 2).toFixed(decimals)}%) increases the future value by <strong>${formatCurrency(differencePlus2)}</strong> over ${years} years.`;
+
+  let sensitivityHtml = `
+    <div class="step-card" style="margin-bottom: 2rem;">
+      <div style="font-weight: 700; color: #ffffff; font-size: 1.3rem; margin-bottom: 1.5rem; font-family:'Fraunces', serif;">📊 Interest Rate Sensitivity Analysis</div>
+      <div style="font-size: 1rem; color: var(--navy); margin-bottom: 1.5rem; line-height: 1.5;">
+        Understanding how small changes in the interest rate affect your investment's final outcome is crucial. Here's what happens to your future value if the rate changes slightly:
+      </div>
+      
+      <div style="overflow-x: auto; margin-bottom: 1.5rem;">
+        <table style="width: 100%; border-collapse: collapse; color: #d1d5db; background: #111827; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+          <thead>
+            <tr style="background: rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.1);">
+              <th style="padding: 1rem; text-align: left; font-weight: 600; color: #ffffff;">Interest Rate</th>
+              <th style="padding: 1rem; text-align: right; font-weight: 600; color: #ffffff;">Future Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+      
+      <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid var(--amber); padding: 1rem; border-radius: 4px; margin-bottom: 2rem; color: #e5e7eb;">
+        <strong>Key Observation:</strong> ${insightText}
+      </div>
+      
+      <div style="background: #111827; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); padding: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+        <div id="sensitivity-plot-container" style="width: 100%; height: 400px;"></div>
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + sensitivityHtml + stepsHtml + educationalHtml;
+
+  // Render Plotly after injecting HTML
+  let tracePlot = {
+    x: plotRates,
+    y: plotFVs,
+    name: 'Future Value',
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: { color: '#22c55e', width: 3, shape: 'spline' },
+    marker: { size: 8, color: '#f59e0b' },
+    hoverinfo: 'text',
+    hovertext: hoverTexts
+  };
+
+  let layoutPlot = {
+    title: {
+      text: '📈 Future Value vs Interest Rate',
+      font: { color: '#ffffff', family: 'Fraunces, serif', size: 20 }
+    },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: '#9ca3af', family: 'Figtree, sans-serif' },
+    xaxis: {
+      title: { text: 'Interest Rate (%)', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' },
+      ticksuffix: '%'
+    },
+    yaxis: {
+      title: { text: 'Future Value (₹)', font: { color: '#d1d5db', size: 14 } },
+      tickprefix: '₹',
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' }
+    },
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#111827',
+      font: { family: 'Figtree, sans-serif', color: '#ffffff', size: 14 },
+      bordercolor: 'rgba(255,255,255,0.2)',
+      padding: { t: 12, b: 12, l: 16, r: 16 }
+    },
+    margin: { l: 80, r: 40, t: 60, b: 60 }
+  };
+
+  let configPlot = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+
+  if (typeof Plotly !== 'undefined') {
+    Plotly.newPlot('sensitivity-plot-container', [tracePlot], layoutPlot, configPlot);
+  } else {
+    document.getElementById('sensitivity-plot-container').innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Unable to load Plotly.js for interactive chart visualization.</div>';
+  }
+
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
