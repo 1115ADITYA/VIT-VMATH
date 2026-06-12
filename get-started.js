@@ -9897,7 +9897,173 @@ function calculateEMI() {
     </div>
   `;
 
-  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  let graphContainerHtml = `
+    <div style="background: #111827; border-radius: 16px; border: 1px solid var(--border); padding: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+      <div id="emi-plot-container" style="width: 100%; height: 500px;"></div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + graphContainerHtml + stepsHtml + educationalHtml;
+
+  // Calculate arrays for Plotly
+  let xMonths = [];
+  let yBalance = [];
+  let yPrincipal = [];
+  let yInterest = [];
+  let customEmi = [];
+  
+  let currentBalance = P;
+  let cumPrincipal = 0;
+  let cumInterest = 0;
+  let fixedEmi = emiVal;
+  
+  for (let m = 1; m <= n; m++) {
+    let intForMonth = currentBalance * r;
+    let prinForMonth = fixedEmi - intForMonth;
+    let thisEmi = fixedEmi;
+    
+    // Last month adjustment to clear exactly
+    if (m === n) {
+      prinForMonth = currentBalance;
+      thisEmi = prinForMonth + intForMonth;
+    }
+    
+    currentBalance -= prinForMonth;
+    if (currentBalance < 0) currentBalance = 0;
+    
+    cumPrincipal += prinForMonth;
+    cumInterest += intForMonth;
+    
+    xMonths.push(m);
+    yBalance.push(currentBalance);
+    yPrincipal.push(cumPrincipal);
+    yInterest.push(cumInterest);
+    customEmi.push(thisEmi);
+  }
+
+  // Generate custom hover text for combined tooltip
+  let hoverTextArray = [];
+  for (let i = 0; i < n; i++) {
+    hoverTextArray.push(
+      `<b>Month: ${xMonths[i]}</b><br>Remaining Balance: ₹${yBalance[i].toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br>Principal Repaid: ₹${yPrincipal[i].toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br>Monthly EMI: ₹${customEmi[i].toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+    );
+  }
+
+  // Plotly traces
+  let traceBalance = {
+    x: xMonths,
+    y: yBalance,
+    name: 'Remaining Balance',
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: { color: '#ef4444', width: 3, shape: 'spline' },
+    marker: { size: 4 },
+    hoverinfo: 'text',
+    hovertext: hoverTextArray
+  };
+  
+  let tracePrincipal = {
+    x: xMonths,
+    y: yPrincipal,
+    name: 'Principal Repaid',
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: { color: '#22c55e', width: 3, shape: 'spline' },
+    marker: { size: 4 },
+    hoverinfo: 'text',
+    hovertext: hoverTextArray
+  };
+
+  let midIdx = Math.floor(n / 2) - 1;
+  let layout = {
+    title: {
+      text: '📈 Loan Repayment Journey',
+      font: { color: '#ffffff', family: 'Fraunces, serif', size: 24 }
+    },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: '#9ca3af', family: 'Figtree, sans-serif' },
+    xaxis: {
+      title: { text: 'Month Number', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' }
+    },
+    yaxis: {
+      title: { text: 'Amount (₹)', font: { color: '#d1d5db', size: 14 } },
+      tickprefix: '₹',
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' }
+    },
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#111827',
+      font: { family: 'Figtree, sans-serif', color: '#ffffff', size: 14 },
+      bordercolor: 'rgba(255,255,255,0.2)',
+      padding: { t: 12, b: 12, l: 16, r: 16 }
+    },
+    legend: { orientation: 'h', y: -0.2, x: 0.5, xanchor: 'center', font: { color: '#d1d5db', size: 14 } },
+    margin: { l: 80, r: 40, t: 80, b: 80 },
+    annotations: [
+      {
+        x: xMonths[0],
+        y: yBalance[0],
+        xref: 'x', yref: 'y',
+        text: 'Loan Started',
+        showarrow: true,
+        arrowhead: 2,
+        ax: 50,
+        ay: -40,
+        font: { color: '#ef4444', size: 13, family: 'Figtree, sans-serif', weight: 600 },
+        bgcolor: 'rgba(239,68,68,0.1)',
+        bordercolor: '#ef4444',
+        borderpad: 4
+      },
+      {
+        x: xMonths[midIdx],
+        y: yBalance[midIdx],
+        xref: 'x', yref: 'y',
+        text: 'Halfway Through Loan',
+        showarrow: true,
+        arrowhead: 2,
+        ax: 0,
+        ay: -60,
+        font: { color: '#ffffff', size: 13, family: 'Figtree, sans-serif' },
+        bgcolor: 'rgba(255,255,255,0.1)',
+        bordercolor: 'rgba(255,255,255,0.3)',
+        borderpad: 4
+      },
+      {
+        x: xMonths[n-1],
+        y: yBalance[n-1],
+        xref: 'x', yref: 'y',
+        text: 'Loan Fully Repaid',
+        showarrow: true,
+        arrowhead: 2,
+        ax: -60,
+        ay: -40,
+        font: { color: '#22c55e', size: 13, family: 'Figtree, sans-serif', weight: 600 },
+        bgcolor: 'rgba(34,197,94,0.1)',
+        bordercolor: '#22c55e',
+        borderpad: 4
+      }
+    ]
+  };
+
+  let config = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+
+  if (typeof Plotly !== 'undefined') {
+    Plotly.newPlot('emi-plot-container', [traceBalance, tracePrincipal], layout, config);
+  } else {
+    document.getElementById('emi-plot-container').innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Unable to load Plotly.js for interactive chart visualization.</div>';
+  }
+
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
