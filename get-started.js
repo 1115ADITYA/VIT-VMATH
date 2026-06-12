@@ -9353,8 +9353,9 @@ function calculatePresentValue() {
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; font-size: 0.9rem; opacity: 0.85;">
             <div>Future Value: <strong>₹${fv.toLocaleString('en-IN')}</strong></div>
             <div>Interest Rate: <strong>${rate}%</strong></div>
-            <div>Years: <strong>${years}</strong></div>
+            <div>Discounting Period: <strong>${years} Years</strong></div>
             <div>Compounding Frequency: <strong>${freqName}</strong></div>
+            <div style="grid-column: span 2;">Total Discount: <strong style="color:var(--amber);">₹${formatCurrency(fv - pv)}</strong></div>
           </div>
         </div>
       </div>
@@ -9378,7 +9379,149 @@ function calculatePresentValue() {
     </div>
   `;
 
-  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  let graphContainerHtml = `
+    <div style="background: #111827; border-radius: 16px; border: 1px solid var(--border); padding: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+      <div id="pv-plot-container" style="width: 100%; height: 500px;"></div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + graphContainerHtml + stepsHtml + educationalHtml;
+
+  // Calculate arrays for Plotly
+  let xYears = [];
+  let yPV = [];
+  let yDiscount = [];
+  let hoverTextArray = [];
+  
+  for (let y = 0; y <= years; y++) {
+    let pwr_y = Math.pow(base, n * y);
+    let valAtY = fv / pwr_y;
+    let discAtY = fv - valAtY;
+    
+    xYears.push(y);
+    yPV.push(valAtY);
+    yDiscount.push(discAtY);
+    
+    hoverTextArray.push(
+      `<b>Year: ${y}</b><br>Present Value: ₹${formatCurrency(valAtY)}<br>Discount Amount: ₹${formatCurrency(discAtY)}<br>Future Value: ₹${formatCurrency(fv)}`
+    );
+  }
+
+  // Plotly traces
+  let tracePV = {
+    x: xYears,
+    y: yPV,
+    name: 'Present Value',
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: { color: '#3b82f6', width: 3, shape: 'spline' },
+    marker: { size: 4 },
+    hoverinfo: 'text',
+    hovertext: hoverTextArray
+  };
+  
+  let traceDiscount = {
+    x: xYears,
+    y: yDiscount,
+    name: 'Discount Amount',
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: { color: '#f97316', width: 3, shape: 'spline' },
+    marker: { size: 4 },
+    hoverinfo: 'text',
+    hovertext: hoverTextArray
+  };
+
+  let midIdx = Math.floor(years / 2);
+  let layout = {
+    title: {
+      text: '📉 Present Value Discounting Journey',
+      font: { color: '#ffffff', family: 'Fraunces, serif', size: 24 }
+    },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: '#9ca3af', family: 'Figtree, sans-serif' },
+    xaxis: {
+      title: { text: 'Year', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' }
+    },
+    yaxis: {
+      title: { text: 'Amount (₹)', font: { color: '#d1d5db', size: 14 } },
+      tickprefix: '₹',
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' }
+    },
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#111827',
+      font: { family: 'Figtree, sans-serif', color: '#ffffff', size: 14 },
+      bordercolor: 'rgba(255,255,255,0.2)',
+      padding: { t: 12, b: 12, l: 16, r: 16 }
+    },
+    legend: { orientation: 'h', y: -0.2, x: 0.5, xanchor: 'center', font: { color: '#d1d5db', size: 14 } },
+    margin: { l: 80, r: 40, t: 80, b: 80 },
+    annotations: [
+      {
+        x: xYears[0],
+        y: yPV[0],
+        xref: 'x', yref: 'y',
+        text: 'Future Value Reference',
+        showarrow: true,
+        arrowhead: 2,
+        ax: 50,
+        ay: -40,
+        font: { color: '#ffffff', size: 13, family: 'Figtree, sans-serif', weight: 600 },
+        bgcolor: 'rgba(59,130,246,0.1)',
+        bordercolor: '#3b82f6',
+        borderpad: 4
+      },
+      {
+        x: xYears[midIdx],
+        y: yPV[midIdx],
+        xref: 'x', yref: 'y',
+        text: 'Halfway Discounting',
+        showarrow: true,
+        arrowhead: 2,
+        ax: 0,
+        ay: -60,
+        font: { color: '#ffffff', size: 13, family: 'Figtree, sans-serif' },
+        bgcolor: 'rgba(255,255,255,0.1)',
+        bordercolor: 'rgba(255,255,255,0.3)',
+        borderpad: 4
+      },
+      {
+        x: xYears[xYears.length - 1],
+        y: yPV[yPV.length - 1],
+        xref: 'x', yref: 'y',
+        text: "Today's Equivalent Value",
+        showarrow: true,
+        arrowhead: 2,
+        ax: -60,
+        ay: -40,
+        font: { color: '#3b82f6', size: 13, family: 'Figtree, sans-serif', weight: 600 },
+        bgcolor: 'rgba(59,130,246,0.1)',
+        bordercolor: '#3b82f6',
+        borderpad: 4
+      }
+    ]
+  };
+
+  let config = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+
+  if (typeof Plotly !== 'undefined') {
+    Plotly.newPlot('pv-plot-container', [tracePV, traceDiscount], layout, config);
+  } else {
+    document.getElementById('pv-plot-container').innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Unable to load Plotly.js for interactive chart visualization.</div>';
+  }
+
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
