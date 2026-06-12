@@ -839,7 +839,100 @@
               </div>
             </div>
 
-            <!-- Coming Soon Placeholder Container -->
+            <!-- Rank Calculator Inputs Container -->
+            <div id="rank-calculator-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+              <div style="display: flex; gap: 2rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-weight: 600; color: var(--navy); font-size: 0.95rem;">Decimal Places:</span>
+                  <input type="number" id="rank-calc-decimals" value="4" step="1" min="0" max="15" style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; background: var(--bg);">
+                </div>
+              </div>
+              <div style="overflow-x: auto; width: 100%; max-width: 460px;">
+                <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif;">
+                  <thead>
+                    <tr>
+                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--border); font-size: 0.85rem;">No.</th>
+                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--border);">X</th>
+                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--border);">Y</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">1</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-1" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-1" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">2</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-2" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-2" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">3</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-3" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-3" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">4</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-4" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-4" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">5</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-5" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-5" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">6</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-6" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-6" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">7</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-7" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-7" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">8</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-8" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-8" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Pearson Rank Correlation Coefficient Inputs Container -->
+            <div id="pearson-rank-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+              <div style="display: flex; gap: 2rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-weight: 600; color: var(--navy); font-size: 0.95rem;">Decimal Places:</span>
+                  <input type="number" id="pearson-decimals" value="4" step="1" min="0" max="15" style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; background: var(--bg);">
+                </div>
+              </div>
+              <div style="overflow-x: auto; width: 100%; max-width: 460px;">
+                <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif;">
+                  <thead>
+                    <tr>
+                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--border); font-size: 0.85rem;">No.</th>
+                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--border);">X</th>
+                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--border);">Y</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">1</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-x-1" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-y-1" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">2</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-x-2" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-y-2" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">3</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-x-3" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-y-3" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">4</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-x-4" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-y-4" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">5</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-x-5" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-y-5" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">6</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-x-6" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-y-6" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">7</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-x-7" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-y-7" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">8</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-x-8" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="pearson-y-8" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Regression Calculator Inputs Container -->
+            <div id="regression-calculator-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+              <div style="display: flex; gap: 2rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-weight: 600; color: var(--navy); font-size: 0.95rem;">Decimal Places:</span>
+                  <input type="number" id="regression-decimals" value="4" step="1" min="0" max="15" style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; background: var(--bg);">
+                </div>
+              </div>
+              <div style="overflow-x: auto; width: 100%; max-width: 460px;">
+                <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif;">
+                  <thead>
+                    <tr>
+                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--border); font-size: 0.85rem;">No.</th>
+                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--border);">X</th>
+                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--border);">Y</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">1</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-1" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-1" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">2</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-2" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-2" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">3</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-3" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-3" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">4</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-4" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-4" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">5</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-5" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-5" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">6</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-6" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-6" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">7</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-7" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-7" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">8</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-x-8" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="regression-y-8" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          <!-- Coming Soon Placeholder Container -->
             <div id="coming-soon-container" style="display: none; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1.5rem; text-align: center; width: 100%;">
               <svg style="width: 64px; height: 64px; stroke: var(--amber); margin-bottom: 1.5rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>

@@ -197,6 +197,14 @@ const data = {
         { id: 'exponential', name: 'Exponential Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' },
         { id: 'geometric', name: 'Geometric Distribution', icon: 'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z' }
       ]
+    },
+    {
+      category: 'Correlation & Regression',
+      items: [
+        { id: 'rank-calculator', name: 'Rank Calculator', icon: 'M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12' },
+        { id: 'pearson-rank', name: 'Pearson Rank Correlation Coefficient', icon: 'M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z' },
+        { id: 'regression-calculator', name: 'Regression Calculator', icon: 'M3 3v18h18M7 16l4-4 4 4 4-8' }
+      ]
     }
   ],
   'finance': [
@@ -406,6 +414,9 @@ function openCalc(calcId, element, fromHistory = false) {
   const powerReductionWrapper = document.getElementById('power-reduction-input-container');
   const binomialWrapper = document.getElementById('binomial-input-container');
   const uniformWrapper = document.getElementById('uniform-input-container');
+  const rankCalcWrapper = document.getElementById('rank-calculator-input-container');
+  const pearsonRankWrapper = document.getElementById('pearson-rank-input-container');
+  const regressionCalcWrapper = document.getElementById('regression-calculator-input-container');
   const comingSoonWrapper = document.getElementById('coming-soon-container');
   const calcAction = document.querySelector('.calc-action');
 
@@ -433,6 +444,9 @@ function openCalc(calcId, element, fromHistory = false) {
   if (powerReductionWrapper) powerReductionWrapper.style.display = 'none';
   if (binomialWrapper) binomialWrapper.style.display = 'none';
   if (uniformWrapper) uniformWrapper.style.display = 'none';
+  if (rankCalcWrapper) rankCalcWrapper.style.display = 'none';
+  if (pearsonRankWrapper) pearsonRankWrapper.style.display = 'none';
+  if (regressionCalcWrapper) regressionCalcWrapper.style.display = 'none';
   if (comingSoonWrapper) comingSoonWrapper.style.display = 'none';
   if (calcAction) calcAction.style.display = 'block';
 
@@ -501,6 +515,12 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Enter the number of trials, probability of success, and number of successes to calculate binomial probabilities.";
     } else if (calcId === 'uniform') {
       desc = "Enter the lower bound, upper bound, and target value(s) to calculate uniform distribution probabilities.";
+    } else if (calcId === 'rank-calculator') {
+      desc = "Enter paired (X, Y) data values to compute ranks and the Spearman Rank Correlation Coefficient (ρ) step-by-step.";
+    } else if (calcId === 'pearson-rank') {
+      desc = "Enter paired (X, Y) data values to compute the Pearson Rank Correlation Coefficient (r) step-by-step.";
+    } else if (calcId === 'regression-calculator') {
+      desc = "Enter paired (X, Y) data values to fit a linear regression line Y = a + bX and compute regression coefficients step-by-step.";
     }
     const descEl = document.getElementById('matrix-calc-desc');
     if (descEl) descEl.innerText = desc;
@@ -555,6 +575,12 @@ function openCalc(calcId, element, fromHistory = false) {
       if (binomialWrapper) binomialWrapper.style.display = 'flex';
     } else if (calcId === 'uniform') {
       if (uniformWrapper) uniformWrapper.style.display = 'flex';
+    } else if (calcId === 'rank-calculator') {
+      if (rankCalcWrapper) rankCalcWrapper.style.display = 'flex';
+    } else if (calcId === 'pearson-rank') {
+      if (pearsonRankWrapper) pearsonRankWrapper.style.display = 'flex';
+    } else if (calcId === 'regression-calculator') {
+      if (regressionCalcWrapper) regressionCalcWrapper.style.display = 'flex';
     } else {
       if (standardDim) standardDim.style.display = 'flex';
       if (standardWrapper) standardWrapper.style.display = 'inline-block';
@@ -1036,6 +1062,13 @@ function calculateMatrix() {
   }
   if (currentCalc === 'uniform') {
     calculateUniform();
+    return;
+  }
+  if (currentCalc === 'rank-calculator' || currentCalc === 'pearson-rank' || currentCalc === 'regression-calculator') {
+    const output = document.getElementById('steps-output');
+    output.innerHTML = `<div class="step-card" style="border-left: 4px solid var(--amber);"><div class="step-header"><div class="step-title" style="color: var(--amber);">⚙ Calculator Logic Coming Soon</div></div><div class="step-desc" style="margin-top: 0.5rem;">The calculation engine for this tool is under development. The input UI is ready — logic will be wired up next.</div></div>`;
+    output.classList.add('active');
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
   if (currentCalc === 'poly-roots') {
