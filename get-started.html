@@ -523,6 +523,33 @@
               </div>
             </div>
 
+            <!-- Poisson Distribution Inputs Container -->
+            <div id="poisson-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
+              <div style="display: flex; gap: 1.5rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: flex-end;">
+                <!-- Average Rate (Lambda) -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 200px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Average Rate (&lambda;)</span>
+                  <input type="number" id="poisson-lambda" value="3" step="any" min="0" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+                <!-- Occurrences (x) -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 200px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Occurrences (x)</span>
+                  <input type="number" id="poisson-x" value="2" step="1" min="0" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                </div>
+                <!-- Mode -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 200px;">
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Probability</span>
+                  <select id="poisson-mode" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600; cursor: pointer;">
+                    <option value="exact">P(X = x)</option>
+                    <option value="lte">P(X &le; x)</option>
+                    <option value="lt">P(X &lt; x)</option>
+                    <option value="gte">P(X &ge; x)</option>
+                    <option value="gt">P(X &gt; x)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <!-- Future Value Inputs Container -->
             <div id="future-value-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
               <div style="display: flex; gap: 1.5rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: flex-start;">
