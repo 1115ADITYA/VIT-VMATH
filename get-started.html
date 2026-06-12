@@ -841,33 +841,86 @@
 
             <!-- Rank Calculator Inputs Container -->
             <div id="rank-calculator-input-container" style="display: none; flex-direction: column; align-items: center; gap: 1.5rem; width: 100%;">
-              <div style="display: flex; gap: 2rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                  <span style="font-weight: 600; color: var(--navy); font-size: 0.95rem;">Decimal Places:</span>
-                  <input type="number" id="rank-calc-decimals" value="4" step="1" min="0" max="15" style="width: 70px; padding: 0.4rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1rem; background: var(--bg);">
+              <div style="display: flex; gap: 1.5rem; justify-content: center; width: 100%; flex-wrap: wrap; align-items: center; background: var(--bg2); padding: 1rem; border-radius: 12px; border: 1px solid var(--border);">
+                
+                <!-- Decimal Places -->
+                <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 100px;">
+                  <label for="rank-calc-decimals" style="font-weight: 600; color: var(--navy); font-size: 0.85rem;">Decimals</label>
+                  <input type="number" id="rank-calc-decimals" value="4" step="1" min="0" max="15" style="width: 80px; padding: 0.45rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; background: var(--bg); color: var(--navy);">
+                </div>
+
+                <!-- Sort Direction -->
+                <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 130px;">
+                  <label for="rank-calc-direction" style="font-weight: 600; color: var(--navy); font-size: 0.85rem;">Sort Direction</label>
+                  <select id="rank-calc-direction" style="padding: 0.45rem; border: 1px solid var(--border); border-radius: 8px; font-family: 'Figtree', sans-serif; font-size: 0.95rem; background: var(--bg); color: var(--navy); outline: none;">
+                    <option value="ascending" selected>Ascending (Low to High)</option>
+                    <option value="descending">Descending (High to Low)</option>
+                  </select>
+                </div>
+
+                <!-- Ranking Method -->
+                <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 180px;">
+                  <label for="rank-calc-method" style="font-weight: 600; color: var(--navy); font-size: 0.85rem;">Ranking System</label>
+                  <select id="rank-calc-method" style="padding: 0.45rem; border: 1px solid var(--border); border-radius: 8px; font-family: 'Figtree', sans-serif; font-size: 0.95rem; background: var(--bg); color: var(--navy); outline: none;">
+                    <option value="fractional" selected>Fractional (Average Ranks)</option>
+                    <option value="competition">Standard Competition (1224)</option>
+                    <option value="dense">Dense Ranking (1223)</option>
+                    <option value="modified-competition">Modified Competition (1334)</option>
+                    <option value="ordinal">Ordinal / Unique (1234)</option>
+                  </select>
+                </div>
+
+                <!-- Input Method -->
+                <div style="display: flex; flex-direction: column; gap: 0.3rem; min-width: 130px;">
+                  <label for="rank-calc-input-type" style="font-weight: 600; color: var(--navy); font-size: 0.85rem;">Input Method</label>
+                  <select id="rank-calc-input-type" onchange="toggleRankCalcInputMethod(this.value)" style="padding: 0.45rem; border: 1px solid var(--border); border-radius: 8px; font-family: 'Figtree', sans-serif; font-size: 0.95rem; background: var(--bg); color: var(--navy); outline: none;">
+                    <option value="table" selected>Table Input</option>
+                    <option value="raw">Paste Raw Data</option>
+                  </select>
+                </div>
+
+              </div>
+
+              <!-- Table Input Sub-container -->
+              <div id="rank-calc-table-sub" style="display: flex; flex-direction: column; align-items: center; gap: 1rem; width: 100%; max-width: 320px;">
+                <div style="overflow-x: auto; width: 100%;">
+                  <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif;">
+                    <thead>
+                      <tr>
+                        <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--border); font-size: 0.85rem; width: 60px;">No.</th>
+                        <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--border);">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rank-calc-table-body">
+                      <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">1</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-1" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td></tr>
+                      <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">2</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-2" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td></tr>
+                      <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">3</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-3" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td></tr>
+                      <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">4</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-4" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td></tr>
+                      <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">5</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-5" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td></tr>
+                      <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">6</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-6" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td></tr>
+                      <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">7</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-7" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td></tr>
+                      <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">8</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-8" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div style="display: flex; gap: 1rem; width: 100%; justify-content: center; margin-top: 0.5rem;">
+                  <button type="button" onclick="addRankCalcRow()" class="btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem; background: var(--bg2); color: var(--navy); border: 1px solid var(--border);">
+                    + Add Row
+                  </button>
+                  <button type="button" onclick="clearRankCalcTable()" class="btn-primary" style="padding: 0.45rem 1rem; font-size: 0.85rem; background: var(--bg2); color: #dc2626; border: 1px solid var(--border);">
+                    Clear Table
+                  </button>
                 </div>
               </div>
-              <div style="overflow-x: auto; width: 100%; max-width: 460px;">
-                <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif;">
-                  <thead>
-                    <tr>
-                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--muted); font-weight: 600; border-bottom: 2px solid var(--border); font-size: 0.85rem;">No.</th>
-                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--border);">X</th>
-                      <th style="padding: 0.5rem 0.75rem; text-align: center; color: var(--navy); font-weight: 700; border-bottom: 2px solid var(--border);">Y</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">1</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-1" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-1" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
-                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">2</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-2" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-2" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
-                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">3</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-3" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-3" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
-                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">4</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-4" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-4" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
-                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">5</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-5" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-5" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
-                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">6</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-6" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-6" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
-                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">7</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-7" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-7" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
-                    <tr><td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">8</td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-x-8" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td><td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-y-8" step="any" class="matrix-cell" style="width:100%;min-width:70px;"></td></tr>
-                  </tbody>
-                </table>
+
+              <!-- Raw Text Input Sub-container -->
+              <div id="rank-calc-raw-sub" style="display: none; flex-direction: column; align-items: center; gap: 0.75rem; width: 100%; max-width: 420px;">
+                <span style="font-size: 0.85rem; color: var(--muted); text-align: center; width: 100%;">
+                  Enter values separated by commas, spaces, tabs, or newlines (including pasted Excel columns).
+                </span>
+                <textarea id="rank-calc-raw-data" placeholder="12.5, 45, 30.2, 5, 12.5, 99" style="width: 100%; height: 180px; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; background: var(--bg); color: var(--navy); resize: vertical; outline: none;"></textarea>
               </div>
+
             </div>
 
             <!-- Pearson Rank Correlation Coefficient Inputs Container -->

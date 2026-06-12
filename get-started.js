@@ -1065,10 +1065,7 @@ function calculateMatrix() {
     return;
   }
   if (currentCalc === 'rank-calculator') {
-    const output = document.getElementById('steps-output');
-    output.innerHTML = `<div class="step-card" style="border-left: 4px solid var(--amber);"><div class="step-header"><div class="step-title" style="color: var(--amber);">⚙ Calculator Logic Coming Soon</div></div><div class="step-desc" style="margin-top: 0.5rem;">The calculation engine for this tool is under development. The input UI is ready — logic will be wired up next.</div></div>`;
-    output.classList.add('active');
-    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    calculateRanks();
     return;
   }
   if (currentCalc === 'regression-calculator') {
@@ -13623,6 +13620,753 @@ function calculateRegression() {
       </button>
     </div>
   `;
+
+  output.innerHTML = html;
+  output.classList.add('active');
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+
+// ==========================================
+// RANK CALCULATOR ENGINE
+// ==========================================
+
+window.toggleRankCalcInputMethod = function(method) {
+  const tableContainer = document.getElementById('rank-calc-table-sub');
+  const rawContainer = document.getElementById('rank-calc-raw-sub');
+  if (method === 'table') {
+    if (tableContainer) tableContainer.style.display = 'flex';
+    if (rawContainer) rawContainer.style.display = 'none';
+  } else {
+    if (tableContainer) tableContainer.style.display = 'none';
+    if (rawContainer) rawContainer.style.display = 'flex';
+  }
+};
+
+window.addRankCalcRow = function() {
+  const tbody = document.getElementById('rank-calc-table-body');
+  if (!tbody) return;
+  const rowCount = tbody.getElementsByTagName('tr').length + 1;
+  const newRow = document.createElement('tr');
+  newRow.innerHTML = `
+    <td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">${rowCount}</td>
+    <td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-${rowCount}" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td>
+  `;
+  tbody.appendChild(newRow);
+};
+
+window.clearRankCalcTable = function() {
+  const tbody = document.getElementById('rank-calc-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  for (let i = 1; i <= 8; i++) {
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+      <td style="padding: 0.4rem 0.75rem; text-align: center; color: var(--muted); font-size: 0.85rem; font-family: 'IBM Plex Mono', monospace;">${i}</td>
+      <td style="padding: 0.3rem 0.5rem;"><input type="number" id="rank-calc-val-${i}" step="any" class="matrix-cell" style="width:100%;min-width:70px;text-align:center;"></td>
+    `;
+    tbody.appendChild(newRow);
+  }
+};
+
+window.exportRanksCSV = function() {
+  const data = window._rankCalcData;
+  if (!data) return;
+  const { finalRanks } = data;
+  let csv = "Original Index,Original Value,Assigned Rank\n";
+  finalRanks.forEach(item => {
+    csv += `${item.origIdx},${item.val},${item.rank}\n`;
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", "rank_calculator_output.csv");
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+window.exportRanksPDF = function() {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @media print {
+      body * { visibility: hidden; }
+      #steps-output, #steps-output * { visibility: visible; }
+      #steps-output { position: absolute; left: 0; top: 0; width: 100%; }
+      .btn-primary { display: none !important; }
+      details { display: block !important; }
+      details > summary { display: none !important; }
+      details[open] > summary { display: none !important; }
+    }
+  `;
+  document.head.appendChild(style);
+  window.print();
+  setTimeout(() => document.head.removeChild(style), 1000);
+};
+
+function calculateRanks() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+
+  const showError = (msg) => {
+    output.innerHTML = `
+      <div class="step-card" style="border-left-color: #dc2626;">
+        <div class="step-header">
+          <div class="step-title" style="color: #dc2626;">Error</div>
+        </div>
+        <div class="step-desc">${msg}</div>
+      </div>
+    `;
+    output.classList.add('active');
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const fmt = (num, dec) => {
+    if (isNaN(num) || num === null || num === undefined) return 'NaN';
+    return Number.isInteger(num) ? num.toString() : Number(num).toFixed(dec);
+  };
+
+  const decimals = parseInt(document.getElementById('rank-calc-decimals').value) || 4;
+  const direction = document.getElementById('rank-calc-direction').value;
+  const method = document.getElementById('rank-calc-method').value;
+  const inputType = document.getElementById('rank-calc-input-type').value;
+
+  const rawValues = [];
+  const origIndices = [];
+
+  if (inputType === 'table') {
+    const tbody = document.getElementById('rank-calc-table-body');
+    const rows = tbody.getElementsByTagName('tr');
+    for (let i = 0; i < rows.length; i++) {
+      const idx = i + 1;
+      const valStr = document.getElementById(`rank-calc-val-${idx}`).value.trim();
+      if (valStr !== '') {
+        const val = parseFloat(valStr);
+        if (isNaN(val)) {
+          return showError(`Non-numeric value detected in row ${idx}. All entries must be valid numbers.`);
+        }
+        rawValues.push(val);
+        origIndices.push(idx);
+      }
+    }
+  } else {
+    const rawText = document.getElementById('rank-calc-raw-data').value.trim();
+    if (rawText === '') {
+      return showError("No data entered. Please enter numbers in the text area.");
+    }
+    const parts = rawText.split(/[\s,]+/);
+    for (let i = 0; i < parts.length; i++) {
+      const p = parts[i].trim();
+      if (p === '') continue;
+      const val = parseFloat(p);
+      if (isNaN(val)) {
+        return showError(`Non-numeric value detected at position ${i + 1} ("${p}"). All entries must be numbers.`);
+      }
+      rawValues.push(val);
+      origIndices.push(i + 1);
+    }
+  }
+
+  const n = rawValues.length;
+  if (n === 0) {
+    return showError("No data entered. Please fill at least 2 values.");
+  }
+  if (n < 2) {
+    return showError("At least 2 values are required to perform ranking calculations.");
+  }
+
+  let items = rawValues.map((val, idx) => ({
+    val: val,
+    origIdx: origIndices[idx],
+    origOrder: idx
+  }));
+
+  if (direction === 'ascending') {
+    items.sort((a, b) => a.val - b.val || a.origOrder - b.origOrder);
+  } else {
+    items.sort((a, b) => b.val - a.val || a.origOrder - b.origOrder);
+  }
+
+  const groups = [];
+  let currentGroup = [];
+  for (let i = 0; i < n; i++) {
+    if (i === 0) {
+      currentGroup.push(items[i]);
+    } else {
+      if (items[i].val === items[i - 1].val) {
+        currentGroup.push(items[i]);
+      } else {
+        groups.push(currentGroup);
+        currentGroup = [items[i]];
+      }
+    }
+  }
+  if (currentGroup.length > 0) {
+    groups.push(currentGroup);
+  }
+
+  let denseRankCounter = 1;
+  let runningRankSum = 1;
+  const detailedAssignments = [];
+
+  groups.forEach(g => {
+    const val = g[0].val;
+    const size = g.length;
+    const startRank = runningRankSum;
+    const endRank = startRank + size - 1;
+
+    let assignedRankVal = 0;
+    let explanation = '';
+
+    if (size === 1) {
+      if (method === 'dense') {
+        assignedRankVal = denseRankCounter;
+        explanation = `Single value. Under dense ranking, it receives unique rank <strong>${assignedRankVal}</strong>.`;
+        denseRankCounter++;
+      } else {
+        assignedRankVal = startRank;
+        explanation = `Single value. Ranks naturally at position index: <strong>${assignedRankVal}</strong>.`;
+      }
+      g[0].rank = assignedRankVal;
+    } else {
+      if (method === 'fractional') {
+        assignedRankVal = (startRank + endRank) / 2;
+        const ordinalRangeStr = Array.from({length: size}, (_, idx) => startRank + idx).join(" + ");
+        explanation = `Tie group of ${size} duplicate values of ${val} at sorted ranks ${startRank} to ${endRank}. ` +
+          `Assigned rank is the average of these ranks: (${ordinalRangeStr}) / ${size} = <strong>${fmt(assignedRankVal, decimals)}</strong>.`;
+      } else if (method === 'competition') {
+        assignedRankVal = startRank;
+        explanation = `Tie group of ${size} duplicate values. Under standard competition ranking (1224), all receive the minimum position rank: <strong>${assignedRankVal}</strong>.`;
+      } else if (method === 'modified-competition') {
+        assignedRankVal = endRank;
+        explanation = `Tie group of ${size} duplicate values. Under modified competition ranking (1334), all receive the maximum position rank: <strong>${assignedRankVal}</strong>.`;
+      } else if (method === 'dense') {
+        assignedRankVal = denseRankCounter;
+        explanation = `Tie group of ${size} duplicate values. Under dense ranking (1223), all receive rank: <strong>${assignedRankVal}</strong>.`;
+        denseRankCounter++;
+      } else if (method === 'ordinal') {
+        explanation = `Tie group of ${size} duplicate values. Under ordinal ranking (1234), values are ranked uniquely based on order of appearance:`;
+        g.forEach((item, index) => {
+          const itemRank = startRank + index;
+          item.rank = itemRank;
+          explanation += `<br>• Value at original index #${item.origIdx} receives rank <strong>${itemRank}</strong>.`;
+        });
+      }
+
+      if (method !== 'ordinal') {
+        g.forEach(item => {
+          item.rank = assignedRankVal;
+        });
+      }
+    }
+
+    detailedAssignments.push({
+      val: val,
+      size: size,
+      startRank: startRank,
+      endRank: endRank,
+      assignedRank: method === 'ordinal' ? `Ordinal (${startRank}-${endRank})` : assignedRankVal,
+      explanation: explanation
+    });
+
+    runningRankSum += size;
+  });
+
+  const finalRanks = new Array(n);
+  items.forEach(item => {
+    finalRanks[item.origOrder] = item;
+  });
+
+  window._rankCalcData = {
+    rawValues,
+    origIndices,
+    sortedItems: items,
+    finalRanks,
+    detailedAssignments,
+    n,
+    decimals,
+    direction,
+    method
+  };
+
+  const uniqueCount = groups.length;
+  const tieGroupsCount = groups.filter(g => g.length > 1).length;
+  const minVal = Math.min(...rawValues);
+  const maxVal = Math.max(...rawValues);
+  const rangeVal = maxVal - minVal;
+
+  let html = `
+    <div class="card" style="background: #111827; border-color: #374151; padding: 2rem; margin-bottom: 1.5rem;">
+      <h3 style="color: #9CA3AF; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Ranking Summary</h3>
+      <div style="color: var(--teal); font-family: 'Fraunces', serif; font-size: 1.8rem; font-weight: 700; margin-bottom: 1.5rem;">
+        ${method.charAt(0).toUpperCase() + method.slice(1).replace('-', ' ')} Ranking (${direction.charAt(0).toUpperCase() + direction.slice(1)})
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem;">
+        <div style="background: rgba(255,255,255,0.05); padding: 0.75rem 1rem; border-radius: 8px;">
+          <div style="color: #6B7280; font-size: 0.8rem; margin-bottom: 0.25rem;">Total Items (n)</div>
+          <div style="color: white; font-weight: 600; font-size: 1.15rem;">${n}</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 0.75rem 1rem; border-radius: 8px;">
+          <div style="color: #6B7280; font-size: 0.8rem; margin-bottom: 0.25rem;">Unique Values</div>
+          <div style="color: white; font-weight: 600; font-size: 1.15rem;">${uniqueCount}</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 0.75rem 1rem; border-radius: 8px;">
+          <div style="color: #6B7280; font-size: 0.8rem; margin-bottom: 0.25rem;">Tied Value Groups</div>
+          <div style="color: white; font-weight: 600; font-size: 1.15rem;">${tieGroupsCount}</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.05); padding: 0.75rem 1rem; border-radius: 8px;">
+          <div style="color: #6B7280; font-size: 0.8rem; margin-bottom: 0.25rem;">Dataset Range</div>
+          <div style="color: white; font-weight: 600; font-size: 1.15rem;">${fmt(rangeVal, decimals)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  let sortedRows = '';
+  const rowsToShow = Math.min(n, 10);
+  for (let i = 0; i < rowsToShow; i++) {
+    sortedRows += `<tr>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${finalRanks[i] ? finalRanks[i].origIdx : i + 1}</td>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; font-weight: 500;">${fmt(rawValues[i], decimals)}</td>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${i + 1}</td>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--teal); font-weight: 500;">${fmt(items[i].val, decimals)}</td>
+    </tr>`;
+  }
+
+  let remainingRowsHtml = '';
+  if (n > 10) {
+    for (let i = 10; i < n; i++) {
+      remainingRowsHtml += `<tr>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${finalRanks[i] ? finalRanks[i].origIdx : i + 1}</td>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; font-weight: 500;">${fmt(rawValues[i], decimals)}</td>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${i + 1}</td>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--teal); font-weight: 500;">${fmt(items[i].val, decimals)}</td>
+      </tr>`;
+    }
+  }
+
+  let step1Html = `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">1</div>
+        <div class="step-title">Original and Sorted Dataset</div>
+      </div>
+      <div class="step-desc">The dataset is parsed and sorted in <strong>${direction}</strong> order. Ranks are determined based on sorted positions.</div>
+      <div style="overflow-x: auto; width: 100%; margin-top: 1rem;">
+        <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; text-align: center; font-size: 0.85rem; border: 1px solid var(--border);">
+          <thead>
+            <tr style="background: var(--bg2); border-bottom: 2px solid var(--border);">
+              <th style="padding: 0.5rem; color: var(--muted); font-weight: 600;">Original No.</th>
+              <th style="padding: 0.5rem; color: var(--navy); font-weight: 600;">Original Value</th>
+              <th style="padding: 0.5rem; color: var(--muted); font-weight: 600;">Sorted Position</th>
+              <th style="padding: 0.5rem; color: var(--teal); font-weight: 600;">Sorted Value (${direction})</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${sortedRows}
+          </tbody>
+        </table>
+      </div>
+  `;
+
+  if (n > 10) {
+    step1Html += `
+      <details style="margin-top: 0.5rem; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem;">
+        <summary style="font-weight: 600; color: var(--navy); cursor: pointer; user-select: none; font-size: 0.85rem;">📂 Show remaining ${n - 10} sorted values</summary>
+        <div style="overflow-x: auto; width: 100%; margin-top: 0.5rem;">
+          <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; text-align: center; font-size: 0.85rem;">
+            <tbody>
+              ${remainingRowsHtml}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    `;
+  }
+  step1Html += `</div>`;
+  html += step1Html;
+
+  let tieHandlingHtml = '';
+  if (tieGroupsCount === 0) {
+    tieHandlingHtml = `<div class="step-card">
+      <div class="step-header">
+        <div class="step-number">2</div>
+        <div class="step-title">Tie Handling & Duplicate Analysis</div>
+      </div>
+      <div class="step-desc">All values in the dataset are unique. No ties were detected, so every value is assigned its raw sorted rank directly without special tie resolution.</div>
+    </div>`;
+  } else {
+    let tieGroupsRows = '';
+    detailedAssignments.filter(d => d.size > 1).forEach((d, idx) => {
+      tieGroupsRows += `<div style="background: var(--bg); border: 1px solid var(--border); padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.75rem;">
+        <div style="font-weight: 600; color: var(--navy); margin-bottom: 0.25rem;">Group #${idx + 1}: Value <strong>${fmt(d.val, decimals)}</strong> (x${d.size} duplicates)</div>
+        <div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">${d.explanation}</div>
+      </div>`;
+    });
+
+    tieHandlingHtml = `
+      <div class="step-card">
+        <div class="step-header">
+          <div class="step-number">2</div>
+          <div class="step-title">Tie Handling & Duplicate Analysis</div>
+        </div>
+        <div class="step-desc">The dataset contains <strong>${tieGroupsCount}</strong> groups of tied (duplicate) values. The chosen ranking system (<strong>${method.replace('-', ' ')}</strong>) resolves these ties as follows:</div>
+        <div style="margin-top: 1rem;">
+          ${tieGroupsRows}
+        </div>
+      </div>
+    `;
+  }
+  html += tieHandlingHtml;
+
+  let stepsRows = '';
+  const stepsToShow = Math.min(detailedAssignments.length, 12);
+  for (let i = 0; i < stepsToShow; i++) {
+    const d = detailedAssignments[i];
+    stepsRows += `<div style="border-bottom: 1px solid var(--border); padding: 0.75rem 0; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
+      <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 500; color: var(--navy);">Value: ${fmt(d.val, decimals)} ${d.size > 1 ? `<span style="font-size: 0.75rem; background: var(--bg2); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--muted); font-weight: normal; margin-left: 0.5rem;">x${d.size} ties</span>` : ''}</div>
+      <div style="text-align: right; color: var(--teal); font-weight: 600; font-family: 'IBM Plex Mono', monospace;">Rank: ${method === 'ordinal' ? `${d.startRank}-${d.endRank}` : fmt(d.assignedRank, decimals)}</div>
+    </div>`;
+  }
+
+  let hiddenStepsHtml = '';
+  if (detailedAssignments.length > 12) {
+    for (let i = 12; i < detailedAssignments.length; i++) {
+      const d = detailedAssignments[i];
+      hiddenStepsHtml += `<div style="border-bottom: 1px solid var(--border); padding: 0.75rem 0; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-weight: 500; color: var(--navy);">Value: ${fmt(d.val, decimals)} ${d.size > 1 ? `<span style="font-size: 0.75rem; background: var(--bg2); padding: 0.15rem 0.4rem; border-radius: 4px; color: var(--muted); font-weight: normal; margin-left: 0.5rem;">x${d.size} ties</span>` : ''}</div>
+        <div style="text-align: right; color: var(--teal); font-weight: 600; font-family: 'IBM Plex Mono', monospace;">Rank: ${method === 'ordinal' ? `${d.startRank}-${d.endRank}` : fmt(d.assignedRank, decimals)}</div>
+      </div>`;
+    }
+  }
+
+  let step3Html = `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-number">3</div>
+        <div class="step-title">Rank Assignments Summary</div>
+      </div>
+      <div class="step-desc">List of distinct values sorted and their corresponding ranks:</div>
+      <div style="margin-top: 1rem; border: 1px solid var(--border); border-radius: 8px; padding: 0 1rem; background: var(--bg2);">
+        ${stepsRows}
+      </div>
+  `;
+
+  if (detailedAssignments.length > 12) {
+    step3Html += `
+      <details style="margin-top: 0.5rem; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem;">
+        <summary style="font-weight: 600; color: var(--navy); cursor: pointer; user-select: none; font-size: 0.85rem;">📂 Show remaining ${detailedAssignments.length - 12} assignments</summary>
+        <div style="margin-top: 0.5rem; border: 1px solid var(--border); border-radius: 8px; padding: 0 1rem; background: var(--bg2);">
+          ${hiddenStepsHtml}
+        </div>
+      </details>
+    `;
+  }
+  step3Html += `</div>`;
+  html += step3Html;
+
+  let rankTableRows = '';
+  for (let i = 0; i < rowsToShow; i++) {
+    const item = finalRanks[i];
+    rankTableRows += `<tr>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${item.origIdx}</td>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; font-weight: 500;">${fmt(item.val, decimals)}</td>
+      <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--teal); font-weight: 700;">${fmt(item.rank, decimals)}</td>
+    </tr>`;
+  }
+
+  let hiddenRankTableRows = '';
+  if (n > 10) {
+    for (let i = 10; i < n; i++) {
+      const item = finalRanks[i];
+      hiddenRankTableRows += `<tr>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--muted);">${item.origIdx}</td>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; font-weight: 500;">${fmt(item.val, decimals)}</td>
+        <td style="padding: 0.4rem; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--teal); font-weight: 700;">${fmt(item.rank, decimals)}</td>
+      </tr>`;
+    }
+  }
+
+  let step4Html = `
+    <div class="step-card" style="border-left-color: var(--teal);">
+      <div class="step-header">
+        <div class="step-number">4</div>
+        <div class="step-title">Final Rank Output Table</div>
+      </div>
+      <div class="step-desc">Calculated ranks mapped back to the original order of the input dataset.</div>
+      <div style="overflow-x: auto; width: 100%; margin-top: 1rem;">
+        <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; text-align: center; font-size: 0.85rem; border: 1px solid var(--border);">
+          <thead>
+            <tr style="background: var(--bg2); border-bottom: 2px solid var(--border);">
+              <th style="padding: 0.5rem; color: var(--muted); font-weight: 600;">No. (Original Order)</th>
+              <th style="padding: 0.5rem; color: var(--navy); font-weight: 600;">Original Value</th>
+              <th style="padding: 0.5rem; color: var(--teal); font-weight: 600;">Assigned Rank</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rankTableRows}
+          </tbody>
+        </table>
+      </div>
+  `;
+
+  if (n > 10) {
+    step4Html += `
+      <details style="margin-top: 0.5rem; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem;">
+        <summary style="font-weight: 600; color: var(--navy); cursor: pointer; user-select: none; font-size: 0.85rem;">📂 Show remaining ${n - 10} output ranks</summary>
+        <div style="overflow-x: auto; width: 100%; margin-top: 0.5rem;">
+          <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif; text-align: center; font-size: 0.85rem;">
+            <tbody>
+              ${hiddenRankTableRows}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    `;
+  }
+  step4Html += `</div>`;
+  html += step4Html;
+
+  // Visualizations SVG Calculations
+  const pad = 40;
+  const svgW = 440;
+  const svgH = 220;
+  const plotW = svgW - 2 * pad;
+  const plotH = svgH - 2 * pad;
+
+  const maxRank = Math.max(...items.map(item => item.rank));
+  const minRank = Math.min(...items.map(item => item.rank));
+  const rangeRank = maxRank - minRank || 1.0;
+
+  const mapX = (v) => pad + (rangeVal > 0 ? ((v - minVal) / rangeVal) * plotW : plotW / 2);
+  const mapY = (r) => pad + plotH - (rangeRank > 0 ? ((r - minRank) / rangeRank) * plotH : plotH / 2);
+
+  let distTicksHtml = '';
+  const rankTicks = rangeRank > 0 ? [minRank, minRank + rangeRank*0.25, minRank + rangeRank*0.5, minRank + rangeRank*0.75, maxRank] : [minRank];
+  rankTicks.forEach(tick => {
+    const y = mapY(tick);
+    distTicksHtml += `<line x1="${pad}" y1="${y}" x2="${pad + plotW}" y2="${y}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
+    distTicksHtml += `<text x="${pad - 8}" y="${y + 3}" text-anchor="end" font-family="sans-serif" font-size="8" fill="var(--muted)">${fmt(tick, 1)}</text>`;
+  });
+
+  const valTicks = rangeVal > 0 ? [minVal, minVal + rangeVal*0.25, minVal + rangeVal*0.5, minVal + rangeVal*0.75, maxVal] : [minVal];
+  valTicks.forEach(tick => {
+    const x = mapX(tick);
+    distTicksHtml += `<line x1="${x}" y1="${pad}" x2="${x}" y2="${pad + plotH}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
+    distTicksHtml += `<text x="${x}" y="${svgH - pad + 12}" text-anchor="middle" font-family="sans-serif" font-size="8" fill="var(--muted)">${fmt(tick, 1)}</text>`;
+  });
+
+  let distPathHtml = '';
+  let lastPt = null;
+  const sortedCopyForChart = [...items].sort((a,b) => a.val - b.val);
+  sortedCopyForChart.forEach(item => {
+    const cx = mapX(item.val);
+    const cy = mapY(item.rank);
+    if (lastPt) {
+      distPathHtml += `<line x1="${lastPt.x}" y1="${lastPt.y}" x2="${cx}" y2="${cy}" stroke="var(--teal)" stroke-width="2" opacity="0.8" />`;
+    }
+    lastPt = { x: cx, y: cy };
+  });
+
+  let distDotsHtml = '';
+  sortedCopyForChart.forEach(item => {
+    const cx = mapX(item.val);
+    const cy = mapY(item.rank);
+    distDotsHtml += `<circle cx="${cx}" cy="${cy}" r="4" fill="var(--amber)" stroke="#fff" stroke-width="1.2" />`;
+  });
+
+  // Histogram
+  const numBins = 5;
+  const bins = Array.from({length: numBins}, () => 0);
+  const binWidth = rangeVal > 0 ? rangeVal / numBins : 1.0;
+  
+  rawValues.forEach(v => {
+    let binIdx = Math.floor((v - minVal) / binWidth);
+    if (binIdx >= numBins) binIdx = numBins - 1;
+    if (binIdx < 0) binIdx = 0;
+    bins[binIdx]++;
+  });
+
+  const maxBinCount = Math.max(...bins) || 1.0;
+  const histTicks = [0, maxBinCount * 0.25, maxBinCount * 0.5, maxBinCount * 0.75, maxBinCount];
+  
+  let histHtml = '';
+  histTicks.forEach(tick => {
+    const y = pad + plotH - (tick / maxBinCount) * plotH;
+    histHtml += `<line x1="${pad}" y1="${y}" x2="${pad + plotW}" y2="${y}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
+    histHtml += `<text x="${pad - 8}" y="${y + 3}" text-anchor="end" font-family="sans-serif" font-size="8" fill="var(--muted)">${Math.round(tick)}</text>`;
+  });
+
+  const barW = (plotW / numBins) * 0.85;
+  const barSpacing = (plotW / numBins) * 0.15;
+  for (let i = 0; i < numBins; i++) {
+    const count = bins[i];
+    const bHeight = (count / maxBinCount) * plotH;
+    const bx = pad + i * (barW + barSpacing) + barSpacing / 2;
+    const by = pad + plotH - bHeight;
+    histHtml += `<rect x="${bx}" y="${by}" width="${barW}" height="${bHeight}" fill="var(--teal)" opacity="0.85" rx="3" />`;
+    
+    const binStart = minVal + i * binWidth;
+    const midX = bx + barW / 2;
+    histHtml += `<text x="${midX}" y="${svgH - pad + 12}" text-anchor="middle" font-family="sans-serif" font-size="7.5" fill="var(--muted)">${fmt(binStart,1)}</text>`;
+    
+    if (count > 0) {
+      histHtml += `<text x="${midX}" y="${by - 4}" text-anchor="middle" font-family="sans-serif" font-size="8.5" font-weight="bold" fill="var(--navy)">${count}</text>`;
+    }
+  }
+
+  // Rank Frequency Chart
+  const rankFreqMap = {};
+  items.forEach(item => {
+    rankFreqMap[item.rank] = (rankFreqMap[item.rank] || 0) + 1;
+  });
+  const uniqueRanks = Object.keys(rankFreqMap).map(Number).sort((a,b) => a - b);
+  const maxFreq = Math.max(...Object.values(rankFreqMap)) || 1.0;
+
+  let freqHtml = '';
+  const freqTicks = [0, maxFreq * 0.25, maxFreq * 0.5, maxFreq * 0.75, maxFreq];
+  freqTicks.forEach(tick => {
+    const y = pad + plotH - (tick / maxFreq) * plotH;
+    freqHtml += `<line x1="${pad}" y1="${y}" x2="${pad + plotW}" y2="${y}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
+    freqHtml += `<text x="${pad - 8}" y="${y + 3}" text-anchor="end" font-family="sans-serif" font-size="8" fill="var(--muted)">${Math.round(tick)}</text>`;
+  });
+
+  const numRanks = uniqueRanks.length;
+  const fBarW = (plotW / numRanks) * 0.8;
+  const fBarSpacing = (plotW / numRanks) * 0.2;
+  for (let i = 0; i < numRanks; i++) {
+    const rankVal = uniqueRanks[i];
+    const count = rankFreqMap[rankVal];
+    const bHeight = (count / maxFreq) * plotH;
+    const bx = pad + i * (fBarW + fBarSpacing) + fBarSpacing / 2;
+    const by = pad + plotH - bHeight;
+    freqHtml += `<rect x="${bx}" y="${by}" width="${fBarW}" height="${bHeight}" fill="var(--amber)" opacity="0.85" rx="3" />`;
+    
+    const midX = bx + fBarW / 2;
+    freqHtml += `<text x="${midX}" y="${svgH - pad + 12}" text-anchor="middle" font-family="sans-serif" font-size="8" fill="var(--muted)">${fmt(rankVal, 1)}</text>`;
+    
+    if (count > 0) {
+      freqHtml += `<text x="${midX}" y="${by - 4}" text-anchor="middle" font-family="sans-serif" font-size="8.5" font-weight="bold" fill="var(--navy)">${count}</text>`;
+    }
+  }
+
+  let chartsCardHtml = `
+    <div class="step-card">
+      <div class="step-header">
+        <div class="step-title">Ranking Visualizations</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2rem; align-items: center; width: 100%;">
+        
+        <!-- Rank Distribution -->
+        <div style="text-align: center; width: 100%;">
+          <div style="font-weight: 600; font-size: 0.95rem; color: var(--navy); margin-bottom: 0.5rem;">Value to Rank Distribution</div>
+          <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; background: var(--bg2);">
+            ${distTicksHtml}
+            ${distPathHtml}
+            ${distDotsHtml}
+          </svg>
+          <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem;">X-Axis: Values, Y-Axis: Assigned Ranks</div>
+        </div>
+
+        <!-- Histogram -->
+        <div style="text-align: center; width: 100%;">
+          <div style="font-weight: 600; font-size: 0.95rem; color: var(--navy); margin-bottom: 0.5rem;">Histogram of Values (Frequency Distribution)</div>
+          <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; background: var(--bg2);">
+            ${histHtml}
+          </svg>
+          <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem;">Frequencies grouped in ${numBins} value intervals</div>
+        </div>
+
+        <!-- Rank Frequency -->
+        <div style="text-align: center; width: 100%;">
+          <div style="font-weight: 600; font-size: 0.95rem; color: var(--navy); margin-bottom: 0.5rem;">Rank Frequencies (Tie Group sizes)</div>
+          <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="max-width: 100%; height: auto; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem; background: var(--bg2);">
+            ${freqHtml}
+          </svg>
+          <div style="font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem;">Shows count of elements holding each rank</div>
+        </div>
+
+      </div>
+    </div>
+  `;
+  html += chartsCardHtml;
+
+  let theoryHtml = `
+    <div class="step-card" style="border-left-color: var(--amber);">
+      <div class="step-header">
+        <svg style="width: 24px; height: 24px; stroke: var(--amber); margin-right: 0.5rem;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        <div class="step-title">Theory: Mathematical Ranking Systems</div>
+      </div>
+      <div style="font-size: 0.95rem; color: var(--navy); line-height: 1.6;">
+        <p style="margin-top: 0;"><strong>What is Ranking?</strong> In statistics and mathematics, ranking is the relationship between a set of items such that, for any two items, the first is either 'ranked higher than', 'ranked lower than' or 'ranked equal to' the second. It converts quantitative data into ordinal values.</p>
+        
+        <h4 style="margin: 1rem 0 0.5rem 0; font-size: 1.05rem;">Comparison of Ranking Systems</h4>
+        <div style="overflow-x: auto; width: 100%; margin-bottom: 1.5rem;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; border: 1px solid var(--border);">
+            <thead>
+              <tr style="background: var(--bg); border-bottom: 2px solid var(--border);">
+                <th style="padding: 0.5rem; text-align: left; font-weight:600;">System</th>
+                <th style="padding: 0.5rem; text-align: left; font-weight:600;">Example [10, 20, 20, 30]</th>
+                <th style="padding: 0.5rem; text-align: left; font-weight:600;">Formula / Tie Handling Rule</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Fractional (Average)</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-family: monospace;">[1.0, 2.5, 2.5, 4.0]</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">Ties receive the average of the ordinal positions they cover. Standard in non-parametric stats.</td>
+              </tr>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Standard Competition</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-family: monospace;">[1.0, 2.0, 2.0, 4.0]</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">"1224" ranking. Tied items receive the lowest ordinal rank, creating a gap in ranks.</td>
+              </tr>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Dense Ranking</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-family: monospace;">[1.0, 2.0, 2.0, 3.0]</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">"1223" ranking. Tied items receive the same rank. Ranks are consecutive without gaps.</td>
+              </tr>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Modified Competition</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-family: monospace;">[1.0, 3.0, 3.0, 4.0]</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">"1334" ranking. Tied items receive the highest ordinal rank index within their range.</td>
+              </tr>
+              <tr>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-weight: 500;">Ordinal / Unique</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border); font-family: monospace;">[1.0, 2.0, 3.0, 4.0]</td>
+                <td style="padding: 0.5rem; border-bottom: 1px solid var(--border);">"1234" ranking. Ties resolved arbitrarily (stable sort based on input sequence) to preserve uniqueness.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4 style="margin: 1rem 0 0.5rem 0; font-size: 1.05rem;">Applications in Statistics</h4>
+        <ul style="margin: 0; padding-left: 1.25rem; line-height: 1.6;">
+          <li><strong>Spearman's Rank Correlation Coefficient (ρ)</strong>: Measures monotonic association between variables using average ranks.</li>
+          <li><strong>Wilcoxon Signed-Rank Test</strong>: Non-parametric statistical hypothesis test used to compare two related samples.</li>
+          <li><strong>Mann-Whitney U Test</strong>: Computes whether one of two independent samples has larger values, relying entirely on fractional ranking.</li>
+        </ul>
+      </div>
+    </div>
+  `;
+  html += theoryHtml;
+
+  let exportRow = `
+    <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem;">
+      <button onclick="exportRanksCSV()" class="btn-primary" style="background: var(--bg2); color: var(--navy); border: 1px solid var(--border);">
+        <svg style="width: 18px; height: 18px; stroke: currentColor;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        Download CSV
+      </button>
+      <button onclick="exportRanksPDF()" class="btn-primary" style="background: var(--bg2); color: var(--navy); border: 1px solid var(--border);">
+        <svg style="width: 18px; height: 18px; stroke: currentColor;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+        Save as PDF
+      </button>
+    </div>
+  `;
+  html += exportRow;
 
   output.innerHTML = html;
   output.classList.add('active');
