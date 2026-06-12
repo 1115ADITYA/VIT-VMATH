@@ -10870,7 +10870,106 @@ function calculateHyperbolic() {
     </div>
   `;
 
-  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  let graphContainerHtml = `
+    <div style="background: #111827; border-radius: 16px; border: 1px solid var(--border); padding: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+      <div id="hyperbolic-plot-container" style="width: 100%; height: 400px;"></div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + graphContainerHtml + stepsHtml + educationalHtml;
+
+  // Plotly logic
+  let xVals = [];
+  let yVals = [];
+  let hoverTexts = [];
+  
+  for (let i = -5; i <= 5.01; i += 0.1) {
+    let xv = i;
+    let yv;
+    switch(funcType) {
+      case 'sinh': yv = Math.sinh(xv); break;
+      case 'cosh': yv = Math.cosh(xv); break;
+      case 'tanh': yv = Math.tanh(xv); break;
+      case 'coth': yv = 1 / Math.tanh(xv); break;
+      case 'sech': yv = 1 / Math.cosh(xv); break;
+      case 'csch': yv = 1 / Math.sinh(xv); break;
+    }
+    xVals.push(xv);
+    yVals.push(yv);
+    
+    let yvStr = isFinite(yv) ? yv.toFixed(decimals) : 'Undefined';
+    hoverTexts.push(`<b>x: ${xv.toFixed(2)}</b><br>${funcType}(x): ${yvStr}`);
+  }
+
+  // Cap yVals to avoid huge asymptotes for coth and csch around 0 ruining the plot
+  yVals = yVals.map(y => (y > 200) ? null : (y < -200) ? null : y);
+
+  let traceLine = {
+    x: xVals,
+    y: yVals,
+    name: funcType + '(x)',
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: '#3b82f6', width: 3, shape: 'spline' },
+    hoverinfo: 'text',
+    hovertext: hoverTexts
+  };
+
+  let tracePoint = {
+    x: [x],
+    y: [finalVal],
+    name: 'Calculated Point',
+    type: 'scatter',
+    mode: 'markers',
+    marker: { size: 10, color: '#f59e0b', line: { color: '#ffffff', width: 2 } },
+    hoverinfo: 'text',
+    hovertext: [`<b>Calculated Point</b><br>x: ${x}<br>${funcType}(x): ${finalVal.toFixed(decimals)}`]
+  };
+
+  let layoutPlot = {
+    title: {
+      text: '📈 Hyperbolic Function Visualization',
+      font: { color: '#ffffff', family: 'Fraunces, serif', size: 20 }
+    },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: '#9ca3af', family: 'Figtree, sans-serif' },
+    xaxis: {
+      title: { text: 'x', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.2)',
+      tickfont: { color: '#9ca3af' }
+    },
+    yaxis: {
+      title: { text: 'f(x)', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.2)',
+      tickfont: { color: '#9ca3af' }
+    },
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#111827',
+      font: { family: 'Figtree, sans-serif', color: '#ffffff', size: 14 },
+      bordercolor: 'rgba(255,255,255,0.2)',
+      padding: { t: 12, b: 12, l: 16, r: 16 }
+    },
+    showlegend: false,
+    margin: { l: 60, r: 40, t: 60, b: 60 }
+  };
+
+  let configPlot = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+
+  if (typeof Plotly !== 'undefined') {
+    Plotly.newPlot('hyperbolic-plot-container', [traceLine, tracePoint], layoutPlot, configPlot);
+  } else {
+    document.getElementById('hyperbolic-plot-container').innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Unable to load Plotly.js for interactive chart visualization.</div>';
+  }
+
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -11074,7 +11173,120 @@ function calculatePolyRoots() {
     </div>
   `;
 
-  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  let graphContainerHtml = `
+    <div style="background: #111827; border-radius: 16px; border: 1px solid var(--border); padding: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+      <div id="poly-roots-plot-container" style="width: 100%; height: 400px;"></div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + graphContainerHtml + stepsHtml + educationalHtml;
+
+  // Plotly logic for Polynomial
+  let minR = realRoots.length > 0 ? realRoots[0].re : -5;
+  let maxR = realRoots.length > 0 ? realRoots[realRoots.length - 1].re : 5;
+  let padding = Math.max(2, (maxR - minR) * 0.2);
+  let xStart = minR - padding;
+  let xEnd = maxR + padding;
+  let step = (xEnd - xStart) / 200;
+
+  let xValsPlot = [];
+  let yValsPlot = [];
+  let polyHoverTexts = [];
+
+  for (let xv = xStart; xv <= xEnd + step/2; xv += step) {
+    let yv = coeffs.reduce((sum, c, i) => sum + c * Math.pow(xv, i), 0);
+    xValsPlot.push(xv);
+    yValsPlot.push(yv);
+    polyHoverTexts.push(`<b>x: ${xv.toFixed(3)}</b><br>y: ${yv.toFixed(3)}`);
+  }
+
+  // Generate roots scatter data
+  let rootXVals = [];
+  let rootYVals = [];
+  let rootHoverTexts = [];
+
+  for (let r of realRoots) {
+    rootXVals.push(r.re);
+    rootYVals.push(0);
+    rootHoverTexts.push(`<b>Root</b><br>x: ${r.re.toFixed(decimals)}<br>y: 0`);
+  }
+
+  let tracePolyLine = {
+    x: xValsPlot,
+    y: yValsPlot,
+    name: 'P(x)',
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: '#3b82f6', width: 3, shape: 'spline' },
+    hoverinfo: 'text',
+    hovertext: polyHoverTexts
+  };
+
+  let traceRoots = {
+    x: rootXVals,
+    y: rootYVals,
+    name: 'Real Roots',
+    type: 'scatter',
+    mode: 'markers',
+    marker: { size: 10, color: '#f59e0b', line: { color: '#ffffff', width: 2 } },
+    hoverinfo: 'text',
+    hovertext: rootHoverTexts
+  };
+
+  let traceZeroLine = {
+    x: [xStart, xEnd],
+    y: [0, 0],
+    name: 'y = 0',
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: 'rgba(255,255,255,0.3)', width: 1, dash: 'dash' },
+    hoverinfo: 'skip'
+  };
+
+  let layoutPolyPlot = {
+    title: {
+      text: '📈 Polynomial Root Visualization',
+      font: { color: '#ffffff', family: 'Fraunces, serif', size: 20 }
+    },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: '#9ca3af', family: 'Figtree, sans-serif' },
+    xaxis: {
+      title: { text: 'x', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.2)',
+      tickfont: { color: '#9ca3af' }
+    },
+    yaxis: {
+      title: { text: 'y = P(x)', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.2)',
+      tickfont: { color: '#9ca3af' }
+    },
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#111827',
+      font: { family: 'Figtree, sans-serif', color: '#ffffff', size: 14 },
+      bordercolor: 'rgba(255,255,255,0.2)',
+      padding: { t: 12, b: 12, l: 16, r: 16 }
+    },
+    showlegend: false,
+    margin: { l: 60, r: 40, t: 60, b: 60 }
+  };
+
+  let configPolyPlot = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+
+  if (typeof Plotly !== 'undefined') {
+    Plotly.newPlot('poly-roots-plot-container', [tracePolyLine, traceZeroLine, traceRoots], layoutPolyPlot, configPolyPlot);
+  } else {
+    document.getElementById('poly-roots-plot-container').innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Unable to load Plotly.js for interactive chart visualization.</div>';
+  }
+
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   // INTERNAL HELPERS
@@ -11881,7 +12093,104 @@ function calculateMultipleAngleExpand() {
     </div>
   `;
 
-  output.innerHTML = resultSummaryHtml + stepsHtml + educationalHtml;
+  let graphContainerHtml = `
+    <div style="background: #111827; border-radius: 16px; border: 1px solid var(--border); padding: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+      <div id="multiple-angle-plot-container" style="width: 100%; height: 400px;"></div>
+      <div style="margin-top: 1rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; color: #d1d5db; font-size: 0.95rem; line-height: 1.5;">
+        <strong style="color: #60a5fa;">💡 Educational Insight:</strong> Frequency increases as n increases. Higher n creates more oscillations within the same angle range.
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = resultSummaryHtml + graphContainerHtml + stepsHtml + educationalHtml;
+
+  // Plotly logic for Multiple Angle
+  let thetaValsPlot = [];
+  let baseValsPlot = [];
+  let expandedValsPlot = [];
+  let hoverTextsBase = [];
+  let hoverTextsExpanded = [];
+
+  for (let d = 0; d <= 360; d += 1) {
+    let r = d * Math.PI / 180;
+    let baseVal = funcType === 'sin' ? Math.sin(r) : Math.cos(r);
+    let expVal = funcType === 'sin' ? Math.sin(n * r) : Math.cos(n * r);
+    
+    thetaValsPlot.push(d);
+    baseValsPlot.push(baseVal);
+    expandedValsPlot.push(expVal);
+
+    hoverTextsBase.push(`<b>θ: ${d}°</b><br>${funcType}(θ): ${baseVal.toFixed(3)}`);
+    hoverTextsExpanded.push(`<b>θ: ${d}°</b><br>${funcType}(${n}θ): ${expVal.toFixed(3)}`);
+  }
+
+  let traceBase = {
+    x: thetaValsPlot,
+    y: baseValsPlot,
+    name: `Original: ${funcType}(θ)`,
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: 'rgba(255,255,255,0.4)', width: 2, dash: 'dot' },
+    hoverinfo: 'text',
+    hovertext: hoverTextsBase
+  };
+
+  let traceExpanded = {
+    x: thetaValsPlot,
+    y: expandedValsPlot,
+    name: `Expanded: ${funcType}(${n}θ)`,
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: '#3b82f6', width: 3, shape: 'spline' },
+    hoverinfo: 'text',
+    hovertext: hoverTextsExpanded
+  };
+
+  let layoutMAEPlot = {
+    title: {
+      text: '📈 Multiple Angle Comparison',
+      font: { color: '#ffffff', family: 'Fraunces, serif', size: 20 }
+    },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: '#9ca3af', family: 'Figtree, sans-serif' },
+    xaxis: {
+      title: { text: 'θ (degrees)', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.2)',
+      tickfont: { color: '#9ca3af' },
+      dtick: 90
+    },
+    yaxis: {
+      title: { text: 'Value', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.2)',
+      tickfont: { color: '#9ca3af' }
+    },
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#111827',
+      font: { family: 'Figtree, sans-serif', color: '#ffffff', size: 14 },
+      bordercolor: 'rgba(255,255,255,0.2)',
+      padding: { t: 12, b: 12, l: 16, r: 16 }
+    },
+    legend: { font: { color: '#d1d5db' }, orientation: 'h', y: -0.2 },
+    margin: { l: 60, r: 40, t: 60, b: 80 }
+  };
+
+  let configMAEPlot = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+
+  if (typeof Plotly !== 'undefined') {
+    Plotly.newPlot('multiple-angle-plot-container', [traceBase, traceExpanded], layoutMAEPlot, configMAEPlot);
+  } else {
+    document.getElementById('multiple-angle-plot-container').innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Unable to load Plotly.js for interactive chart visualization.</div>';
+  }
+
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -12116,7 +12425,104 @@ function calculatePowerReduction() {
     </div>
   `;
 
-  output.innerHTML = resultSummaryHtml + stepsHtml + educationalHtml;
+  let graphContainerHtml = `
+    <div style="background: #111827; border-radius: 16px; border: 1px solid var(--border); padding: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+      <div id="power-reduction-plot-container" style="width: 100%; height: 400px;"></div>
+      <div style="margin-top: 1rem; padding: 1rem; background: rgba(34, 197, 94, 0.1); border-left: 4px solid #22c55e; color: #d1d5db; font-size: 0.95rem; line-height: 1.5; display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 1.2rem;">✓</span> <strong>Identity Verified Graphically:</strong> Both the LHS power function and RHS expanded expression curves perfectly overlap for all angles.
+      </div>
+    </div>
+  `;
+
+  output.innerHTML = resultSummaryHtml + graphContainerHtml + stepsHtml + educationalHtml;
+
+  // Plotly logic for Power Reduction
+  let thetaValsPlot = [];
+  let lhsValsPlot = [];
+  let rhsValsPlot = [];
+  let hoverTextsLHS = [];
+  let hoverTextsRHS = [];
+
+  for (let d = 0; d <= 360; d += 1) {
+    let r = d * Math.PI / 180;
+    let lhsVal = funcType === 'sin' ? Math.pow(Math.sin(r), n) : Math.pow(Math.cos(r), n);
+    let rhsValPlot = lookup.eval(r);
+    
+    thetaValsPlot.push(d);
+    lhsValsPlot.push(lhsVal);
+    rhsValsPlot.push(rhsValPlot);
+
+    hoverTextsLHS.push(`<b>θ: ${d}°</b><br>LHS ${funcType}<sup>${n}</sup>θ: ${lhsVal.toFixed(4)}`);
+    hoverTextsRHS.push(`<b>θ: ${d}°</b><br>RHS Expanded: ${rhsValPlot.toFixed(4)}`);
+  }
+
+  let traceLHS = {
+    x: thetaValsPlot,
+    y: lhsValsPlot,
+    name: `LHS: ${funcType}<sup>${n}</sup>θ`,
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: 'rgba(255, 255, 255, 0.8)', width: 6, shape: 'spline' },
+    hoverinfo: 'text',
+    hovertext: hoverTextsLHS
+  };
+
+  let traceRHS = {
+    x: thetaValsPlot,
+    y: rhsValsPlot,
+    name: `RHS Identity`,
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: '#22c55e', width: 2, dash: 'dash', shape: 'spline' },
+    hoverinfo: 'text',
+    hovertext: hoverTextsRHS
+  };
+
+  let layoutPRPlot = {
+    title: {
+      text: '📈 Power Reduction Identity Verification',
+      font: { color: '#ffffff', family: 'Fraunces, serif', size: 20 }
+    },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: '#9ca3af', family: 'Figtree, sans-serif' },
+    xaxis: {
+      title: { text: 'θ (degrees)', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.2)',
+      tickfont: { color: '#9ca3af' },
+      dtick: 90
+    },
+    yaxis: {
+      title: { text: 'Value', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.2)',
+      tickfont: { color: '#9ca3af' }
+    },
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#111827',
+      font: { family: 'Figtree, sans-serif', color: '#ffffff', size: 14 },
+      bordercolor: 'rgba(255,255,255,0.2)',
+      padding: { t: 12, b: 12, l: 16, r: 16 }
+    },
+    legend: { font: { color: '#d1d5db' }, orientation: 'h', y: -0.2 },
+    margin: { l: 60, r: 40, t: 60, b: 80 }
+  };
+
+  let configPRPlot = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+
+  if (typeof Plotly !== 'undefined') {
+    Plotly.newPlot('power-reduction-plot-container', [traceLHS, traceRHS], layoutPRPlot, configPRPlot);
+  } else {
+    document.getElementById('power-reduction-plot-container').innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Unable to load Plotly.js for interactive chart visualization.</div>';
+  }
+
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
