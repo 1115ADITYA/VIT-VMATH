@@ -11322,7 +11322,7 @@ function calculatePowerReduction() {
     <div class="step-content">
       <div class="step-desc">Evaluate both sides at θ = ${thetaDeg}° for validation:</div>
       <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); margin: 1.5rem 0; padding-left: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;">
-        <div>LHS: [${funcType}(${thetaDeg}°)]<sup>${n}</sup> = [${(funcType === 'sin' ? s : c).toFixed(6)}]<sup>${n}</sup> = <b>${lhsValStr}</b></div>
+        <div>LHS: [${funcType}(${thetaDeg}°)]<sup>${n}</sup> = [${(funcType === 'sin' ? Math.sin(thetaRad) : Math.cos(thetaRad)).toFixed(6)}]<sup>${n}</sup> = <b>${lhsValStr}</b></div>
         <div>RHS: ${lookup.formula.replace(/θ/g, `(${thetaDeg}°)`)} = <b>${rhsValStr}</b></div>
         <div style="color: var(--teal); font-weight: 700; margin-top: 0.5rem;">✓ LHS and RHS match exactly to ${decimals} decimal places!</div>
       </div>
