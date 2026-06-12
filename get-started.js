@@ -9028,10 +9028,11 @@ function calculateFutureValue() {
             Future Value = <span style="color:#ffffff;">₹${formatCurrency(fv)}</span>
           </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; font-size: 0.9rem; opacity: 0.85;">
-            <div>Present Value: <strong>₹${pv.toLocaleString('en-IN')}</strong></div>
+            <div>Initial Investment: <strong>₹${pv.toLocaleString('en-IN')}</strong></div>
             <div>Interest Rate: <strong>${rate}%</strong></div>
-            <div>Years: <strong>${years}</strong></div>
+            <div>Investment Duration: <strong>${years} Years</strong></div>
             <div>Compounding Frequency: <strong>${freqName}</strong></div>
+            <div style="grid-column: span 2;">Total Interest Earned: <strong style="color:var(--amber);">₹${formatCurrency(fv - pv)}</strong></div>
           </div>
         </div>
       </div>
@@ -9055,7 +9056,149 @@ function calculateFutureValue() {
     </div>
   `;
 
-  output.innerHTML = finalResultHtml + stepsHtml + educationalHtml;
+  let graphContainerHtml = `
+    <div style="background: #111827; border-radius: 16px; border: 1px solid var(--border); padding: 1rem; margin-bottom: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+      <div id="fv-plot-container" style="width: 100%; height: 500px;"></div>
+    </div>
+  `;
+
+  output.innerHTML = finalResultHtml + graphContainerHtml + stepsHtml + educationalHtml;
+
+  // Calculate arrays for Plotly
+  let xYears = [];
+  let yValue = [];
+  let yInterest = [];
+  let hoverTextArray = [];
+  
+  for (let y = 0; y <= years; y++) {
+    let pwr = Math.pow(base, y * n);
+    let valAtY = pv * pwr;
+    let intAtY = valAtY - pv;
+    
+    xYears.push(y);
+    yValue.push(valAtY);
+    yInterest.push(intAtY);
+    
+    hoverTextArray.push(
+      `<b>Year: ${y}</b><br>Investment Value: ₹${formatCurrency(valAtY)}<br>Interest Earned: ₹${formatCurrency(intAtY)}<br>Growth Since Start: ₹${formatCurrency(intAtY)}`
+    );
+  }
+
+  // Plotly traces
+  let traceValue = {
+    x: xYears,
+    y: yValue,
+    name: 'Investment Value',
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: { color: '#22c55e', width: 3, shape: 'spline' },
+    marker: { size: 4 },
+    hoverinfo: 'text',
+    hovertext: hoverTextArray
+  };
+  
+  let traceInterest = {
+    x: xYears,
+    y: yInterest,
+    name: 'Interest Earned',
+    type: 'scatter',
+    mode: 'lines+markers',
+    line: { color: '#f97316', width: 3, shape: 'spline' },
+    marker: { size: 4 },
+    hoverinfo: 'text',
+    hovertext: hoverTextArray
+  };
+
+  let midIdx = Math.floor(years / 2);
+  let layout = {
+    title: {
+      text: '📈 Investment Growth Journey',
+      font: { color: '#ffffff', family: 'Fraunces, serif', size: 24 }
+    },
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'transparent',
+    font: { color: '#9ca3af', family: 'Figtree, sans-serif' },
+    xaxis: {
+      title: { text: 'Year', font: { color: '#d1d5db', size: 14 } },
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' }
+    },
+    yaxis: {
+      title: { text: 'Amount (₹)', font: { color: '#d1d5db', size: 14 } },
+      tickprefix: '₹',
+      gridcolor: 'rgba(255,255,255,0.05)',
+      zerolinecolor: 'rgba(255,255,255,0.1)',
+      tickfont: { color: '#9ca3af' }
+    },
+    hovermode: 'closest',
+    hoverlabel: {
+      bgcolor: '#111827',
+      font: { family: 'Figtree, sans-serif', color: '#ffffff', size: 14 },
+      bordercolor: 'rgba(255,255,255,0.2)',
+      padding: { t: 12, b: 12, l: 16, r: 16 }
+    },
+    legend: { orientation: 'h', y: -0.2, x: 0.5, xanchor: 'center', font: { color: '#d1d5db', size: 14 } },
+    margin: { l: 80, r: 40, t: 80, b: 80 },
+    annotations: [
+      {
+        x: xYears[0],
+        y: yValue[0],
+        xref: 'x', yref: 'y',
+        text: 'Investment Started',
+        showarrow: true,
+        arrowhead: 2,
+        ax: 50,
+        ay: -40,
+        font: { color: '#ffffff', size: 13, family: 'Figtree, sans-serif', weight: 600 },
+        bgcolor: 'rgba(34,197,94,0.1)',
+        bordercolor: '#22c55e',
+        borderpad: 4
+      },
+      {
+        x: xYears[midIdx],
+        y: yValue[midIdx],
+        xref: 'x', yref: 'y',
+        text: 'Halfway Growth',
+        showarrow: true,
+        arrowhead: 2,
+        ax: 0,
+        ay: -60,
+        font: { color: '#ffffff', size: 13, family: 'Figtree, sans-serif' },
+        bgcolor: 'rgba(255,255,255,0.1)',
+        bordercolor: 'rgba(255,255,255,0.3)',
+        borderpad: 4
+      },
+      {
+        x: xYears[xYears.length - 1],
+        y: yValue[yValue.length - 1],
+        xref: 'x', yref: 'y',
+        text: 'Target Value Reached',
+        showarrow: true,
+        arrowhead: 2,
+        ax: -60,
+        ay: -40,
+        font: { color: '#22c55e', size: 13, family: 'Figtree, sans-serif', weight: 600 },
+        bgcolor: 'rgba(34,197,94,0.1)',
+        bordercolor: '#22c55e',
+        borderpad: 4
+      }
+    ]
+  };
+
+  let config = {
+    responsive: true,
+    displayModeBar: true,
+    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+    displaylogo: false
+  };
+
+  if (typeof Plotly !== 'undefined') {
+    Plotly.newPlot('fv-plot-container', [traceValue, traceInterest], layout, config);
+  } else {
+    document.getElementById('fv-plot-container').innerHTML = '<div style="color: #ef4444; padding: 2rem; text-align: center;">Unable to load Plotly.js for interactive chart visualization.</div>';
+  }
+
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
