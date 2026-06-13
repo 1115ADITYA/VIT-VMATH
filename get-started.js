@@ -427,6 +427,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const normalWrapper = document.getElementById('normal-input-container');
   const gammaWrapper = document.getElementById('gamma-input-container');
   const betaWrapper = document.getElementById('beta-input-container');
+  const exponentialWrapper = document.getElementById('exponential-input-container');
   const rankCalcWrapper = document.getElementById('rank-calculator-input-container');
   const pearsonRankWrapper = document.getElementById('pearson-rank-input-container');
   const regressionCalcWrapper = document.getElementById('regression-calculator-input-container');
@@ -461,6 +462,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (normalWrapper) normalWrapper.style.display = 'none';
   if (gammaWrapper) gammaWrapper.style.display = 'none';
   if (betaWrapper) betaWrapper.style.display = 'none';
+  if (exponentialWrapper) exponentialWrapper.style.display = 'none';
   if (rankCalcWrapper) rankCalcWrapper.style.display = 'none';
   if (pearsonRankWrapper) pearsonRankWrapper.style.display = 'none';
   if (regressionCalcWrapper) regressionCalcWrapper.style.display = 'none';
@@ -536,6 +538,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Enter the shape (α) and scale (β) parameters to compute a complete Gamma Distribution analysis with step-by-step calculations, PDF table, and interactive graph.";
     } else if (calcId === 'beta') {
       desc = "Enter the Alpha (α) and Beta (β) parameters to compute a complete Beta Distribution analysis with step-by-step calculations, PDF table, and interactive graph.";
+    } else if (calcId === 'exponential') {
+      desc = "Enter the rate parameter (λ) to compute a complete Exponential Distribution analysis with step-by-step calculations, PDF table, and interactive graph.";
     } else if (calcId === 'poisson') {
       desc = "Enter the mean rate (λ) and number of occurrences (x) to calculate Poisson probabilities with step-by-step derivation.";
     } else if (calcId === 'rank-calculator') {
@@ -604,6 +608,8 @@ function openCalc(calcId, element, fromHistory = false) {
       if (gammaWrapper) gammaWrapper.style.display = 'flex';
     } else if (calcId === 'beta') {
       if (betaWrapper) betaWrapper.style.display = 'flex';
+    } else if (calcId === 'exponential') {
+      if (exponentialWrapper) exponentialWrapper.style.display = 'flex';
     } else if (calcId === 'normal') {
       if (normalWrapper) normalWrapper.style.display = 'flex';
     } else if (calcId === 'rank-calculator') {
@@ -1105,6 +1111,10 @@ function calculateMatrix() {
   }
   if (currentCalc === 'beta') {
     calculateBeta();
+    return;
+  }
+  if (currentCalc === 'exponential') {
+    calculateExponential();
     return;
   }
   if (currentCalc === 'normal') {
@@ -18235,6 +18245,496 @@ function calculateBeta() {
       },
       legend: {
         x: 0.98, y: 0.95,
+        xanchor: 'right',
+        bgcolor: 'rgba(255,255,255,0.9)',
+        bordercolor: '#e2e8f0',
+        borderwidth: 1,
+        font: { family: 'Figtree, sans-serif', size: 12 }
+      },
+      plot_bgcolor: '#fafafa',
+      paper_bgcolor: '#ffffff',
+      margin: { t: 60, b: 60, l: 60, r: 60 },
+      hovermode: 'x unified'
+    };
+
+    Plotly.newPlot(graphDiv, traces, layout, {
+      responsive: true,
+      displayModeBar: true,
+      displaylogo: false,
+      modeBarButtonsToRemove: ['lasso2d', 'select2d']
+    });
+  }, 100);
+
+  // Scroll to output
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+// ======================== EXPONENTIAL DISTRIBUTION ========================
+
+function exponentialPDF(x, lambda) {
+  if (x < 0) return 0;
+  return lambda * Math.exp(-lambda * x);
+}
+
+function exponentialCDF(x, lambda) {
+  if (x < 0) return 0;
+  return 1 - Math.exp(-lambda * x);
+}
+
+function calculateExponential() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  const lambda = parseFloat(document.getElementById('exponential-lambda').value);
+  const xVal = parseFloat(document.getElementById('exponential-x').value);
+  const mode = document.getElementById('exponential-mode') ? document.getElementById('exponential-mode').value : 'pdf';
+
+  // Validation
+  if (isNaN(lambda) || lambda <= 0) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Rate parameter λ must be strictly greater than 0.</div>';
+    return;
+  }
+  if (mode !== 'pdf' && (isNaN(xVal) || xVal < 0)) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Target x must be greater than or equal to 0.</div>';
+    return;
+  }
+
+  // ── Calculations ──
+  const mean = 1 / lambda;
+  const variance = 1 / (lambda * lambda);
+  const stddev = 1 / lambda;
+  const median = Math.log(2) / lambda;
+  const modeVal = 0;
+  const skewness = 2;
+  const kurtosis = 6;
+
+  let pdfAtX = 0, cdfAtX = 0;
+  if (!isNaN(xVal) && xVal >= 0) {
+      pdfAtX = exponentialPDF(xVal, lambda);
+      cdfAtX = exponentialCDF(xVal, lambda);
+  }
+
+  let stepCount = 1;
+  let html = '';
+
+  // ── Step 1: Definition ──
+  html += '<div class="step-card" style="border-left-color: var(--amber);">' +
+    '<div class="step-header">' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">Definition — Exponential Distribution</div>' +
+    '</div>' +
+    '<div class="step-desc" style="text-align: center;">' +
+      '<p style="font-size: 1.1rem; color: var(--navy); font-weight: 700; margin-bottom: 1rem;">' +
+        'The Exponential Distribution is a continuous probability distribution often used to model the time elapsed between events in a Poisson point process.' +
+      '</p>' +
+      '<div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; padding: 2rem; margin: 1.5rem auto; max-width: 650px; box-shadow: 0 4px 15px rgba(217,119,6,0.15);">' +
+        '<div style="font-weight: 700; color: #92400e; margin-bottom: 0.75rem; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Probability Density Function (PDF)</div>' +
+        '<div style="font-family: \'IBM Plex Mono\', monospace; font-size: 1.5rem; color: #78350f; font-weight: 600; line-height: 2;">' +
+          'f(x) = λe<sup>−λx</sup>' +
+        '</div>' +
+      '</div>' +
+      '<p style="color: var(--muted); font-size: 0.95rem; margin-top: 1rem;">' +
+        'Where x ≥ 0 and λ > 0. It describes the waiting time until a specific event occurs.' +
+      '</p>' +
+    '</div>' +
+  '</div>';
+
+  // ── Step 2: Parameter Explanation ──
+  html += '<div class="step-card" style="border-left-color: #0891b2;">' +
+    '<div class="step-header">' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">Parameter & Concept Explanation</div>' +
+    '</div>' +
+    '<div class="step-desc">' +
+      '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1rem 0;">' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">' +
+          '<div style="font-size: 2rem; font-weight: 800; color: var(--amber); font-family: \'IBM Plex Mono\', monospace;">λ = ' + lambda + '</div>' +
+          '<div style="font-weight: 700; color: var(--navy); margin: 0.5rem 0;">Rate Parameter (λ)</div>' +
+          '<div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">The average number of events per unit of time. A higher rate means shorter expected waiting times.</div>' +
+        '</div>' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">' +
+          '<div style="font-size: 2rem; font-weight: 800; color: #0891b2; font-family: \'IBM Plex Mono\', monospace;">Poisson Link</div>' +
+          '<div style="font-weight: 700; color: var(--navy); margin: 0.5rem 0;">Relationship with Poisson</div>' +
+          '<div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">If the number of events follows a Poisson distribution with rate λ, then the exact waiting time between consecutive events is exponentially distributed.</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-top: 1rem;">' +
+        '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.75rem; text-align: center;">Waiting Time Meaning</div>' +
+        '<p style="color: var(--muted); font-size: 0.95rem; text-align: center; margin-bottom: 1rem;">' +
+        'It represents the continuous time duration until the next random event occurs. Because it models time, the random variable x can never be negative (x ≥ 0).' +
+        '</p>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  // ── Step 3: Step-by-step calculations ──
+  html += '<div class="step-card" style="border-left-color: #7c3aed;">' +
+    '<div class="step-header">' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">Step-by-Step Calculations</div>' +
+    '</div>' +
+    '<div class="step-desc">' +
+      '<div style="font-weight: 600; color: var(--navy); margin-bottom: 1rem; font-size: 1.05rem;">Given: λ = ' + lambda + '</div>' +
+      '<div style="display: flex; flex-direction: column; gap: 1.5rem;">' +
+
+        '<!-- Mean -->' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📊 Step 3a: Mean (Expected Value, μ)</div>' +
+          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+            'μ = 1 / λ<br>' +
+            'μ = 1 / ' + lambda + '<br>' +
+            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">μ = ' + mean.toFixed(4) + '</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<!-- Variance -->' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📈 Step 3b: Variance (σ²)</div>' +
+          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+            'σ² = 1 / λ²<br>' +
+            'σ² = 1 / (' + lambda + ')²<br>' +
+            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">σ² = ' + variance.toFixed(4) + '</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<!-- Standard Deviation -->' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📏 Step 3c: Standard Deviation (σ)</div>' +
+          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+            'σ = 1 / λ<br>' +
+            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">σ = ' + stddev.toFixed(4) + '</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<!-- Median -->' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">🎯 Step 3d: Median</div>' +
+          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+            'Median = ln(2) / λ<br>' +
+            'Median = ' + Math.LN2.toFixed(4) + ' / ' + lambda + '<br>' +
+            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">Median = ' + median.toFixed(4) + '</span>' +
+          '</div>' +
+        '</div>' +
+
+        '<!-- Mode -->' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">🎯 Step 3e: Mode</div>' +
+          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+            'Mode = 0<br>' +
+            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">Mode = ' + modeVal.toFixed(4) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      '<!-- Statistical Summary -->' +
+      '<div style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 16px; padding: 1.5rem; margin-top: 1.5rem; box-shadow: 0 4px 12px rgba(124,58,237,0.1);">' +
+        '<div style="font-weight: 700; color: #5b21b6; margin-bottom: 1rem; text-align: center; font-size: 1.05rem;">Statistical Summary</div>' +
+        '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; text-align: center; font-family: \'IBM Plex Mono\', monospace;">' +
+          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Mean</div>' +
+            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + mean.toFixed(4) + '</div>' +
+          '</div>' +
+          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Variance</div>' +
+            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + variance.toFixed(4) + '</div>' +
+          '</div>' +
+          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Std Dev</div>' +
+            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + stddev.toFixed(4) + '</div>' +
+          '</div>' +
+          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Median</div>' +
+            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + median.toFixed(4) + '</div>' +
+          '</div>' +
+          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Mode</div>' +
+            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + modeVal.toFixed(4) + '</div>' +
+          '</div>' +
+          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Skewness</div>' +
+            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + skewness.toFixed(4) + '</div>' +
+          '</div>' +
+          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Ex. Kurtosis</div>' +
+            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + kurtosis.toFixed(4) + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  // ── Step 4: Probability Calculation at x ──
+  if (mode === 'pdf') {
+    html += '<div class="step-card" style="border-left-color: #059669;">' +
+      '<div class="step-header">' +
+        '<div class="step-number">' + (stepCount++) + '</div>' +
+        '<div class="step-title">PDF Evaluation at x = ' + xVal + '</div>' +
+      '</div>' +
+      '<div class="step-desc">' +
+        '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+          '<span style="color: #059669; font-weight: 700; font-size: 1.2rem;">f(' + xVal + ') = ' + pdfAtX.toFixed(6) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  } else if (mode === 'lte') {
+    html += '<div class="step-card" style="border-left-color: #059669;">' +
+      '<div class="step-header">' +
+        '<div class="step-number">' + (stepCount++) + '</div>' +
+        '<div class="step-title">CDF: P(X ≤ ' + xVal + ')</div>' +
+      '</div>' +
+      '<div class="step-desc">' +
+        '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+          'F(x) = 1 − e<sup>−λx</sup><br>' +
+          '<span style="color: #059669; font-weight: 700; font-size: 1.2rem;">P(X ≤ ' + xVal + ') = ' + cdfAtX.toFixed(6) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  } else if (mode === 'gte') {
+    const survAtX = 1 - cdfAtX;
+    html += '<div class="step-card" style="border-left-color: #059669;">' +
+      '<div class="step-header">' +
+        '<div class="step-number">' + (stepCount++) + '</div>' +
+        '<div class="step-title">Survival: P(X ≥ ' + xVal + ')</div>' +
+      '</div>' +
+      '<div class="step-desc">' +
+        '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+          'P(X ≥ ' + xVal + ') = 1 − P(X ≤ ' + xVal + ')<br>' +
+          'P(X ≥ ' + xVal + ') = e<sup>−λx</sup><br>' +
+          '<span style="color: #059669; font-weight: 700; font-size: 1.2rem;">P(X ≥ ' + xVal + ') = ' + survAtX.toFixed(6) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // ── Step 5: PDF Table ──
+  let tableRows = '';
+  for (let xi = 0; xi <= 20; xi += 1) {
+    const pVal = exponentialPDF(xi, lambda);
+    const cVal = exponentialCDF(xi, lambda);
+    const isHighlight = xi === modeVal;
+    tableRows += '<tr style="' + (isHighlight ? 'background: rgba(217,119,6,0.08); font-weight: 600;' : '') + '">' +
+        '<td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: \'IBM Plex Mono\', monospace;">' + xi + '</td>' +
+        '<td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: \'IBM Plex Mono\', monospace;">' + pVal.toFixed(6) + '</td>' +
+        '<td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: \'IBM Plex Mono\', monospace;">' + cVal.toFixed(6) + '</td>' +
+      '</tr>';
+  }
+
+  html += '<div class="step-card" style="border-left-color: #2563eb;">' +
+    '<div class="step-header">' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">PDF & CDF Values Table (x = 0 to 20)</div>' +
+    '</div>' +
+    '<div class="step-desc">' +
+      '<p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; text-align: center;">' +
+        'Values are generated with interval 1. PDF gives the density f(x) = λe<sup>-λx</sup>, CDF gives F(x) = 1 − e<sup>-λx</sup>.' +
+      '</p>' +
+      '<div style="overflow-x: auto; border-radius: 12px; border: 1px solid var(--border);">' +
+        '<table style="width: 100%; border-collapse: collapse; font-family: \'Figtree\', sans-serif;">' +
+          '<thead>' +
+            '<tr style="background: var(--navy); color: white;">' +
+              '<th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">x</th>' +
+              '<th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">f(x) — PDF</th>' +
+              '<th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">F(x) — CDF</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' +
+            tableRows +
+          '</tbody>' +
+        '</table>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  // ── Step 6: Interactive Graph ──
+  const graphId = 'exponential-dist-graph-' + Date.now();
+  html += '<div class="step-card" style="border-left-color: #ec4899;">' +
+    '<div class="step-header">' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">Exponential Distribution PDF & CDF Graph</div>' +
+    '</div>' +
+    '<div class="step-desc">' +
+      '<div id="' + graphId + '" style="width:100%; height: 480px; border-radius: 12px; overflow: hidden;"></div>' +
+    '</div>' +
+  '</div>';
+
+  // ── Step 7: Graph Shape Analysis ──
+  html += '<div class="step-card" style="border-left-color: #f59e0b;">' +
+    '<div class="step-header">' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">Graph Shape Analysis</div>' +
+    '</div>' +
+    '<div class="step-desc">' +
+      '<div style="display: flex; flex-direction: column; gap: 1.25rem;">' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">' +
+          '<div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #fde68a, #fbbf24); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📍</div>' +
+          '<div>' +
+            '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why the graph starts at maximum value?</div>' +
+            '<div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">' +
+              'At x = 0, e<sup>-λ(0)</sup> = 1. Therefore, f(0) = λ. The highest likelihood is always at zero because there is a high probability that the event will happen sooner rather than later.' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">' +
+          '<div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #bbf7d0, #4ade80); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📉</div>' +
+          '<div>' +
+            '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why it continuously decreases (Exponential Decay)?</div>' +
+            '<div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">' +
+              'The term e<sup>-λx</sup> mathematically forces a continuous monotonic decay. As x (waiting time) increases, the probability density exponentially decays towards 0. Long waiting times become increasingly unlikely.' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">' +
+          '<div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #bfdbfe, #60a5fa); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">⛰️</div>' +
+          '<div>' +
+            '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why there is no peak after x = 0?</div>' +
+            '<div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">' +
+              'Unlike the Normal or Beta distributions, the Exponential Distribution has a strictly monotonically decreasing PDF for λ > 0. It never rises, meaning the mode is always precisely at 0.' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  // ── Step 8: Memoryless Property ──
+  html += '<div class="step-card" style="border-left-color: #ef4444;">' +
+    '<div class="step-header">' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">The Memoryless Property</div>' +
+    '</div>' +
+    '<div class="step-desc">' +
+      '<div style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 15px rgba(239,68,68,0.1);">' +
+        '<div style="font-weight: 700; color: #991b1b; margin-bottom: 0.5rem; font-size: 1.1rem;">P(X > s + t | X > s) = P(X > t)</div>' +
+        '<div style="font-size: 0.95rem; color: #7f1d1d; line-height: 1.6; max-width: 600px; margin: 0 auto;">' +
+          'The exponential distribution is the <b>only</b> continuous distribution with the memoryless property. ' +
+          'It means the future probability of waiting time depends only on the present, not on the past elapsed time.' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top: 1.5rem; color: var(--muted); line-height: 1.6; font-size: 0.95rem; padding: 1rem; border-left: 4px solid #f87171; background: var(--bg2);">' +
+        '<b>Example:</b> If you have already waited 10 minutes (s=10) for a bus (where waiting time is exponentially distributed), the probability of having to wait an additional 5 minutes (t=5) is exactly the same as the probability of waiting 5 minutes when you first arrived at the bus stop. The process "forgets" the time that has already passed.' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  // ── Step 9: Real-Life Applications ──
+  html += '<div class="step-card" style="border-left-color: #8b5cf6;">' +
+    '<div class="step-header">' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">Real-Life Applications</div>' +
+    '</div>' +
+    '<div class="step-desc">' +
+      '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem;">' +
+        '<div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(217,119,6,0.1);">' +
+          '<div style="font-weight: 700; color: #92400e; margin-bottom: 0.5rem;">Queueing Theory</div>' +
+          '<div style="font-size: 0.85rem; color: #78350f; line-height: 1.5;">Waiting time for phone calls, customer arrivals at a bank or store, and network packet arrivals.</div>' +
+        '</div>' +
+        '<div style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(5,150,105,0.1);">' +
+          '<div style="font-weight: 700; color: #065f46; margin-bottom: 0.5rem;">Reliability Engineering</div>' +
+          '<div style="font-size: 0.85rem; color: #064e3b; line-height: 1.5;">Time until failure for electronic components or mechanical parts (assuming a constant failure rate).</div>' +
+        '</div>' +
+        '<div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(37,99,235,0.1);">' +
+          '<div style="font-weight: 700; color: #1e40af; margin-bottom: 0.5rem;">Survival Analysis</div>' +
+          '<div style="font-size: 0.85rem; color: #1e3a5f; line-height: 1.5;">Modeling survival times and evaluating risk over time without considering age-related degradation.</div>' +
+        '</div>' +
+        '<div style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(139,92,246,0.1);">' +
+          '<div style="font-weight: 700; color: #5b21b6; margin-bottom: 0.5rem;">Machine Learning</div>' +
+          '<div style="font-size: 0.85rem; color: #4c1d95; line-height: 1.5;">Utilized in deep learning initialization schemes and as a prior distribution in Bayesian probabilistic networks.</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  // ── Step 10: Conclusion ──
+  html += '<div class="step-card" style="border-left-color: #0891b2; background: linear-gradient(135deg, var(--white), #f0f9ff);">' +
+    '<div class="step-header">' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">Conclusion</div>' +
+    '</div>' +
+    '<div class="step-desc" style="text-align: center;">' +
+      '<div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 16px; padding: 2rem; margin: 1rem auto; max-width: 700px; box-shadow: 0 4px 15px rgba(5,150,105,0.1);">' +
+        '<div style="font-size: 1.5rem; margin-bottom: 1rem;">✅</div>' +
+        '<p style="font-size: 1.05rem; color: #065f46; line-height: 1.8; font-weight: 500;">' +
+          'The <strong>Exponential Distribution</strong> vividly displays waiting time characteristics. The rate parameter λ = ' + lambda + ' determines the speed of decay.' +
+        '</p>' +
+        '<p style="font-size: 0.95rem; color: #047857; line-height: 1.6; margin-top: 1rem;">' +
+          'With λ = ' + lambda + ', the expected waiting time is 1/λ = ' + mean.toFixed(4) + '. A higher λ causes the PDF to spike higher at 0 and drop down faster, whereas a smaller λ flattens the curve, stretching probabilities into the long tail.' +
+        '</p>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  output.innerHTML = html;
+
+  // ── Render Plotly Graph ──
+  setTimeout(() => {
+    const graphDiv = document.getElementById(graphId);
+    if (!graphDiv || typeof Plotly === 'undefined') return;
+
+    const xArr = [];
+    const yPdf = [];
+    const yCdf = [];
+
+    // Max X for graphing: ideally around 5/lambda
+    let maxX = Math.max(20, Math.ceil(5 / lambda));
+    let pts = 400;
+    
+    for (let i = 0; i <= pts; i++) {
+      const xi = (i / pts) * maxX;
+      xArr.push(xi);
+      yPdf.push(exponentialPDF(xi, lambda));
+      yCdf.push(exponentialCDF(xi, lambda));
+    }
+
+    const traces = [
+      {
+        x: xArr,
+        y: yPdf,
+        type: 'scatter',
+        mode: 'lines',
+        name: 'PDF: f(x) = ' + lambda + 'e<sup>-' + lambda + 'x</sup>',
+        line: { color: '#d97706', width: 3, shape: 'spline' },
+        fill: 'tozeroy',
+        fillcolor: 'rgba(217, 119, 6, 0.1)'
+      },
+      {
+        x: xArr,
+        y: yCdf,
+        type: 'scatter',
+        mode: 'lines',
+        name: 'CDF F(x)',
+        line: { color: '#2563eb', width: 2, dash: 'dash', shape: 'spline' },
+        yaxis: 'y2'
+      }
+    ];
+
+    const layout = {
+      title: {
+        text: 'Exponential Distribution — λ = ' + lambda,
+        font: { family: 'Fraunces, serif', size: 20, color: '#1e293b' }
+      },
+      xaxis: {
+        title: { text: 'x (Waiting Time)', font: { family: 'Figtree, sans-serif', size: 14 } },
+        gridcolor: '#e2e8f0',
+        zeroline: true,
+        range: [0, Math.min(maxX, 5 / lambda)]
+      },
+      yaxis: {
+        title: { text: 'f(x) — Probability Density', font: { family: 'Figtree, sans-serif', size: 14 } },
+        gridcolor: '#e2e8f0',
+        zeroline: true,
+        rangemode: 'tozero'
+      },
+      yaxis2: {
+        title: { text: 'F(x) — CDF', font: { family: 'Figtree, sans-serif', size: 14, color: '#2563eb' } },
+        overlaying: 'y',
+        side: 'right',
+        range: [0, 1.05],
+        gridcolor: 'rgba(37,99,235,0.08)',
+        tickcolor: '#2563eb',
+        tickfont: { color: '#2563eb' }
+      },
+      legend: {
+        x: 0.98, y: 0.5,
         xanchor: 'right',
         bgcolor: 'rgba(255,255,255,0.9)',
         bordercolor: '#e2e8f0',
