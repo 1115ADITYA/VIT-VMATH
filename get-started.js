@@ -425,6 +425,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const uniformWrapper = document.getElementById('uniform-input-container');
   const poissonWrapper = document.getElementById('poisson-input-container');
   const normalWrapper = document.getElementById('normal-input-container');
+  const geometricWrapper = document.getElementById('geometric-input-container');
   const gammaWrapper = document.getElementById('gamma-input-container');
   const betaWrapper = document.getElementById('beta-input-container');
   const exponentialWrapper = document.getElementById('exponential-input-container');
@@ -460,6 +461,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (uniformWrapper) uniformWrapper.style.display = 'none';
   if (poissonWrapper) poissonWrapper.style.display = 'none';
   if (normalWrapper) normalWrapper.style.display = 'none';
+  if (geometricWrapper) geometricWrapper.style.display = 'none';
   if (gammaWrapper) gammaWrapper.style.display = 'none';
   if (betaWrapper) betaWrapper.style.display = 'none';
   if (exponentialWrapper) exponentialWrapper.style.display = 'none';
@@ -542,6 +544,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Enter the rate parameter (λ) to compute a complete Exponential Distribution analysis with step-by-step calculations, PDF table, and interactive graph.";
     } else if (calcId === 'poisson') {
       desc = "Enter the mean rate (λ) and number of occurrences (x) to calculate Poisson probabilities with step-by-step derivation.";
+    } else if (calcId === 'geometric') {
+      desc = "Enter the success probability (p) and number of trials (x) to compute Geometric probabilities representing the number of trials up to and including the first success.";
     } else if (calcId === 'rank-calculator') {
       desc = "Enter paired (X, Y) data values to compute ranks and the Spearman Rank Correlation Coefficient (ρ) step-by-step.";
     } else if (calcId === 'pearson-rank') {
@@ -604,6 +608,8 @@ function openCalc(calcId, element, fromHistory = false) {
       if (uniformWrapper) uniformWrapper.style.display = 'flex';
     } else if (calcId === 'poisson') {
       if (poissonWrapper) poissonWrapper.style.display = 'flex';
+    } else if (calcId === 'geometric') {
+      if (geometricWrapper) geometricWrapper.style.display = 'flex';
     } else if (calcId === 'gamma') {
       if (gammaWrapper) gammaWrapper.style.display = 'flex';
     } else if (calcId === 'beta') {
@@ -1103,6 +1109,10 @@ function calculateMatrix() {
   }
   if (currentCalc === 'poisson') {
     calculatePoisson();
+    return;
+  }
+  if (currentCalc === 'geometric') {
+    calculateGeometric();
     return;
   }
   if (currentCalc === 'gamma') {
@@ -18758,3 +18768,409 @@ function calculateExponential() {
   // Scroll to output
   output.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// ======================== GEOMETRIC DISTRIBUTION ========================
+// Definition 1: Number of trials until first success (x ∈ {1, 2, ...})
+
+function geometricPMF(x, p) {
+  if (x < 1 || x % 1 !== 0) return 0;
+  return p * Math.pow(1 - p, x - 1);
+}
+
+function geometricCDF(x, p) {
+  if (x < 1) return 0;
+  let k = Math.floor(x);
+  return 1 - Math.pow(1 - p, k);
+}
+
+function calculateGeometric() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  const pVal = parseFloat(document.getElementById('geometric-p').value);
+  const x1 = parseFloat(document.getElementById('geometric-x1').value);
+  const x2 = parseFloat(document.getElementById('geometric-x2') ? document.getElementById('geometric-x2').value : '');
+  const mode = document.getElementById('geometric-mode') ? document.getElementById('geometric-mode').value : 'exact';
+
+  // Validation
+  if (isNaN(pVal) || pVal <= 0 || pVal > 1) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Probability of success (p) must be greater than 0 and less than or equal to 1.</div>';
+    return;
+  }
+  if (isNaN(x1) || x1 < 1 || x1 % 1 !== 0) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Number of trials (x) must be a positive integer (x &ge; 1).</div>';
+    return;
+  }
+  if (mode === 'between' && (isNaN(x2) || x2 < x1 || x2 % 1 !== 0)) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Upper trials (x&sub2;) must be an integer greater than or equal to Lower trials (x&sub1;).</div>';
+    return;
+  }
+
+  // Basic Calculations
+  const mean = 1 / pVal;
+  const variance = (1 - pVal) / (pVal * pVal);
+  const stddev = Math.sqrt(variance);
+
+  let stepCount = 1;
+  let html = '';
+
+  // Step 1: Definition
+  html += `
+  <div class="step-card" style="border-left-color: var(--amber);">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Definition — Geometric Distribution</div>
+    </div>
+    <div class="step-desc" style="text-align: center;">
+      <p style="font-size: 1.1rem; color: var(--navy); font-weight: 700; margin-bottom: 1rem;">
+        The Geometric Distribution models the number of trials needed to get the <strong>first success</strong> in repeated Bernoulli trials.
+      </p>
+      <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; padding: 2rem; margin: 1.5rem auto; max-width: 650px; box-shadow: 0 4px 15px rgba(217,119,6,0.15);">
+        <div style="font-weight: 700; color: #92400e; margin-bottom: 0.75rem; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Probability Mass Function (PMF)</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.4rem; color: #78350f; font-weight: 600; line-height: 2;">
+          P(X = x) = p · (1 − p)<sup>x−1</sup>
+        </div>
+      </div>
+      <p style="color: var(--muted); font-size: 0.95rem; margin-top: 1rem;">
+        Where x = 1, 2, 3, ... is the trial number of the first success, and p is the probability of success on each trial.
+      </p>
+    </div>
+  </div>`;
+
+  // Step 2: Parameters
+  html += `
+  <div class="step-card" style="border-left-color: #0891b2;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Parameter Explanation</div>
+    </div>
+    <div class="step-desc">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1rem 0;">
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">
+          <div style="font-size: 2rem; font-weight: 800; color: var(--amber); font-family: 'IBM Plex Mono', monospace;">p = ${pVal}</div>
+          <div style="font-weight: 700; color: var(--navy); margin: 0.5rem 0;">Success Probability</div>
+          <div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">Probability of success on any given independent trial. Failure probability is q = 1 - p = ${(1 - pVal).toFixed(4)}.</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // Step 3: Calculations
+  let resultAtX = 0;
+  let formulaDisplay = '';
+  if (mode === 'exact') {
+    resultAtX = geometricPMF(x1, pVal);
+    formulaDisplay = `P(X = ${x1}) = ${pVal} · (1 − ${pVal})<sup>${x1}−1</sup><br>
+                      = ${pVal} · (${(1 - pVal).toFixed(4)})<sup>${x1 - 1}</sup><br>
+                      <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">P(X = ${x1}) = ${resultAtX.toFixed(6)}</span>`;
+  } else if (mode === 'lte') {
+    resultAtX = geometricCDF(x1, pVal);
+    formulaDisplay = `P(X ≤ ${x1}) = 1 − (1 − p)<sup>x</sup><br>
+                      = 1 − (1 − ${pVal})<sup>${x1}</sup><br>
+                      = 1 − ${(Math.pow(1 - pVal, x1)).toFixed(6)}<br>
+                      <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">P(X ≤ ${x1}) = ${resultAtX.toFixed(6)}</span>`;
+  } else if (mode === 'lt') {
+    resultAtX = geometricCDF(x1 - 1, pVal);
+    formulaDisplay = `P(X < ${x1}) = P(X ≤ ${x1 - 1})<br>
+                      = 1 − (1 − ${pVal})<sup>${x1 - 1}</sup><br>
+                      <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">P(X < ${x1}) = ${resultAtX.toFixed(6)}</span>`;
+  } else if (mode === 'gte') {
+    resultAtX = 1 - geometricCDF(x1 - 1, pVal);
+    formulaDisplay = `P(X ≥ ${x1}) = P(X > ${x1 - 1})<br>
+                      = (1 − p)<sup>x−1</sup><br>
+                      = (1 − ${pVal})<sup>${x1 - 1}</sup><br>
+                      <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">P(X ≥ ${x1}) = ${resultAtX.toFixed(6)}</span>`;
+  } else if (mode === 'gt') {
+    resultAtX = 1 - geometricCDF(x1, pVal);
+    formulaDisplay = `P(X > ${x1}) = (1 − p)<sup>x</sup><br>
+                      = (1 − ${pVal})<sup>${x1}</sup><br>
+                      <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">P(X > ${x1}) = ${resultAtX.toFixed(6)}</span>`;
+  } else if (mode === 'between') {
+    const cdf1 = geometricCDF(x1 - 1, pVal);
+    const cdf2 = geometricCDF(x2, pVal);
+    resultAtX = cdf2 - cdf1;
+    formulaDisplay = `P(${x1} ≤ X ≤ ${x2}) = P(X ≤ ${x2}) − P(X ≤ ${x1 - 1})<br>
+                      = ${cdf2.toFixed(6)} − ${cdf1.toFixed(6)}<br>
+                      <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">P(${x1} ≤ X ≤ ${x2}) = ${resultAtX.toFixed(6)}</span>`;
+  }
+
+  html += `
+  <div class="step-card" style="border-left-color: #7c3aed;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Step-by-Step Calculations</div>
+    </div>
+    <div class="step-desc">
+      <div style="font-weight: 600; color: var(--navy); margin-bottom: 1rem; font-size: 1.05rem;">Given: p = ${pVal}</div>
+      
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <!-- Probability -->
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">🎯 Step 3a: Target Probability</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 1.8;">
+            ${formulaDisplay}
+          </div>
+        </div>
+
+        <!-- Expected Value -->
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📊 Step 3b: Expected Value (Mean)</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 1.8;">
+            μ = E[X] = 1 / p<br>
+            μ = 1 / ${pVal}<br>
+            <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">μ = ${mean.toFixed(4)}</span>
+          </div>
+        </div>
+
+        <!-- Variance -->
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📈 Step 3c: Variance & Standard Deviation</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 1.8;">
+            σ² = (1 − p) / p²<br>
+            σ² = ${(1 - pVal).toFixed(4)} / ${(pVal * pVal).toFixed(4)}<br>
+            <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">σ² = ${variance.toFixed(4)}</span><br><br>
+            σ = √(${variance.toFixed(4)}) = <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">${stddev.toFixed(4)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // Plotly chart
+  const graphId = 'geometric-dist-graph-' + Date.now();
+  html += `
+  <div class="step-card" style="border-left-color: #ec4899;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Interactive Geometric Distribution Graph</div>
+    </div>
+    <div class="step-desc">
+      <div id="${graphId}" style="width:100%; height: 480px; border-radius: 12px; overflow: hidden;"></div>
+    </div>
+  </div>`;
+
+  // 3D Visualization
+  const simId = 'geometric-sim-' + Date.now();
+  html += `
+  <div class="step-card" style="border-left-color: #f59e0b;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Bernoulli Trials Visualization</div>
+    </div>
+    <div class="step-desc">
+      <p style="font-size: 0.95rem; color: var(--muted); margin-bottom: 1rem;">This visualizes the sequence of trials. Red represents failure (q = ${(1-pVal).toFixed(2)}), green represents the first success (p = ${pVal}) stopping the sequence at x = ${x1}.</p>
+      <div id="${simId}" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 1.5rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; min-height: 100px;">
+        <!-- Filled via JS -->
+      </div>
+    </div>
+  </div>`;
+
+  // Theory
+  html += `
+  <div class="step-card" style="border-left-color: #8b5cf6;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Theory & Applications</div>
+    </div>
+    <div class="step-desc">
+      <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 14px; padding: 1.5rem; text-align: left; box-shadow: 0 3px 10px rgba(217,119,6,0.1); margin-bottom: 1.5rem;">
+        <div style="font-weight: 700; color: #92400e; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;"><span style="font-size:1.5rem;">🧠</span> Memoryless Property</div>
+        <div style="font-size: 0.95rem; color: #78350f; line-height: 1.6;">The Geometric Distribution is the <strong>only</strong> discrete distribution that is memoryless. This means that the probability of success on the next trial is completely independent of the number of previous failures. Given that you've already had n failures, the probability of needing k more trials is exactly the same as if you were starting from scratch.</div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem;">
+        <div style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(5,150,105,0.1);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎲</div>
+          <div style="font-weight: 700; color: #065f46; margin-bottom: 0.5rem;">Games of Chance</div>
+          <div style="font-size: 0.85rem; color: #064e3b; line-height: 1.5;">Number of dice rolls until a '6' appears, or coin flips until 'Heads'.</div>
+        </div>
+        <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(37,99,235,0.1);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📡</div>
+          <div style="font-weight: 700; color: #1e40af; margin-bottom: 0.5rem;">Networks</div>
+          <div style="font-size: 0.85rem; color: #1e3a5f; line-height: 1.5;">Number of data packet transmission attempts until a successful delivery.</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // Exports
+  html += `
+  <div style="display: flex; gap: 1rem; margin-top: 2rem; justify-content: center; flex-wrap: wrap;">
+    <button onclick="exportGeometricCSV(${pVal}, ${x1}, '${mode}', ${mode === 'between' ? x2 : 'null'})" class="btn-primary" style="background: var(--bg2); color: var(--navy); border: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem;">
+      <svg style="width: 18px; height: 18px; stroke: currentColor;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+      Download CSV
+    </button>
+    <button onclick="exportGeometricPDF(${pVal}, ${x1}, '${mode}', ${mode === 'between' ? x2 : 'null'})" class="btn-primary" style="background: var(--bg2); color: var(--navy); border: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.2rem;">
+      <svg style="width: 18px; height: 18px; stroke: currentColor;" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+      Save as PDF
+    </button>
+  </div>`;
+
+  output.innerHTML = html;
+
+  // Plotly render
+  setTimeout(() => {
+    const graphDiv = document.getElementById(graphId);
+    if (!graphDiv || typeof Plotly === 'undefined') return;
+
+    const xMax = Math.max(20, Math.ceil(mean + 4 * stddev));
+    const xArr = [];
+    const yPdf = [];
+    const yCdf = [];
+    const colors = [];
+
+    for (let i = 1; i <= xMax; i++) {
+      xArr.push(i);
+      yPdf.push(geometricPMF(i, pVal));
+      yCdf.push(geometricCDF(i, pVal));
+
+      // Highlight logic
+      let hl = false;
+      if (mode === 'exact' && i === x1) hl = true;
+      if (mode === 'lte' && i <= x1) hl = true;
+      if (mode === 'lt' && i < x1) hl = true;
+      if (mode === 'gte' && i >= x1) hl = true;
+      if (mode === 'gt' && i > x1) hl = true;
+      if (mode === 'between' && i >= x1 && i <= x2) hl = true;
+
+      colors.push(hl ? '#f59e0b' : '#38bdf8');
+    }
+
+    const traces = [
+      {
+        x: xArr,
+        y: yPdf,
+        type: 'bar',
+        name: 'PMF P(X=x)',
+        marker: { color: colors, line: { color: '#0f172a', width: 1 } }
+      },
+      {
+        x: xArr,
+        y: yCdf,
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'CDF F(x)',
+        line: { color: '#2563eb', width: 2, shape: 'hv' },
+        marker: { size: 6, color: '#1e40af' },
+        yaxis: 'y2'
+      }
+    ];
+
+    const layout = {
+      title: { text: `Geometric Distribution — p = ${pVal}`, font: { family: 'Fraunces, serif', size: 20, color: '#1e293b' } },
+      xaxis: { title: 'x (Number of Trials)', tickmode: 'linear', dtick: Math.ceil(xMax/20) },
+      yaxis: { title: 'Probability Mass P(X=x)', rangemode: 'tozero' },
+      yaxis2: {
+        title: 'Cumulative Probability F(x)',
+        overlaying: 'y',
+        side: 'right',
+        range: [0, 1.05]
+      },
+      legend: { x: 0.98, y: 0.95, xanchor: 'right' },
+      plot_bgcolor: '#fafafa',
+      paper_bgcolor: '#ffffff',
+      margin: { t: 60, b: 60, l: 60, r: 60 }
+    };
+
+    Plotly.newPlot(graphDiv, traces, layout, { responsive: true, displaylogo: false });
+  }, 100);
+
+  // Render 3D Boxes
+  setTimeout(() => {
+    const simDiv = document.getElementById(simId);
+    if (!simDiv) return;
+    
+    let boxes = '';
+    const numTrials = Math.min(x1, 100); // cap to prevent DOM freezing
+    
+    for (let i = 1; i <= numTrials; i++) {
+      const isSuccess = (i === x1);
+      const color = isSuccess ? '#10b981' : '#ef4444'; // green or red
+      const label = isSuccess ? 'S' : 'F';
+      
+      boxes += `
+      <div style="width: 40px; height: 40px; background: ${color}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 6px; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.1); font-family: 'IBM Plex Mono', monospace; transform: perspective(200px) rotateX(10deg); transition: transform 0.2s ease;" onmouseover="this.style.transform='perspective(200px) rotateX(0deg) scale(1.1)'" onmouseout="this.style.transform='perspective(200px) rotateX(10deg) scale(1)'">
+        ${label}
+      </div>`;
+    }
+    
+    if (x1 > 100) {
+      boxes += `<div style="padding: 0.5rem; color: var(--muted); font-weight: 600;">... (${x1 - 100} more failures)</div>`;
+    }
+    
+    simDiv.innerHTML = boxes;
+  }, 200);
+
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Geometric Exports
+window.exportGeometricCSV = function(p, x1, mode, x2) {
+  let csvRows = ['x (Trials),PMF P(X=x),CDF P(X<=x),Survival P(X>x)'];
+  const maxLimit = Math.max(20, Math.ceil(x1 + 4));
+  
+  for (let i = 1; i <= maxLimit; i++) {
+    const pmfVal = geometricPMF(i, p);
+    const cdfVal = geometricCDF(i, p);
+    const survVal = 1 - cdfVal;
+    csvRows.push(`${i},${pmfVal.toFixed(6)},${cdfVal.toFixed(6)},${survVal.toFixed(6)}`);
+  }
+  
+  csvRows.push('');
+  csvRows.push('Parameters');
+  csvRows.push(`Success Probability (p),${p}`);
+  csvRows.push(`Mode,${mode}`);
+  csvRows.push(`x1,${x1}`);
+  if (mode === 'between') csvRows.push(`x2,${x2}`);
+  
+  const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `geometric_distribution_p${p}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+window.exportGeometricPDF = function(p, x1, mode, x2) {
+  let content = '';
+  const h = 842; let y = 50;
+  
+  content += `BT /F1 20 Tf 50 ${h - y} Td (Geometric Distribution Report) Tj ET\n`; y += 30;
+  content += `BT /F1 11 Tf 50 ${h - y} Td (Generated by VMath Calculator) Tj ET\n`; y += 30;
+  content += `50 ${h - y} m 545 ${h - y} l S\n`; y += 20;
+  
+  content += `BT /F1 14 Tf 50 ${h - y} Td (Parameters) Tj ET\n`; y += 22;
+  content += `BT /F1 11 Tf 50 ${h - y} Td (Success Prob p = ${p}, Mode = ${mode}, Target x = ${x1}) Tj ET\n`; y += 30;
+  
+  content += `BT /F1 14 Tf 50 ${h - y} Td (Distribution Points) Tj ET\n`; y += 22;
+  content += `BT /F1 10 Tf 50 ${h - y} Td (x) Tj 150 ${h - y} Td (PMF) Tj 250 ${h - y} Td (CDF) Tj 350 ${h - y} Td (Survival) Tj ET\n`; y += 5;
+  content += `50 ${h - y} m 480 ${h - y} l S\n`; y += 15;
+  
+  const maxLimit = Math.max(20, Math.ceil(x1 + 4));
+  for (let i = 1; i <= maxLimit; i++) {
+    const pmfVal = geometricPMF(i, p);
+    const cdfVal = geometricCDF(i, p);
+    content += `BT /F1 10 Tf 50 ${h - y} Td (${i}) Tj 150 ${h - y} Td (${pmfVal.toFixed(6)}) Tj 250 ${h - y} Td (${cdfVal.toFixed(6)}) Tj 350 ${h - y} Td (${(1-cdfVal).toFixed(6)}) Tj ET\n`;
+    y += 16;
+  }
+  
+  let pdf = '%PDF-1.4\n';
+  let offsets = [];
+  offsets.push(pdf.length); pdf += '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n';
+  offsets.push(pdf.length); pdf += '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n';
+  offsets.push(pdf.length); pdf += `3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n`;
+  offsets.push(pdf.length); pdf += `4 0 obj << /Length ${content.length} >> stream\n${content}endstream endobj\n`;
+  offsets.push(pdf.length); pdf += '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n';
+  
+  let xrefOff = pdf.length;
+  pdf += `xref\n0 ${offsets.length + 1}\n0000000000 65535 f \n`;
+  offsets.forEach(off => { pdf += off.toString().padStart(10, '0') + ' 00000 n \n'; });
+  pdf += `trailer << /Size ${offsets.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOff}\n%%EOF`;
+  
+  const blob = new Blob([pdf], { type: 'application/pdf' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `geometric_distribution_p${p}.pdf`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
