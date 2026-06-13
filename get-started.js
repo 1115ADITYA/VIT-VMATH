@@ -425,6 +425,7 @@ function openCalc(calcId, element, fromHistory = false) {
   const uniformWrapper = document.getElementById('uniform-input-container');
   const poissonWrapper = document.getElementById('poisson-input-container');
   const normalWrapper = document.getElementById('normal-input-container');
+  const gammaWrapper = document.getElementById('gamma-input-container');
   const rankCalcWrapper = document.getElementById('rank-calculator-input-container');
   const pearsonRankWrapper = document.getElementById('pearson-rank-input-container');
   const regressionCalcWrapper = document.getElementById('regression-calculator-input-container');
@@ -457,6 +458,7 @@ function openCalc(calcId, element, fromHistory = false) {
   if (uniformWrapper) uniformWrapper.style.display = 'none';
   if (poissonWrapper) poissonWrapper.style.display = 'none';
   if (normalWrapper) normalWrapper.style.display = 'none';
+  if (gammaWrapper) gammaWrapper.style.display = 'none';
   if (rankCalcWrapper) rankCalcWrapper.style.display = 'none';
   if (pearsonRankWrapper) pearsonRankWrapper.style.display = 'none';
   if (regressionCalcWrapper) regressionCalcWrapper.style.display = 'none';
@@ -528,6 +530,8 @@ function openCalc(calcId, element, fromHistory = false) {
       desc = "Enter the number of trials, probability of success, and number of successes to calculate binomial probabilities.";
     } else if (calcId === 'uniform') {
       desc = "Enter the lower bound, upper bound, and target value(s) to calculate uniform distribution probabilities.";
+    } else if (calcId === 'gamma') {
+      desc = "Enter the shape (α) and scale (β) parameters to compute a complete Gamma Distribution analysis with step-by-step calculations, PDF table, and interactive graph.";
     } else if (calcId === 'poisson') {
       desc = "Enter the mean rate (λ) and number of occurrences (x) to calculate Poisson probabilities with step-by-step derivation.";
     } else if (calcId === 'rank-calculator') {
@@ -592,6 +596,8 @@ function openCalc(calcId, element, fromHistory = false) {
       if (uniformWrapper) uniformWrapper.style.display = 'flex';
     } else if (calcId === 'poisson') {
       if (poissonWrapper) poissonWrapper.style.display = 'flex';
+    } else if (calcId === 'gamma') {
+      if (gammaWrapper) gammaWrapper.style.display = 'flex';
     } else if (calcId === 'normal') {
       if (normalWrapper) normalWrapper.style.display = 'flex';
     } else if (calcId === 'rank-calculator') {
@@ -1085,6 +1091,10 @@ function calculateMatrix() {
   }
   if (currentCalc === 'poisson') {
     calculatePoisson();
+    return;
+  }
+  if (currentCalc === 'gamma') {
+    calculateGamma();
     return;
   }
   if (currentCalc === 'normal') {
@@ -16986,5 +16996,702 @@ window.exportNormalPDF = function(mu, sigma, x1, mode, x2) {
   a.click();
   URL.revokeObjectURL(a.href);
 };
+
+
+// ======================== GAMMA DISTRIBUTION ========================
+
+function gammaFunc(z) {
+  // Lanczos approximation for Γ(z)
+  if (z < 0.5) {
+    return Math.PI / (Math.sin(Math.PI * z) * gammaFunc(1 - z));
+  }
+  z -= 1;
+  const g = 7;
+  const c = [
+    0.99999999999980993,
+    676.5203681218851,
+    -1259.1392167224028,
+    771.32342877765313,
+    -176.61502916214059,
+    12.507343278686905,
+    -0.13857109526572012,
+    9.9843695780195716e-6,
+    1.5056327351493116e-7
+  ];
+  let x = c[0];
+  for (let i = 1; i < g + 2; i++) {
+    x += c[i] / (z + i);
+  }
+  const t = z + g + 0.5;
+  return Math.sqrt(2 * Math.PI) * Math.pow(t, z + 0.5) * Math.exp(-t) * x;
+}
+
+function lnGamma(z) {
+  return Math.log(gammaFunc(z));
+}
+
+function gammaPDF(x, alpha, beta) {
+  if (x <= 0) return 0;
+  return Math.exp(
+    (alpha - 1) * Math.log(x) - x / beta - alpha * Math.log(beta) - lnGamma(alpha)
+  );
+}
+
+function gammaCDF(x, alpha, beta) {
+  // Lower incomplete gamma via series expansion P(a, x/β)
+  if (x <= 0) return 0;
+  const z = x / beta;
+  return lowerRegGamma(alpha, z);
+}
+
+function lowerRegGamma(a, x) {
+  // Regularized lower incomplete gamma function P(a,x)
+  if (x < 0) return 0;
+  if (x === 0) return 0;
+  if (x < a + 1) {
+    // Series expansion
+    let sum = 1.0 / a;
+    let term = 1.0 / a;
+    for (let n = 1; n < 300; n++) {
+      term *= x / (a + n);
+      sum += term;
+      if (Math.abs(term) < Math.abs(sum) * 1e-14) break;
+    }
+    return sum * Math.exp(-x + a * Math.log(x) - lnGamma(a));
+  } else {
+    // Continued fraction (complementary)
+    return 1 - upperRegGammaCF(a, x);
+  }
+}
+
+function upperRegGammaCF(a, x) {
+  // Continued fraction for upper regularized gamma Q(a,x) = 1 - P(a,x)
+  let f = x + 1 - a;
+  let c = 1e30;
+  let d = 1.0 / f;
+  let h = d;
+  for (let i = 1; i < 300; i++) {
+    const an = -i * (i - a);
+    const bn = x + 2 * i + 1 - a;
+    d = bn + an * d;
+    if (Math.abs(d) < 1e-30) d = 1e-30;
+    c = bn + an / c;
+    if (Math.abs(c) < 1e-30) c = 1e-30;
+    d = 1.0 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < 1e-14) break;
+  }
+  return Math.exp(-x + a * Math.log(x) - lnGamma(a)) * h;
+}
+
+function calculateGamma() {
+  const output = document.getElementById('steps-output');
+  output.innerHTML = '';
+  output.classList.add('active');
+
+  const alpha = parseFloat(document.getElementById('gamma-alpha').value);
+  const beta = parseFloat(document.getElementById('gamma-beta').value);
+  const xVal = parseFloat(document.getElementById('gamma-x').value);
+  const mode = document.getElementById('gamma-mode') ? document.getElementById('gamma-mode').value : 'pdf';
+
+  // Validation
+  if (isNaN(alpha) || isNaN(beta)) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Please enter valid numerical values for α and β.</div>';
+    return;
+  }
+  if (alpha <= 0) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Shape parameter α must be positive (α > 0).</div>';
+    return;
+  }
+  if (beta <= 0) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Scale parameter β must be positive (β > 0).</div>';
+    return;
+  }
+  if (mode !== 'pdf' && (isNaN(xVal) || xVal < 0)) {
+    output.innerHTML = '<div style="color:red; padding: 1rem; text-align:center; font-weight:600;">Target x must be a non-negative number.</div>';
+    return;
+  }
+
+  // ── Calculations ──
+  const mean = alpha * beta;
+  const variance = alpha * beta * beta;
+  const stddev = Math.sqrt(variance);
+  const modeVal = alpha >= 1 ? (alpha - 1) * beta : 0;
+  const skewness = 2 / Math.sqrt(alpha);
+  const kurtosis = 6 / alpha;
+
+  const gammaAlpha = gammaFunc(alpha);
+  const pdfAtX = gammaPDF(xVal, alpha, beta);
+  const cdfAtX = gammaCDF(xVal, alpha, beta);
+
+  let stepCount = 1;
+  let html = '';
+
+  // ── Step 1: Definition ──
+  html += `
+  <div class="step-card" style="border-left-color: var(--amber);">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Definition — Gamma Distribution</div>
+    </div>
+    <div class="step-desc" style="text-align: center;">
+      <p style="font-size: 1.1rem; color: var(--navy); font-weight: 700; margin-bottom: 1rem;">
+        The Gamma Distribution is a two-parameter family of continuous probability distributions defined for x > 0.
+      </p>
+      <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; padding: 2rem; margin: 1.5rem auto; max-width: 650px; box-shadow: 0 4px 15px rgba(217,119,6,0.15);">
+        <div style="font-weight: 700; color: #92400e; margin-bottom: 0.75rem; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Probability Density Function (PDF)</div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.3rem; color: #78350f; font-weight: 600; line-height: 2;">
+          f(x) = 
+          <span style="display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; padding: 0 4px; line-height: 1.2;">
+            <span style="border-bottom: 2px solid #78350f; padding: 0 6px;">1</span>
+            <span style="padding: 0 6px;">Γ(α) · β<sup>α</sup></span>
+          </span>
+          · x<sup>(α−1)</sup> · e<sup>−x/β</sup> , &nbsp; x > 0
+        </div>
+      </div>
+      <p style="color: var(--muted); font-size: 0.95rem; margin-top: 1rem;">
+        Where Γ(α) is the <strong>Gamma function</strong>, a generalization of the factorial: Γ(n) = (n−1)! for positive integers.
+      </p>
+    </div>
+  </div>`;
+
+  // ── Step 2: Parameter Explanation ──
+  html += `
+  <div class="step-card" style="border-left-color: #0891b2;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Parameter Explanation</div>
+    </div>
+    <div class="step-desc">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1rem 0;">
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">
+          <div style="font-size: 2rem; font-weight: 800; color: var(--amber); font-family: 'IBM Plex Mono', monospace;">α = ${alpha}</div>
+          <div style="font-weight: 700; color: var(--navy); margin: 0.5rem 0;">Shape Parameter</div>
+          <div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">Controls the <strong>shape</strong> of the distribution. Higher α makes the curve more symmetric and bell-shaped. When α = 1, the Gamma reduces to an Exponential distribution.</div>
+        </div>
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">
+          <div style="font-size: 2rem; font-weight: 800; color: #0891b2; font-family: 'IBM Plex Mono', monospace;">β = ${beta}</div>
+          <div style="font-weight: 700; color: var(--navy); margin: 0.5rem 0;">Scale Parameter</div>
+          <div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">Controls the <strong>spread</strong> of the distribution along the x-axis. Larger β stretches the distribution to the right, increasing both mean and variance.</div>
+        </div>
+      </div>
+      <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-top: 1rem;">
+        <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.75rem; text-align: center;">Key Formulas</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 1rem;">
+          <span style="background: var(--white); padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid var(--border);">Mean = α · β</span>
+          <span style="background: var(--white); padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid var(--border);">Variance = α · β²</span>
+          <span style="background: var(--white); padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid var(--border);">Mode = (α−1) · β <span style="font-size:0.8rem; color:var(--muted);">(α≥1)</span></span>
+          <span style="background: var(--white); padding: 0.4rem 1rem; border-radius: 8px; border: 1px solid var(--border);">SD = √(α · β²)</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // ── Step 3: Step-by-step calculations ──
+  html += `
+  <div class="step-card" style="border-left-color: #7c3aed;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Step-by-Step Calculations</div>
+    </div>
+    <div class="step-desc">
+      <div style="font-weight: 600; color: var(--navy); margin-bottom: 1rem; font-size: 1.05rem;">Given: α = ${alpha}, β = ${beta}</div>
+      
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <!-- Gamma Function -->
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📐 Step 3a: Gamma Function Γ(α)</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 1.8;">
+            Γ(${alpha}) = ${alpha % 1 === 0 && alpha >= 1 ? `(${alpha} − 1)! = ${alpha - 1}! = <span style="color: var(--amber); font-weight: 700;">${gammaAlpha.toFixed(6)}</span>` : `<span style="color: var(--amber); font-weight: 700;">${gammaAlpha.toFixed(6)}</span> <span style="font-size:0.85rem; color: var(--muted);">(computed via Lanczos approximation)</span>`}
+          </div>
+        </div>
+
+        <!-- Mean -->
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📊 Step 3b: Mean (μ)</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 1.8;">
+            μ = α × β<br>
+            μ = ${alpha} × ${beta}<br>
+            <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">μ = ${mean.toFixed(4)}</span>
+          </div>
+        </div>
+
+        <!-- Variance -->
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📈 Step 3c: Variance (σ²)</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 1.8;">
+            σ² = α × β²<br>
+            σ² = ${alpha} × ${beta}²<br>
+            σ² = ${alpha} × ${(beta * beta).toFixed(4)}<br>
+            <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">σ² = ${variance.toFixed(4)}</span>
+          </div>
+        </div>
+
+        <!-- Standard Deviation -->
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📏 Step 3d: Standard Deviation (σ)</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 1.8;">
+            σ = √(σ²)<br>
+            σ = √(${variance.toFixed(4)})<br>
+            <span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">σ = ${stddev.toFixed(4)}</span>
+          </div>
+        </div>
+
+        <!-- Mode -->
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">🎯 Step 3e: Mode</div>
+          <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 1.8;">
+            ${alpha >= 1 ? 
+              `Mode = (α − 1) × β<br>Mode = (${alpha} − 1) × ${beta}<br>Mode = ${(alpha - 1).toFixed(4)} × ${beta}<br><span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">Mode = ${modeVal.toFixed(4)}</span>` :
+              `For α < 1, the PDF → ∞ as x → 0⁺, so the <span style="color: var(--amber); font-weight: 700;">mode = 0</span>`
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary Box -->
+      <div style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 16px; padding: 1.5rem; margin-top: 1.5rem; box-shadow: 0 4px 12px rgba(124,58,237,0.1);">
+        <div style="font-weight: 700; color: #5b21b6; margin-bottom: 1rem; text-align: center; font-size: 1.05rem;">Statistical Summary</div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; text-align: center; font-family: 'IBM Plex Mono', monospace;">
+          <div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+            <div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Mean</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">${mean.toFixed(4)}</div>
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+            <div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Variance</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">${variance.toFixed(4)}</div>
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+            <div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Std Dev</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">${stddev.toFixed(4)}</div>
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+            <div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Mode</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">${modeVal.toFixed(4)}</div>
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+            <div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Skewness</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">${skewness.toFixed(4)}</div>
+          </div>
+          <div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
+            <div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Ex. Kurtosis</div>
+            <div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">${kurtosis.toFixed(4)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // ── Step 4: Probability Calculation at x ──
+  if (mode === 'pdf') {
+    html += `
+    <div class="step-card" style="border-left-color: #059669;">
+      <div class="step-header">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">PDF Evaluation at x = ${xVal}</div>
+      </div>
+      <div class="step-desc">
+        <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          f(${xVal}) = 
+          <span style="display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; padding: 0 4px; line-height: 1.2;">
+            <span style="border-bottom: 1px solid currentColor; padding: 0 6px;">1</span>
+            <span style="padding: 0 6px;">Γ(${alpha}) · ${beta}<sup>${alpha}</sup></span>
+          </span>
+          · ${xVal}<sup>(${alpha}−1)</sup> · e<sup>−${xVal}/${beta}</sup><br><br>
+
+          = 
+          <span style="display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; padding: 0 4px; line-height: 1.2;">
+            <span style="border-bottom: 1px solid currentColor; padding: 0 6px;">1</span>
+            <span style="padding: 0 6px;">${gammaAlpha.toFixed(4)} × ${Math.pow(beta, alpha).toFixed(4)}</span>
+          </span>
+          · ${Math.pow(xVal, alpha - 1).toFixed(6)} · ${Math.exp(-xVal / beta).toFixed(6)}<br><br>
+
+          = 
+          <span style="display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; padding: 0 4px; line-height: 1.2;">
+            <span style="border-bottom: 1px solid currentColor; padding: 0 6px;">${Math.pow(xVal, alpha - 1).toFixed(6)} × ${Math.exp(-xVal / beta).toFixed(6)}</span>
+            <span style="padding: 0 6px;">${(gammaAlpha * Math.pow(beta, alpha)).toFixed(4)}</span>
+          </span><br><br>
+          
+          <span style="color: #059669; font-weight: 700; font-size: 1.2rem;">f(${xVal}) = ${pdfAtX.toFixed(6)}</span>
+        </div>
+      </div>
+    </div>`;
+  } else if (mode === 'lte') {
+    html += `
+    <div class="step-card" style="border-left-color: #059669;">
+      <div class="step-header">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">CDF: P(X ≤ ${xVal})</div>
+      </div>
+      <div class="step-desc">
+        <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          P(X ≤ ${xVal}) = γ(α, x/β) / Γ(α)<br>
+          = γ(${alpha}, ${(xVal / beta).toFixed(4)}) / Γ(${alpha})<br><br>
+          <span style="font-size:0.85rem; color: var(--muted);">Using regularized lower incomplete gamma function:</span><br><br>
+          <span style="color: #059669; font-weight: 700; font-size: 1.2rem;">P(X ≤ ${xVal}) = ${cdfAtX.toFixed(6)}</span>
+        </div>
+      </div>
+    </div>`;
+  } else if (mode === 'gte') {
+    const survAtX = 1 - cdfAtX;
+    html += `
+    <div class="step-card" style="border-left-color: #059669;">
+      <div class="step-header">
+        <div class="step-number">${stepCount++}</div>
+        <div class="step-title">Survival: P(X ≥ ${xVal})</div>
+      </div>
+      <div class="step-desc">
+        <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
+          P(X ≥ ${xVal}) = 1 − P(X ≤ ${xVal})<br>
+          = 1 − ${cdfAtX.toFixed(6)}<br><br>
+          <span style="color: #059669; font-weight: 700; font-size: 1.2rem;">P(X ≥ ${xVal}) = ${survAtX.toFixed(6)}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ── Step 5: PDF Table ──
+  const tableXMax = Math.max(20, Math.ceil(mean + 4 * stddev));
+  const tableStep = tableXMax <= 20 ? 1 : Math.ceil(tableXMax / 20);
+  let tableRows = '';
+  for (let xi = 0; xi <= tableXMax; xi += tableStep) {
+    const pVal = gammaPDF(xi, alpha, beta);
+    const cVal = gammaCDF(xi, alpha, beta);
+    const isHighlight = Math.abs(xi - modeVal) <= tableStep / 2;
+    tableRows += `
+      <tr style="${isHighlight ? 'background: rgba(217,119,6,0.08); font-weight: 600;' : ''}">
+        <td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace;">${xi}</td>
+        <td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace;">${pVal.toFixed(6)}</td>
+        <td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace;">${cVal.toFixed(6)}</td>
+      </tr>`;
+  }
+
+  html += `
+  <div class="step-card" style="border-left-color: #2563eb;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">PDF & CDF Values Table (x = 0 to ${tableXMax})</div>
+    </div>
+    <div class="step-desc">
+      <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; text-align: center;">
+        The row closest to the <strong>mode (x ≈ ${modeVal.toFixed(1)})</strong> is highlighted. PDF gives the density, CDF gives the cumulative probability.
+      </p>
+      <div style="overflow-x: auto; border-radius: 12px; border: 1px solid var(--border);">
+        <table style="width: 100%; border-collapse: collapse; font-family: 'Figtree', sans-serif;">
+          <thead>
+            <tr style="background: var(--navy); color: white;">
+              <th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">x</th>
+              <th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">f(x) — PDF</th>
+              <th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">F(x) — CDF</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+
+  // ── Step 6: Interactive Graph ──
+  const graphId = 'gamma-dist-graph-' + Date.now();
+  html += `
+  <div class="step-card" style="border-left-color: #ec4899;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Gamma Distribution PDF Graph</div>
+    </div>
+    <div class="step-desc">
+      <div id="${graphId}" style="width:100%; height: 480px; border-radius: 12px; overflow: hidden;"></div>
+    </div>
+  </div>`;
+
+  // ── Step 7: Shape Analysis ──
+  html += `
+  <div class="step-card" style="border-left-color: #f59e0b;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Graph Shape Analysis</div>
+    </div>
+    <div class="step-desc">
+      <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">
+          <div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #fde68a, #fbbf24); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📍</div>
+          <div>
+            <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why does it start at zero?</div>
+            <div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">
+              ${alpha > 1 ?
+                `Since α = ${alpha} > 1, the factor x<sup>(α−1)</sup> = x<sup>${(alpha-1).toFixed(1)}</sup> equals <strong>0</strong> when x = 0. Therefore f(0) = 0. The PDF begins at the origin.` :
+                alpha === 1 ?
+                `Since α = 1, x<sup>(α−1)</sup> = x<sup>0</sup> = 1, and the distribution starts at a <strong>finite positive value</strong> f(0⁺) = 1/(Γ(1)·β) = ${(1/beta).toFixed(4)}. This is the Exponential distribution case.` :
+                `Since α = ${alpha} < 1, x<sup>(α−1)</sup> → ∞ as x → 0⁺, meaning the PDF shoots up to <strong>infinity</strong> near the origin, creating a J-shaped curve.`
+              }
+            </div>
+          </div>
+        </div>
+
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">
+          <div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #bbf7d0, #4ade80); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">⛰️</div>
+          <div>
+            <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why does it rise to a peak?</div>
+            <div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">
+              ${alpha > 1 ?
+                `As x increases from 0, the power term x<sup>${(alpha-1).toFixed(1)}</sup> grows <strong>faster</strong> than the exponential decay e<sup>−x/${beta}</sup> shrinks. This causes the PDF to rise. The peak occurs at the <strong>mode = (α−1)β = ${modeVal.toFixed(2)}</strong>, where these two competing forces are perfectly balanced.` :
+                alpha === 1 ?
+                `With α = 1, there is <strong>no rising portion</strong>. The function starts at its maximum and immediately decays — this is the classic Exponential decay shape.` :
+                `With α < 1, the function actually <strong>decreases monotonically</strong> from infinity. There is no visible peak — the mode is at x = 0.`
+              }
+            </div>
+          </div>
+        </div>
+
+        <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">
+          <div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #bfdbfe, #60a5fa); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📉</div>
+          <div>
+            <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why does it decrease afterward?</div>
+            <div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">
+              Beyond the mode, the <strong>exponential decay</strong> factor e<sup>−x/${beta}</sup> dominates over the polynomial growth x<sup>${(alpha-1).toFixed(1)}</sup>. The exponential function decays far more rapidly than any polynomial can grow, causing the tail to asymptotically approach zero as x → ∞. The distribution has a <strong>right-skewed</strong> (positively skewed) shape with skewness = ${skewness.toFixed(4)}.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // ── Step 8: Real-Life Applications ──
+  html += `
+  <div class="step-card" style="border-left-color: #8b5cf6;">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Real-Life Applications</div>
+    </div>
+    <div class="step-desc">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem;">
+        <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(217,119,6,0.1);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">⏱️</div>
+          <div style="font-weight: 700; color: #92400e; margin-bottom: 0.5rem;">Waiting Time Problems</div>
+          <div style="font-size: 0.85rem; color: #78350f; line-height: 1.5;">Models the time until the α-th event in a Poisson process — e.g., waiting for the 3rd customer at a service counter.</div>
+        </div>
+        <div style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(5,150,105,0.1);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔧</div>
+          <div style="font-weight: 700; color: #065f46; margin-bottom: 0.5rem;">Reliability Engineering</div>
+          <div style="font-size: 0.85rem; color: #064e3b; line-height: 1.5;">Used to model component lifetimes and time-to-failure analysis in manufacturing, aerospace, and electronics.</div>
+        </div>
+        <div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(37,99,235,0.1);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏢</div>
+          <div style="font-weight: 700; color: #1e40af; margin-bottom: 0.5rem;">Queueing Systems</div>
+          <div style="font-size: 0.85rem; color: #1e3a5f; line-height: 1.5;">Models inter-arrival times and service durations in telecommunications, hospitals, and traffic flow analysis.</div>
+        </div>
+        <div style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(139,92,246,0.1);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🤖</div>
+          <div style="font-weight: 700; color: #5b21b6; margin-bottom: 0.5rem;">Machine Learning</div>
+          <div style="font-size: 0.85rem; color: #4c1d95; line-height: 1.5;">Used as a prior distribution in Bayesian inference (conjugate prior for Poisson & Exponential), and in neural network regularization.</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  // ── Step 9: Conclusion ──
+  html += `
+  <div class="step-card" style="border-left-color: #0891b2; background: linear-gradient(135deg, var(--white), #f0f9ff);">
+    <div class="step-header">
+      <div class="step-number">${stepCount++}</div>
+      <div class="step-title">Conclusion</div>
+    </div>
+    <div class="step-desc" style="text-align: center;">
+      <div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 16px; padding: 2rem; margin: 1rem auto; max-width: 700px; box-shadow: 0 4px 15px rgba(5,150,105,0.1);">
+        <div style="font-size: 1.5rem; margin-bottom: 1rem;">✅</div>
+        <p style="font-size: 1.05rem; color: #065f46; line-height: 1.8; font-weight: 500;">
+          The <strong>Gamma Distribution</strong> with shape α = ${alpha} and scale β = ${beta} produces a 
+          ${alpha > 2 ? '<strong>unimodal, right-skewed bell-like curve</strong>' : alpha > 1 ? '<strong>right-skewed curve peaking near the origin</strong>' : alpha === 1 ? '<strong>monotonically decreasing exponential curve</strong>' : '<strong>J-shaped curve with a vertical asymptote at x = 0</strong>'}
+          with mean <strong>μ = ${mean.toFixed(2)}</strong>, variance <strong>σ² = ${variance.toFixed(2)}</strong>, and standard deviation <strong>σ = ${stddev.toFixed(4)}</strong>.
+        </p>
+        <p style="font-size: 0.95rem; color: #047857; line-height: 1.6; margin-top: 1rem;">
+          The mode at <strong>x = ${modeVal.toFixed(2)}</strong> represents the most likely value.
+          The distribution is <strong>positively skewed</strong> (skewness = ${skewness.toFixed(4)}), meaning the right tail is longer than the left.
+          As α increases, the distribution becomes more symmetric and approaches a Normal distribution by the Central Limit Theorem.
+        </p>
+      </div>
+    </div>
+  </div>`;
+
+  output.innerHTML = html;
+
+  // ── Render Plotly Graph ──
+  setTimeout(() => {
+    const graphDiv = document.getElementById(graphId);
+    if (!graphDiv || typeof Plotly === 'undefined') return;
+
+    const xMax = Math.max(20, Math.ceil(mean + 4 * stddev));
+    const pts = 500;
+    const xArr = [];
+    const yPdf = [];
+    const yCdf = [];
+
+    for (let i = 0; i <= pts; i++) {
+      const xi = (i / pts) * xMax;
+      xArr.push(xi);
+      yPdf.push(gammaPDF(xi, alpha, beta));
+      yCdf.push(gammaCDF(xi, alpha, beta));
+    }
+
+    // Shaded area for the selected mode
+    let shapeAnnotations = [];
+    let fillX = [];
+    let fillY = [];
+    if (mode === 'lte' && !isNaN(xVal)) {
+      for (let i = 0; i <= pts; i++) {
+        const xi = (i / pts) * xVal;
+        if (xi <= xVal) {
+          fillX.push(xi);
+          fillY.push(gammaPDF(xi, alpha, beta));
+        }
+      }
+      fillX.push(xVal);
+      fillY.push(0);
+      fillX.push(0);
+      fillY.push(0);
+    } else if (mode === 'gte' && !isNaN(xVal)) {
+      for (let i = 0; i <= pts; i++) {
+        const xi = xVal + (i / pts) * (xMax - xVal);
+        fillX.push(xi);
+        fillY.push(gammaPDF(xi, alpha, beta));
+      }
+      fillX.push(xMax);
+      fillY.push(0);
+      fillX.push(xVal);
+      fillY.push(0);
+    }
+
+    const traces = [
+      {
+        x: xArr,
+        y: yPdf,
+        type: 'scatter',
+        mode: 'lines',
+        name: `PDF: Gamma(α=${alpha}, β=${beta})`,
+        line: { color: '#d97706', width: 3, shape: 'spline' },
+        fill: 'none'
+      },
+      {
+        x: xArr,
+        y: yCdf,
+        type: 'scatter',
+        mode: 'lines',
+        name: 'CDF F(x)',
+        line: { color: '#2563eb', width: 2, dash: 'dash', shape: 'spline' },
+        yaxis: 'y2'
+      }
+    ];
+
+    if (fillX.length > 0) {
+      traces.push({
+        x: fillX,
+        y: fillY,
+        type: 'scatter',
+        fill: 'toself',
+        fillcolor: 'rgba(217,119,6,0.18)',
+        line: { color: 'rgba(217,119,6,0.4)', width: 0 },
+        name: mode === 'lte' ? `P(X ≤ ${xVal})` : `P(X ≥ ${xVal})`,
+        hoverinfo: 'skip'
+      });
+    }
+
+    // Add vertical lines for mean and mode
+    const shapes = [
+      {
+        type: 'line',
+        x0: mean, x1: mean,
+        y0: 0, y1: 1,
+        yref: 'paper',
+        line: { color: '#7c3aed', width: 2, dash: 'dot' }
+      }
+    ];
+    if (alpha >= 1) {
+      shapes.push({
+        type: 'line',
+        x0: modeVal, x1: modeVal,
+        y0: 0, y1: 1,
+        yref: 'paper',
+        line: { color: '#059669', width: 2, dash: 'dashdot' }
+      });
+    }
+
+    const annotations = [
+      {
+        x: mean,
+        y: 1.02,
+        yref: 'paper',
+        text: `Mean = ${mean.toFixed(2)}`,
+        showarrow: false,
+        font: { color: '#7c3aed', size: 11, family: 'IBM Plex Mono' }
+      }
+    ];
+    if (alpha >= 1) {
+      annotations.push({
+        x: modeVal,
+        y: 1.07,
+        yref: 'paper',
+        text: `Mode = ${modeVal.toFixed(2)}`,
+        showarrow: false,
+        font: { color: '#059669', size: 11, family: 'IBM Plex Mono' }
+      });
+    }
+
+    const layout = {
+      title: {
+        text: `Gamma Distribution — α = ${alpha}, β = ${beta}`,
+        font: { family: 'Fraunces, serif', size: 20, color: '#1e293b' }
+      },
+      xaxis: {
+        title: { text: 'x (Random Variable)', font: { family: 'Figtree, sans-serif', size: 14 } },
+        gridcolor: '#e2e8f0',
+        zeroline: true,
+        range: [0, xMax]
+      },
+      yaxis: {
+        title: { text: 'f(x) — Probability Density', font: { family: 'Figtree, sans-serif', size: 14 } },
+        gridcolor: '#e2e8f0',
+        zeroline: true,
+        rangemode: 'tozero'
+      },
+      yaxis2: {
+        title: { text: 'F(x) — CDF', font: { family: 'Figtree, sans-serif', size: 14, color: '#2563eb' } },
+        overlaying: 'y',
+        side: 'right',
+        range: [0, 1.05],
+        gridcolor: 'rgba(37,99,235,0.08)',
+        tickcolor: '#2563eb',
+        tickfont: { color: '#2563eb' }
+      },
+      legend: {
+        x: 0.98, y: 0.95,
+        xanchor: 'right',
+        bgcolor: 'rgba(255,255,255,0.9)',
+        bordercolor: '#e2e8f0',
+        borderwidth: 1,
+        font: { family: 'Figtree, sans-serif', size: 12 }
+      },
+      shapes: shapes,
+      annotations: annotations,
+      plot_bgcolor: '#fafafa',
+      paper_bgcolor: '#ffffff',
+      margin: { t: 60, b: 60, l: 60, r: 60 },
+      hovermode: 'x unified'
+    };
+
+    Plotly.newPlot(graphDiv, traces, layout, {
+      responsive: true,
+      displayModeBar: true,
+      displaylogo: false,
+      modeBarButtonsToRemove: ['lasso2d', 'select2d']
+    });
+  }, 100);
+
+  // Scroll to output
+  output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 
