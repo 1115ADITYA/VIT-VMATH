@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
     { name: 'Adjoint Calculator', cat: 'matrices', desc: 'Find the adjoint matrix', calcId: 'adjoint' },
     { name: 'Inverse Matrix Calculator', cat: 'matrices', desc: 'Find the inverse of a square matrix', calcId: 'inv' },
     { name: 'Row Echelon Form', cat: 'matrices', desc: 'Convert matrices to REF or RREF forms', calcId: 'echelon' },
-    { name: 'Normal Form Calculator', cat: 'matrices', desc: 'Convert matrix to Normal Form', calcId: 'normal' },
+    { name: 'Normal Form Calculator', cat: 'matrices', desc: 'Convert matrix to Normal Form', calcId: 'normal-form' },
     { name: 'Eigenvalue & Eigenvector', cat: 'eigen_analysis', desc: 'Calculate characteristic equations and eigenvectors', calcId: 'eigen' },
     { name: 'Diagonalisation', cat: 'eigen_analysis', desc: 'Diagonalise symmetric and non-symmetric matrices', calcId: 'diag' },
     { name: 'Matrix Power Calculator', cat: 'matrices', desc: 'Calculate matrix power', calcId: 'matrix-power' },

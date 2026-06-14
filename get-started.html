@@ -571,13 +571,13 @@
                 <!-- Mode -->
                 <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 200px;">
                   <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Probability Mode</span>
-                  <select id="geometric-mode" onchange="const x2w=document.getElementById('geometric-x2-wrapper'); const x1l=document.getElementById('geometric-x1-label'); if(this.value==='between'){x2w.style.display='flex'; x1l.innerHTML='Lower Trials (x&sub1;)';}else{x2w.style.display='none'; x1l.innerHTML='Trials (x)';}" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600; cursor: pointer;">
+                  <select id="geometric-mode" onchange="if(this.value==='between'){document.getElementById('geometric-x2-wrapper').style.display='flex'; document.getElementById('geometric-x1-label').innerHTML='Lower Trials (x₁)';}else{document.getElementById('geometric-x2-wrapper').style.display='none'; document.getElementById('geometric-x1-label').innerHTML='Trials (x)';}"  style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600; cursor: pointer;">
                     <option value="exact">P(X = x)</option>
                     <option value="lte">P(X &le; x) [CDF]</option>
                     <option value="lt">P(X &lt; x)</option>
                     <option value="gte">P(X &ge; x)</option>
                     <option value="gt">P(X &gt; x) [Survival]</option>
-                    <option value="between">Between (x&sub1; &le; X &le; x&sub2;)</option>
+                    <option value="between">Between (x₁ &le; X &le; x₂)</option>
                   </select>
                 </div>
               </div>
@@ -609,13 +609,13 @@
                 <!-- Mode -->
                 <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 200px;">
                   <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Probability</span>
-                  <select id="normal-mode" onchange="const x2w=document.getElementById('normal-x2-wrapper'); const x1l=document.getElementById('normal-x1-label'); if(this.value==='between'){x2w.style.display='flex'; x1l.innerHTML='Value (x&sub1;)';}else{x2w.style.display='none'; x1l.innerHTML='Value (x)';}" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600; cursor: pointer;">
+                  <select id="normal-mode" onchange="if(this.value==='between'){document.getElementById('normal-x2-wrapper').style.display='flex'; document.getElementById('normal-x1-label').innerHTML='Value (x₁)';}else{document.getElementById('normal-x2-wrapper').style.display='none'; document.getElementById('normal-x1-label').innerHTML='Value (x)';}"  style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600; cursor: pointer;">
                     <option value="lte">P(X &le; x)</option>
                     <option value="lt">P(X &lt; x)</option>
                     <option value="gte">P(X &ge; x)</option>
                     <option value="gt">P(X &gt; x)</option>
                     <option value="exact">P(X = x)</option>
-                    <option value="between">Between (x&sub1; &lt; X &lt; x&sub2;)</option>
+                    <option value="between">Between (x₁ &lt; X &lt; x₂)</option>
                   </select>
                 </div>
               </div>

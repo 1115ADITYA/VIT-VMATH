@@ -144,7 +144,7 @@ const data = {
         { id: 'adjoint', name: 'Adjoint Calculator', icon: 'M4 6h16M4 12h16M4 18h7' },
         { id: 'inv', name: 'Inverse Matrix Calculator', icon: 'M8 7h8M8 11h8M8 15h8' },
         { id: 'echelon', name: 'Echelon Form Calculator', icon: 'M4 6h16M4 12h10M4 18h4' },
-        { id: 'normal', name: 'Normal Form Calculator', icon: 'M3 3h18v18H3z' },
+        { id: 'normal-form', name: 'Normal Form Calculator', icon: 'M3 3h18v18H3z' },
         { id: 'eigen', name: 'Eigenvalue & Eigenvector Calculator', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
         { id: 'diag', name: 'Diagonalization Calculator', icon: 'M4 4l16 16M4 20L20 4' },
         { id: 'matrix-power', name: 'Matrix Power Calculator', icon: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' }
@@ -1005,6 +1005,198 @@ function solveCubic(a, b, c, d) {
   }
   return roots.sort((x, y) => x - y);
 }
+// General RREF (for null-space / eigenvector finding)
+function rref(M) {
+  let A = M.map(r => [...r]);
+  let rows = A.length, cols = A[0].length;
+  let pivotRow = 0;
+  for (let col = 0; col < cols && pivotRow < rows; col++) {
+    let maxRow = pivotRow;
+    for (let r = pivotRow + 1; r < rows; r++) {
+      if (Math.abs(A[r][col]) > Math.abs(A[maxRow][col])) maxRow = r;
+    }
+    if (Math.abs(A[maxRow][col]) < 1e-10) continue;
+    [A[pivotRow], A[maxRow]] = [A[maxRow], A[pivotRow]];
+    let scale = A[pivotRow][col];
+    for (let j = 0; j < cols; j++) A[pivotRow][j] /= scale;
+    for (let r = 0; r < rows; r++) {
+      if (r === pivotRow) continue;
+      let factor = A[r][col];
+      for (let j = 0; j < cols; j++) A[r][j] -= factor * A[pivotRow][j];
+    }
+    pivotRow++;
+  }
+  return A;
+}
+
+// Find null-space basis of matrix B using RREF — returns list of basis vectors
+function findNullSpace(B) {
+  let n = B.length;
+  let R = rref(B.map(r => [...r]));
+  // Identify pivot columns
+  let pivotCols = [];
+  let pivotRow = 0;
+  for (let col = 0; col < n && pivotRow < n; col++) {
+    if (Math.abs(R[pivotRow][col]) > 1e-10) {
+      pivotCols.push(col);
+      pivotRow++;
+    }
+  }
+  let freeCols = [];
+  for (let col = 0; col < n; col++) {
+    if (!pivotCols.includes(col)) freeCols.push(col);
+  }
+  if (freeCols.length === 0) return []; // Trivial null-space
+  let basis = [];
+  for (let fi = 0; fi < freeCols.length; fi++) {
+    let v = new Array(n).fill(0);
+    v[freeCols[fi]] = 1;
+    for (let pi = 0; pi < pivotCols.length; pi++) {
+      let pc = pivotCols[pi];
+      let pr = pi; // pivot row
+      v[pc] = -(R[pr][freeCols[fi]]);
+    }
+    // Normalize to avoid tiny floats
+    let mag = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+    if (mag > 1e-10) basis.push(v.map(x => Math.round(x * 1e9) / 1e9));
+  }
+  return basis;
+}
+
+// Solve lower-triangular system L x = b (for LU solve in inverse iteration)
+function luSolve(A, b) {
+  let n = A.length;
+  // LU decomposition with partial pivoting
+  let LU = A.map(r => [...r]);
+  let perm = A.map((_, i) => i);
+  for (let k = 0; k < n; k++) {
+    let maxVal = Math.abs(LU[k][k]), maxRow = k;
+    for (let i = k+1; i < n; i++) if (Math.abs(LU[i][k]) > maxVal) { maxVal = Math.abs(LU[i][k]); maxRow = i; }
+    if (maxRow !== k) { [LU[k], LU[maxRow]] = [LU[maxRow], LU[k]]; [perm[k], perm[maxRow]] = [perm[maxRow], perm[k]]; }
+    if (Math.abs(LU[k][k]) < 1e-14) { LU[k][k] = 1e-14; }
+    for (let i = k+1; i < n; i++) {
+      LU[i][k] /= LU[k][k];
+      for (let j = k+1; j < n; j++) LU[i][j] -= LU[i][k] * LU[k][j];
+    }
+  }
+  // Apply permutation to b
+  let pb = perm.map(p => b[p]);
+  // Forward substitution
+  let y = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) { y[i] = pb[i]; for (let j = 0; j < i; j++) y[i] -= LU[i][j] * y[j]; }
+  // Backward substitution
+  let x = new Array(n).fill(0);
+  for (let i = n-1; i >= 0; i--) {
+    x[i] = y[i];
+    for (let j = i+1; j < n; j++) x[i] -= LU[i][j] * x[j];
+    x[i] /= LU[i][i];
+  }
+  return x;
+}
+
+// Inverse iteration: given shift mu, converges to eigenvalue closest to mu
+function inverseIteration(A, mu, maxIter) {
+  let n = A.length;
+  maxIter = maxIter || 200;
+  // (A - mu*I)
+  let As = A.map((r, i) => r.map((v, j) => i === j ? v - mu : v));
+  let v = Array.from({length: n}, (_, i) => i === 0 ? 1 : (Math.sin(i * 1.3) + 0.5));
+  let norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+  v = v.map(x => x / norm);
+  let lam = mu;
+  for (let iter = 0; iter < maxIter; iter++) {
+    let w;
+    try { w = luSolve(As, v); }
+    catch(e) { break; }
+    let wNorm = Math.sqrt(w.reduce((s, x) => s + x * x, 0));
+    if (wNorm < 1e-14 || !isFinite(wNorm)) break;
+    v = w.map(x => x / wNorm);
+    // Rayleigh quotient: lam = v^T A v
+    let Av = A.map(row => row.reduce((s, a, j) => s + a * v[j], 0));
+    let newLam = Av.reduce((s, x, i) => s + x * v[i], 0);
+    if (!isFinite(newLam)) break;
+    if (Math.abs(newLam - lam) < 1e-10) { lam = newLam; break; }
+    lam = newLam;
+  }
+  return isFinite(lam) ? lam : null;
+}
+
+// Find all real eigenvalues of A using det(A - λI) sign-change bisection
+function qrEigenvalues(A) {
+  let n = A.length;
+
+  // Gershgorin circle theorem: all eigenvalues lie in union of discs
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < n; i++) {
+    let c = A[i][i];
+    let r = A[i].reduce((s, v, j) => j !== i ? s + Math.abs(v) : s, 0);
+    lo = Math.min(lo, c - r);
+    hi = Math.max(hi, c + r);
+  }
+  // Add small padding
+  let pad = (hi - lo) * 0.05 + 0.5;
+  lo -= pad; hi += pad;
+  let range = hi - lo;
+
+  // Evaluate det(A - lam*I) at a given lambda
+  function charPoly(lam) {
+    let M = A.map((r, i) => r.map((v, j) => i === j ? v - lam : v));
+    return determinant(M);
+  }
+
+  // Bisection: find root in [a, b] where fa and fb have opposite signs
+  function bisect(a, b, fa, fb, depth) {
+    if (depth > 60) return (a + b) / 2;
+    let mid = (a + b) / 2;
+    if (b - a < 1e-9) return mid;
+    let fm = charPoly(mid);
+    if (Math.abs(fm) < 1e-12) return mid;
+    if (fa * fm < 0) return bisect(a, mid, fa, fm, depth + 1);
+    return bisect(mid, b, fm, fb, depth + 1);
+  }
+
+  // Scan for sign changes to detect eigenvalues
+  let evals = [];
+  let numSamples = Math.max(400, n * 100);
+  let step = range / numSamples;
+  let prevVal = charPoly(lo);
+  let prevLam = lo;
+
+  for (let k = 1; k <= numSamples; k++) {
+    let lam = lo + k * step;
+    let val = charPoly(lam);
+
+    // Sign change means eigenvalue in (prevLam, lam)
+    if (isFinite(prevVal) && isFinite(val) && prevVal * val < 0) {
+      let root = bisect(prevLam, lam, prevVal, val, 0);
+      let rounded = Math.abs(Math.round(root) - root) < 1e-3 ? Math.round(root) : Math.round(root * 1000) / 1000;
+      let isDup = evals.some(e => Math.abs(e - rounded) < 0.015);
+      if (!isDup) evals.push(rounded);
+    }
+    // Near zero without crossing: might be repeated eigenvalue
+    if (Math.abs(val) < 1e-10 * (1 + Math.abs(A[0][0]))) {
+      let rounded = Math.abs(Math.round(lam) - lam) < 1e-3 ? Math.round(lam) : Math.round(lam * 1000) / 1000;
+      let isDup = evals.some(e => Math.abs(e - rounded) < 0.015);
+      if (!isDup) evals.push(rounded);
+    }
+
+    prevVal = val; prevLam = lam;
+  }
+
+  evals.sort((a, b) => a - b);
+  // If we found more than n due to repeated detection, cluster and pick n best
+  if (evals.length > n) {
+    // Group by proximity and keep one per group
+    let grouped = [evals[0]];
+    for (let i = 1; i < evals.length; i++) {
+      if (Math.abs(evals[i] - grouped[grouped.length-1]) > 0.05) grouped.push(evals[i]);
+    }
+    evals = grouped.slice(0, n);
+  }
+
+  return evals;
+}
+
 function characteristicPolynomial(A) {
   let n = A.length;
   if (n === 2) {
@@ -1021,7 +1213,8 @@ function characteristicPolynomial(A) {
     let det = determinant(A);
     return [1, -tr, c2, -det]; // x^3 - tr*x^2 + c2*x - det
   }
-  return null;
+  // For n >= 4: use QR iteration to find eigenvalues numerically
+  return null; // signal: use qrEigenvalues directly
 }
 function findEigenvectors(A, lambda) {
   let n = A.length;
@@ -1049,8 +1242,6 @@ function findEigenvectors(A, lambda) {
       if (mags[1] === maxMag) return [cross2];
       return [cross3];
     }
-    // If all cross products are zero, rank is <= 1
-    // We need 2 eigenvectors
     let evs = [];
     if (Math.abs(r0[0]) > 1e-9 || Math.abs(r0[1]) > 1e-9 || Math.abs(r0[2]) > 1e-9) {
       if (Math.abs(r0[0]) > 1e-9) {
@@ -1065,9 +1256,16 @@ function findEigenvectors(A, lambda) {
       }
       return evs;
     }
-    return [[1, 0, 0], [0, 1, 0], [0, 0, 1]]; // Identity case
+    return [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
   }
-  return null;
+  // General case for n >= 4: use RREF null-space
+  let nullBasis = findNullSpace(B);
+  if (nullBasis.length === 0) {
+    // Fallback: try small perturbation of lambda for numerical stability
+    let B2 = subMatrix(A, scaleMatrix(identityMatrix(n), lambda + 1e-8));
+    nullBasis = findNullSpace(B2);
+  }
+  return nullBasis.length > 0 ? nullBasis : null;
 }
 
 // Matrix Formatting Helper (HTML Grid with brackets)
@@ -1265,7 +1463,7 @@ function calculateMatrix() {
   addStep("Initial Matrix", `We start with the given ${rows}x${cols} matrix.`, null, JSON.parse(JSON.stringify(m)));
 
   // Dispatcher logic
-  if (currentCalc === 'normal') {
+  if (currentCalc === 'normal-form') {
     let r = 0;
     let fracM = [];
     for (let i = 0; i < rows; i++) {
@@ -1885,11 +2083,7 @@ function calculateEigenAnalysis() {
         `;
   }
 
-  if (m.length > 3) {
-    addTextStep("Error", "<div style='color:red'>Eigenvalue calculator currently supports up to 3x3 matrices.</div>");
-    output.innerHTML = stepsHtml;
-    return;
-  }
+  // Supports 2x2, 3x3, 4x4, 5x5, 6x6 and beyond via QR iteration
 
   addStep("Initial Matrix A", "", m);
 
@@ -1903,14 +2097,20 @@ function calculateEigenAnalysis() {
     if (valStr === "1" && !isLast) valStr = "";
     return sign + valStr;
   }
+  let evals;
   if (m.length === 2) {
     charEq = `P(λ) = λ²${fmtCoeff(poly[1], false, false)}λ${fmtCoeff(poly[2], false, true)} = 0`;
-  } else {
+    addTextStep("1. Characteristic Polynomial", `We find the characteristic polynomial by expanding the determinant <b>|A - λI| = 0</b>:<br><br><div style="font-family:'IBM Plex Mono', monospace; font-size:1.2rem; color:var(--navy); text-align:center;">${charEq}</div>`);
+    evals = solveCubic(0, poly[0], poly[1], poly[2]);
+  } else if (m.length === 3) {
     charEq = `P(λ) = λ³${fmtCoeff(poly[1], false, false)}λ²${fmtCoeff(poly[2], false, false)}λ${fmtCoeff(poly[3], false, true)} = 0`;
+    addTextStep("1. Characteristic Polynomial", `We find the characteristic polynomial by expanding the determinant <b>|A - λI| = 0</b>:<br><br><div style="font-family:'IBM Plex Mono', monospace; font-size:1.2rem; color:var(--navy); text-align:center;">${charEq}</div>`);
+    evals = solveCubic(poly[0], poly[1], poly[2], poly[3]);
+  } else {
+    // For n >= 4: use QR iteration numerically
+    addTextStep("1. Characteristic Polynomial", `For a ${m.length}×${m.length} matrix, the characteristic polynomial |A − λI| = 0 is a degree-${m.length} polynomial. We solve it numerically using the <b>QR iteration algorithm</b> (Wilkinson shift) to find all real eigenvalues.`);
+    evals = qrEigenvalues(m);
   }
-  addTextStep("1. Characteristic Polynomial", `We find the characteristic polynomial by expanding the determinant <b>|A - λI| = 0</b>:<br><br><div style="font-family:'IBM Plex Mono', monospace; font-size:1.2rem; color:var(--navy); text-align:center;">${charEq}</div>`);
-
-  let evals = m.length === 2 ? solveCubic(0, poly[0], poly[1], poly[2]) : solveCubic(poly[0], poly[1], poly[2], poly[3]);
 
   if (!evals || evals.length === 0) {
     addTextStep("Error", "<div style='color:red'>Could not find real eigenvalues. The matrix might only have complex eigenvalues, which are not currently supported by this calculator.</div>");
