@@ -10938,6 +10938,13 @@ function calculateHyperbolic() {
     return;
   }
 
+  // Validate overflow bounds
+  if (Math.abs(x) > 700) {
+    output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Input Too Large</div></div><div class="step-desc">The value of x is too large (|x| &gt; 700) and will cause numerical overflow in exponential calculations. Please enter a value between -700 and 700.</div></div>`;
+    output.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+
   // Math computations
   let expX = Math.exp(x);
   let expNegX = Math.exp(-x);
@@ -11123,7 +11130,12 @@ function calculateHyperbolic() {
         <div style="margin: 0.5rem 0; font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--amber);">
           cosh²(x) − sinh²(x) = 1
         </div>
-        Hyperbolic functions are widely used in engineering mathematics, differential equations, and physics.
+        <strong>Engineering Applications:</strong>
+        <ul style="margin: 0.5rem 0 0 1.5rem; padding: 0;">
+          <li><strong>Catenary Curves:</strong> The shape of a hanging cable under its own weight is described by cosh(x).</li>
+          <li><strong>Heat Transfer:</strong> Used to model temperature distribution in cooling fins.</li>
+          <li><strong>Special Relativity:</strong> Used to calculate Lorentz transformations and rapidities.</li>
+        </ul>
       </div>
     </div>
   `;
@@ -11302,7 +11314,9 @@ function calculatePolyRoots() {
   }
 
   // Solve roots
-  let roots = solvePolynomialRootsInternal(coeffs);
+  let rootsData = solvePolynomialRootsInternal(coeffs);
+  let roots = rootsData.roots;
+  let iterations = rootsData.iterations;
 
   // Classify and clean roots
   let realRoots = [];
@@ -11338,7 +11352,28 @@ function calculatePolyRoots() {
     return a.re - b.re;
   });
 
-  let allRootsSorted = [...realRoots, ...complexRoots];
+  // Group roots by multiplicity
+  function groupRoots(rootsArr) {
+    let grouped = [];
+    for (let r of rootsArr) {
+      let found = false;
+      for (let g of grouped) {
+        if (Math.abs(r.re - g.re) < 1e-4 && Math.abs(r.im - g.im) < 1e-4) {
+          g.count++;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        grouped.push({ re: r.re, im: r.im, count: 1 });
+      }
+    }
+    return grouped;
+  }
+
+  let realRootsGrouped = groupRoots(realRoots);
+  let complexRootsGrouped = groupRoots(complexRoots);
+  let allRootsGrouped = [...realRootsGrouped, ...complexRootsGrouped];
 
   // Helper formatting function
   function formatRoot(r, decimals) {
@@ -11377,8 +11412,10 @@ function calculatePolyRoots() {
 
   // Root List HTML
   let rootListHtml = '';
-  for (let i = 0; i < allRootsSorted.length; i++) {
-    rootListHtml += `<div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); margin: 0.5rem 0;">x<sub>${i + 1}</sub> = <b>${formatRoot(allRootsSorted[i], decimals)}</b></div>`;
+  for (let i = 0; i < allRootsGrouped.length; i++) {
+    let r = allRootsGrouped[i];
+    let multStr = r.count > 1 ? `<span style="color: var(--teal); font-size: 0.9rem; margin-left: 0.5rem; background: rgba(13, 148, 136, 0.1); padding: 0.2rem 0.5rem; border-radius: 4px;">Multiplicity: ${r.count}</span>` : '';
+    rootListHtml += `<div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.25rem; color: var(--navy); margin: 0.5rem 0; display: flex; align-items: center;">x<sub>${i + 1}</sub> = <b style="margin-left:0.5rem;">${formatRoot(r, decimals)}</b> ${multStr}</div>`;
   }
 
   // Result Summary Card
@@ -11393,7 +11430,8 @@ function calculatePolyRoots() {
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; font-size: 1rem; opacity: 0.95; line-height: 1.8;">
             <div>Polynomial: <strong style="color:var(--amber); font-family:'IBM Plex Mono', monospace;">${expr}</strong></div>
             <div>Detected Degree: <strong>${degree}</strong></div>
-            <div>Total Roots Found: <strong>${allRootsSorted.length}</strong></div>
+            <div>Total Roots Found: <strong>${roots.length}</strong></div>
+            <div>Unique Roots: <strong>${allRootsGrouped.length}</strong></div>
             <div>Real Roots Count: <strong style="color:var(--teal);">${realRoots.length}</strong></div>
             <div>Complex Roots Count: <strong style="color:var(--amber);">${complexRoots.length}</strong></div>
           </div>
@@ -11418,6 +11456,34 @@ function calculatePolyRoots() {
       </div>
     </div>
   </div>`;
+
+  // Iteration Steps
+  let iterRows = iterations.slice(-10).map(it => {
+    return `<div style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; border-bottom: 1px solid rgba(0,0,0,0.05); padding: 0.5rem 0; display: flex; justify-content: space-between;">
+      <span>Iter ${it.iter}</span>
+      <span style="color: var(--teal);">max Δ = ${it.maxChange.toExponential(4)}</span>
+    </div>`;
+  }).join('');
+
+  let iterHtml = `
+  <div class="step-card">
+    <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <div class="step-number">2</div>
+        <div class="step-title">Solver Iteration Details</div>
+      </div>
+      <div class="step-toggle-icon" style="transition: transform 0.2s; font-size: 0.8rem; color: var(--muted);">▼</div>
+    </div>
+    <div class="step-content" style="display: none;">
+      <div class="step-desc">Durand-Kerner method convergence (showing last ${Math.min(10, iterations.length)} iterations):</div>
+      <div style="margin: 1.5rem 0; background: rgba(0,0,0,0.02); border-radius: 8px; padding: 1rem;">
+        ${iterRows}
+      </div>
+      <div style="font-size: 0.9rem; color: var(--navy); opacity: 0.8; margin-top: 1rem;">Total iterations to converge: <b>${iterations.length}</b></div>
+    </div>
+  </div>`;
+  
+  stepsHtml += iterHtml;
 
   // Educational Note Card
   let educationalHtml = `
@@ -11663,8 +11729,9 @@ function calculatePolyRoots() {
 
     let maxIterations = 500;
     let tolerance = 1e-12;
+    let iterations = [];
 
-    for (let iter = 0; iter < maxIterations; iter++) {
+    for (let iter = 1; iter <= maxIterations; iter++) {
       let maxChange = 0;
       let newRoots = [];
 
@@ -11700,12 +11767,14 @@ function calculatePolyRoots() {
         break;
       }
 
+      iterations.push({ iter: iter, maxChange: maxChange });
+
       if (maxChange < tolerance) {
         break;
       }
     }
 
-    return rootsArr;
+    return { roots: rootsArr, iterations: iterations };
   }
 }
 
@@ -12074,10 +12143,11 @@ function calculateMultipleAngleExpand() {
   }
 
   const n = parseInt(nValStr);
-  const thetaDeg = parseFloat(thetaValStr);
+  const thetaInput = parseFloat(thetaValStr);
   const decimals = parseInt(decimalsValStr);
+  const unit = document.getElementById('mae-unit') ? document.getElementById('mae-unit').value : 'deg';
 
-  if (isNaN(thetaDeg)) {
+  if (isNaN(thetaInput)) {
     output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Angle</div></div><div class="step-desc">The angle θ must be a valid number.</div></div>`;
     output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
@@ -12089,7 +12159,8 @@ function calculateMultipleAngleExpand() {
     return;
   }
 
-  const thetaRad = thetaDeg * Math.PI / 180;
+  const thetaDeg = unit === 'deg' ? thetaInput : (thetaInput * 180 / Math.PI);
+  const thetaRad = unit === 'rad' ? thetaInput : (thetaInput * Math.PI / 180);
   const s = Math.sin(thetaRad);
   const c = Math.cos(thetaRad);
 
@@ -12316,9 +12387,14 @@ function calculateMultipleAngleExpand() {
       <div style="flex: 1 1 200px; text-align: left;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
           <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Expansion Completed!</div>
-          <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
-          </button>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button onclick="navigator.clipboard.writeText('${funcType === 'sin' ? '\\\\sin' : '\\\\cos'}(${n}\\\\theta) = ' + '${lookup.formula}'.replace(/<sup>/g, '^').replace(/<\\/sup>/g, '').replace(/θ/g, '\\\\theta ').replace(/sin/g, '\\\\sin ').replace(/cos/g, '\\\\cos ')); alert('LaTeX copied to clipboard!');" style="background: rgba(13, 148, 136, 0.15); color: var(--teal); border: 1px solid rgba(13, 148, 136, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(13, 148, 136, 0.25)'" onmouseout="this.style.background='rgba(13, 148, 136, 0.15)'">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Copy LaTeX
+            </button>
+            <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
+            </button>
+          </div>
         </div>
         <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Multiple Angle Expansion Identity.</div>
         <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
@@ -12471,10 +12547,11 @@ function calculatePowerReduction() {
   }
 
   const n = parseInt(nValStr);
-  const thetaDeg = parseFloat(thetaValStr);
+  const thetaInput = parseFloat(thetaValStr);
   const decimals = parseInt(decimalsValStr);
+  const unit = document.getElementById('pr-unit') ? document.getElementById('pr-unit').value : 'deg';
 
-  if (isNaN(thetaDeg)) {
+  if (isNaN(thetaInput)) {
     output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Angle</div></div><div class="step-desc">The angle θ must be a valid number.</div></div>`;
     output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
@@ -12486,7 +12563,8 @@ function calculatePowerReduction() {
     return;
   }
 
-  const thetaRad = thetaDeg * Math.PI / 180;
+  const thetaDeg = unit === 'deg' ? thetaInput : (thetaInput * 180 / Math.PI);
+  const thetaRad = unit === 'rad' ? thetaInput : (thetaInput * Math.PI / 180);
   const lookup = prFormulas[funcType][n];
   const finalFormula = funcType === 'sin' ? `sin<sup>${n}</sup>θ = ${lookup.formula}` : `cos<sup>${n}</sup>θ = ${lookup.formula}`;
 
@@ -12646,9 +12724,14 @@ function calculatePowerReduction() {
       <div style="flex: 1 1 200px; text-align: left;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
           <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); font-family:'Fraunces', serif;">✅ Power Reduction Completed!</div>
-          <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
-          </button>
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <button onclick="navigator.clipboard.writeText('${funcType === 'sin' ? '\\\\sin' : '\\\\cos'}^${n}(\\\\theta) = ' + '${lookup.formula}'.replace(/<sup>/g, '^').replace(/<\\/sup>/g, '').replace(/θ/g, '\\\\theta ').replace(/sin/g, '\\\\sin ').replace(/cos/g, '\\\\cos ')); alert('LaTeX copied to clipboard!');" style="background: rgba(13, 148, 136, 0.15); color: var(--teal); border: 1px solid rgba(13, 148, 136, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(13, 148, 136, 0.25)'" onmouseout="this.style.background='rgba(13, 148, 136, 0.15)'">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Copy LaTeX
+            </button>
+            <button onclick="const c = this.closest('#steps-output').querySelectorAll('.step-card'); if(c.length) c[0].scrollIntoView({behavior: 'smooth', block: 'start'})" style="background: rgba(245, 158, 11, 0.15); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; font-family: 'Figtree', sans-serif; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap;" onmouseover="this.style.background='rgba(245, 158, 11, 0.25)'" onmouseout="this.style.background='rgba(245, 158, 11, 0.15)'">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> View Steps
+            </button>
+          </div>
         </div>
         <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 1.5rem;">Power Reduction Identity.</div>
         <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);">
