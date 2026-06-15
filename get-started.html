@@ -912,6 +912,7 @@
                 <div style="display: flex; flex-direction: column; align-items: center; min-width: 150px; flex-grow: 1; max-width: 250px;">
                   <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Value of x</span>
                   <input type="number" id="hyperbolic-x" value="2" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
+                  <span style="font-size: 0.75rem; color: #666; margin-top: 0.5rem; text-align: center; line-height: 1.2;">x is a dimensionless real value, not an angle.</span>
                 </div>
 
                 <!-- Decimal Places -->
@@ -967,9 +968,18 @@
                   </select>
                 </div>
 
-                <!-- Test Angle θ (Degrees) -->
+                <!-- Angle Unit -->
                 <div style="display: flex; flex-direction: column; align-items: center; min-width: 120px; flex-grow: 1; max-width: 200px;">
-                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Test Angle θ (Degrees)</span>
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Angle Unit</span>
+                  <select id="mae-unit" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-family: 'Figtree', sans-serif; font-size: 1.05rem; background: var(--bg); color: var(--navy); font-weight: 600; outline: none; height: 44px;" onchange="document.getElementById('mae-theta-label').innerText = 'Test Angle θ (' + (this.value === 'deg' ? 'Degrees' : 'Radians') + ')'">
+                    <option value="deg" selected>Degrees</option>
+                    <option value="rad">Radians</option>
+                  </select>
+                </div>
+
+                <!-- Test Angle θ -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 120px; flex-grow: 1; max-width: 200px;">
+                  <span id="mae-theta-label" style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Test Angle θ (Degrees)</span>
                   <input type="number" id="mae-theta" value="30" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
                 </div>
 
@@ -1007,9 +1017,18 @@
                   </select>
                 </div>
 
-                <!-- Test Angle θ (Degrees) -->
+                <!-- Angle Unit -->
                 <div style="display: flex; flex-direction: column; align-items: center; min-width: 120px; flex-grow: 1; max-width: 200px;">
-                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Test Angle θ (Degrees)</span>
+                  <span style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Angle Unit</span>
+                  <select id="pr-unit" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; font-family: 'Figtree', sans-serif; font-size: 1.05rem; background: var(--bg); color: var(--navy); font-weight: 600; outline: none; height: 44px;" onchange="document.getElementById('pr-theta-label').innerText = 'Test Angle θ (' + (this.value === 'deg' ? 'Degrees' : 'Radians') + ')'">
+                    <option value="deg" selected>Degrees</option>
+                    <option value="rad">Radians</option>
+                  </select>
+                </div>
+
+                <!-- Test Angle θ -->
+                <div style="display: flex; flex-direction: column; align-items: center; min-width: 120px; flex-grow: 1; max-width: 200px;">
+                  <span id="pr-theta-label" style="font-weight: 600; color: var(--navy); margin-bottom: 0.5rem; font-size: 0.95rem;">Test Angle θ (Degrees)</span>
                   <input type="number" id="pr-theta" value="30" step="any" style="width: 100%; padding: 0.6rem; border: 1px solid var(--border); border-radius: 8px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; background: var(--bg); color: var(--navy); font-weight: 600;">
                 </div>
 
