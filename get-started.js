@@ -1,10 +1,10 @@
 // Global Helper Functions
 function formatCurrency(value) {
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 2
-    }).format(value);
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2
+  }).format(value);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -853,27 +853,27 @@ function isZeroFrac(a) { return a.n === 0; }
 function formatFrac(a) { return a.d === 1 ? `${a.n}` : `${a.n}/${a.d}`; }
 
 function floatToFrac(x, tolerance = 1.0E-6) {
-    if (Math.abs(x) < 1e-9) return makeFrac(0, 1);
-    let sign = x < 0 ? -1 : 1;
-    x = Math.abs(x);
-    let h1 = 1, h2 = 0, k1 = 0, k2 = 1;
-    let b = x;
-    do {
-        let a = Math.floor(b);
-        let aux = h1; h1 = a * h1 + h2; h2 = aux;
-        aux = k1; k1 = a * k1 + k2; k2 = aux;
-        b = 1 / (b - a);
-    } while (Math.abs(x - h1 / k1) > x * tolerance && k1 < 100000);
-    return makeFrac(sign * h1, k1);
+  if (Math.abs(x) < 1e-9) return makeFrac(0, 1);
+  let sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+  let h1 = 1, h2 = 0, k1 = 0, k2 = 1;
+  let b = x;
+  do {
+    let a = Math.floor(b);
+    let aux = h1; h1 = a * h1 + h2; h2 = aux;
+    aux = k1; k1 = a * k1 + k2; k2 = aux;
+    b = 1 / (b - a);
+  } while (Math.abs(x - h1 / k1) > x * tolerance && k1 < 100000);
+  return makeFrac(sign * h1, k1);
 }
 
 function floatToFractionString(val) {
-    if (Math.abs(val) < 1e-9) return "0";
-    let f = floatToFrac(val);
-    if (f.d > 10000) {
-        return (Math.round(val * 10000) / 10000).toString();
-    }
-    return formatFrac(f);
+  if (Math.abs(val) < 1e-9) return "0";
+  let f = floatToFrac(val);
+  if (f.d > 10000) {
+    return (Math.round(val * 10000) / 10000).toString();
+  }
+  return formatFrac(f);
 }
 
 // Generic Matrix Math Helpers
@@ -1071,12 +1071,12 @@ function luSolve(A, b) {
   let perm = A.map((_, i) => i);
   for (let k = 0; k < n; k++) {
     let maxVal = Math.abs(LU[k][k]), maxRow = k;
-    for (let i = k+1; i < n; i++) if (Math.abs(LU[i][k]) > maxVal) { maxVal = Math.abs(LU[i][k]); maxRow = i; }
-    if (maxRow !== k) { [LU[k], LU[maxRow]] = [LU[maxRow], LU[k]]; [perm[k], perm[maxRow]] = [perm[maxRow], perm[k]]; }
+    for (let i = k + 1; i < n; i++) if (Math.abs(LU[i][k]) > maxVal) { maxVal = Math.abs(LU[i][k]); maxRow = i; }
+    if (maxRow !== k) { [LU[k], LU[maxRow]] = [LU[maxRow], LU[k]];[perm[k], perm[maxRow]] = [perm[maxRow], perm[k]]; }
     if (Math.abs(LU[k][k]) < 1e-14) { LU[k][k] = 1e-14; }
-    for (let i = k+1; i < n; i++) {
+    for (let i = k + 1; i < n; i++) {
       LU[i][k] /= LU[k][k];
-      for (let j = k+1; j < n; j++) LU[i][j] -= LU[i][k] * LU[k][j];
+      for (let j = k + 1; j < n; j++) LU[i][j] -= LU[i][k] * LU[k][j];
     }
   }
   // Apply permutation to b
@@ -1086,9 +1086,9 @@ function luSolve(A, b) {
   for (let i = 0; i < n; i++) { y[i] = pb[i]; for (let j = 0; j < i; j++) y[i] -= LU[i][j] * y[j]; }
   // Backward substitution
   let x = new Array(n).fill(0);
-  for (let i = n-1; i >= 0; i--) {
+  for (let i = n - 1; i >= 0; i--) {
     x[i] = y[i];
-    for (let j = i+1; j < n; j++) x[i] -= LU[i][j] * x[j];
+    for (let j = i + 1; j < n; j++) x[i] -= LU[i][j] * x[j];
     x[i] /= LU[i][i];
   }
   return x;
@@ -1100,14 +1100,14 @@ function inverseIteration(A, mu, maxIter) {
   maxIter = maxIter || 200;
   // (A - mu*I)
   let As = A.map((r, i) => r.map((v, j) => i === j ? v - mu : v));
-  let v = Array.from({length: n}, (_, i) => i === 0 ? 1 : (Math.sin(i * 1.3) + 0.5));
+  let v = Array.from({ length: n }, (_, i) => i === 0 ? 1 : (Math.sin(i * 1.3) + 0.5));
   let norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
   v = v.map(x => x / norm);
   let lam = mu;
   for (let iter = 0; iter < maxIter; iter++) {
     let w;
     try { w = luSolve(As, v); }
-    catch(e) { break; }
+    catch (e) { break; }
     let wNorm = Math.sqrt(w.reduce((s, x) => s + x * x, 0));
     if (wNorm < 1e-14 || !isFinite(wNorm)) break;
     v = w.map(x => x / wNorm);
@@ -1189,7 +1189,7 @@ function qrEigenvalues(A) {
     // Group by proximity and keep one per group
     let grouped = [evals[0]];
     for (let i = 1; i < evals.length; i++) {
-      if (Math.abs(evals[i] - grouped[grouped.length-1]) > 0.05) grouped.push(evals[i]);
+      if (Math.abs(evals[i] - grouped[grouped.length - 1]) > 0.05) grouped.push(evals[i]);
     }
     evals = grouped.slice(0, n);
   }
@@ -1426,7 +1426,7 @@ function calculateMatrix() {
     calculateBinomial();
     return;
   }
-  
+
   const output = document.getElementById('steps-output');
   output.innerHTML = '';
   output.classList.add('active');
@@ -2132,18 +2132,18 @@ function calculateEigenAnalysis() {
   }
 
   let uniqueEvals = Object.keys(eigenBasis).map(parseFloat);
-  
+
   uniqueEvals.forEach((lam, idx) => {
     let basis = eigenBasis[lam.toString()];
     if (!basis || basis.length === 0) {
-      addTextStep(`3.${idx+1} Eigenvectors for λ = ${lam}`, "<div style='color:red'>Could not compute eigenvector basis.</div>");
+      addTextStep(`3.${idx + 1} Eigenvectors for λ = ${lam}`, "<div style='color:red'>Could not compute eigenvector basis.</div>");
     } else {
       let vectorHtml = "";
       basis.forEach((v, vidx) => {
         let colMatrix = v.map(val => [val]);
         vectorHtml += `<div style="display:inline-block; margin: 0 1rem; vertical-align:middle;">${formatMatrix(colMatrix)}</div>`;
       });
-      addTextStep(`3.${idx+1} Find Eigenvectors for λ = ${lam}`, `We solve the system <b>(A - λI)v = 0</b> for λ = ${lam}. The basis vector(s) are:<br><div style="margin-top:1rem; text-align:center; display:flex; justify-content:center; align-items:center;">${vectorHtml}</div>`);
+      addTextStep(`3.${idx + 1} Find Eigenvectors for λ = ${lam}`, `We solve the system <b>(A - λI)v = 0</b> for λ = ${lam}. The basis vector(s) are:<br><div style="margin-top:1rem; text-align:center; display:flex; justify-content:center; align-items:center;">${vectorHtml}</div>`);
     }
   });
 
@@ -2963,16 +2963,16 @@ function evaluateMathDerivative(expr, xVal) {
 function normalizeExpression(expr) {
   let normalized = expr.replace(/\s+/g, ''); // remove spaces
   normalized = normalized.toLowerCase();
-  
+
   // Replace digit followed by variable or parenthesis or function
   normalized = normalized.replace(/(\d)(?=[a-z\(])/g, '$1*');
-  
+
   // Replace variable (x or y) followed by variable or parenthesis or function
   normalized = normalized.replace(/([xy])(?=[a-z\(])/g, '$1*');
-  
+
   // Replace closing parenthesis followed by digit, variable, or opening parenthesis
   normalized = normalized.replace(/(\))(?=[a-z0-9\(])/g, '$1*');
-  
+
   return normalized;
 }
 
@@ -3011,7 +3011,7 @@ function splitByOperator(str, op) {
     let char = str[i];
     if (char === '(') parenDepth++;
     if (char === ')') parenDepth--;
-    
+
     if (char === op && parenDepth === 0) {
       parts.push(current.trim());
       current = '';
@@ -3028,21 +3028,21 @@ function splitByOperator(str, op) {
 function evaluateMultivariateMath(expr, xVal, yVal) {
   let jsExpr = expr.toLowerCase().replace(/\s+/g, '');
   jsExpr = normalizeExpression(jsExpr);
-  
+
   jsExpr = jsExpr.replace(/\bsin\b/g, 'Math.sin')
-                 .replace(/\bcos\b/g, 'Math.cos')
-                 .replace(/\btan\b/g, 'Math.tan')
-                 .replace(/\bexp\b/g, 'Math.exp')
-                 .replace(/\bln\b/g, 'Math.log')
-                 .replace(/\bpi\b/g, 'Math.PI');
-                 
+    .replace(/\bcos\b/g, 'Math.cos')
+    .replace(/\btan\b/g, 'Math.tan')
+    .replace(/\bexp\b/g, 'Math.exp')
+    .replace(/\bln\b/g, 'Math.log')
+    .replace(/\bpi\b/g, 'Math.PI');
+
   jsExpr = jsExpr.replace(/\be\^(x|y|\((.*?)\))/g, (match, p1, p2) => {
     let inner = p2 || p1;
     return `Math.exp(${inner})`;
   });
-  
+
   jsExpr = convertPowersToMathPow(jsExpr);
-  
+
   try {
     const fn = new Function('x', 'y', `with(Math) { return ${jsExpr}; }`);
     let result = fn(xVal, yVal);
@@ -3058,7 +3058,7 @@ function validateMultivariateFunction(expr) {
   if (expr === '') {
     return { isValid: false, error: "Function expression cannot be empty." };
   }
-  
+
   let clean = expr.replace(/\s+/g, '');
   if (/[\+\-\*\/]{2,}/.test(clean)) {
     if (/\*{2,}/.test(clean)) {
@@ -3066,7 +3066,7 @@ function validateMultivariateFunction(expr) {
     }
     return { isValid: false, error: "Invalid operator syntax: consecutive operators." };
   }
-  
+
   let depth = 0;
   for (let i = 0; i < expr.length; i++) {
     if (expr[i] === '(') depth++;
@@ -3078,14 +3078,14 @@ function validateMultivariateFunction(expr) {
   if (depth !== 0) {
     return { isValid: false, error: "Unmatched parentheses: missing closing parenthesis ')'." };
   }
-  
+
   if (/[\+\-\*\/^]$/.test(clean)) {
     return { isValid: false, error: "Expression cannot end with an operator." };
   }
   if (/^[\*\/^]/.test(clean)) {
     return { isValid: false, error: "Expression cannot start with this operator." };
   }
-  
+
   let stripped = clean.toLowerCase()
     .replace(/sin|cos|tan|exp|ln/g, '')
     .replace(/[a-z]/g, (match) => {
@@ -3096,30 +3096,30 @@ function validateMultivariateFunction(expr) {
   if (stripped.length > 0) {
     return { isValid: false, error: `Invalid symbol(s) or variable(s) found in expression: '${stripped}'. Only variables 'x' and 'y' are allowed.` };
   }
-  
+
   let testVal = evaluateMultivariateMath(expr, 1.0, 1.0);
   if (isNaN(testVal)) {
     return { isValid: false, error: "Invalid function syntax. Please check for unmatched parentheses, missing brackets, or dangling operators." };
   }
-  
+
   return { isValid: true };
 }
 
 function formatSuperscript(expr) {
   if (!expr) return '';
   return expr.replace(/\^2\b/g, '²')
-             .replace(/\^3\b/g, '³')
-             .replace(/\^4\b/g, '⁴')
-             .replace(/\^5\b/g, '⁵')
-             .replace(/\^6\b/g, '⁶')
-             .replace(/\^7\b/g, '⁷')
-             .replace(/\^8\b/g, '⁸')
-             .replace(/\^9\b/g, '⁹')
-             .replace(/\^n\b/g, 'ⁿ')
-             .replace(/\^(\d+)/g, (match, p) => {
-                const map = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹' };
-                return p.split('').map(c => map[c] || c).join('');
-             });
+    .replace(/\^3\b/g, '³')
+    .replace(/\^4\b/g, '⁴')
+    .replace(/\^5\b/g, '⁵')
+    .replace(/\^6\b/g, '⁶')
+    .replace(/\^7\b/g, '⁷')
+    .replace(/\^8\b/g, '⁸')
+    .replace(/\^9\b/g, '⁹')
+    .replace(/\^n\b/g, 'ⁿ')
+    .replace(/\^(\d+)/g, (match, p) => {
+      const map = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+      return p.split('').map(c => map[c] || c).join('');
+    });
 }
 
 function formatMathRich(expr) {
@@ -3143,27 +3143,27 @@ function simplifyTermMultivariate(term) {
     isNegative = true;
     term = term.substring(1).trim();
   }
-  
+
   term = removeOuterParens(term);
-  
+
   if (term === '0') return '0';
   if (term === '1') return isNegative ? '-1' : '1';
-  
+
   let factors = splitByOperator(term, '*');
   if (factors.length <= 1) {
     return isNegative ? '-' + term : term;
   }
-  
+
   let coef = 1;
   let xPower = 0;
   let yPower = 0;
   let otherFactors = [];
-  
+
   for (let factor of factors) {
     factor = removeOuterParens(factor);
     if (factor === '0') return '0';
     if (factor === '1') continue;
-    
+
     let factorIsNegative = false;
     if (factor.startsWith('-')) {
       factorIsNegative = true;
@@ -3172,40 +3172,40 @@ function simplifyTermMultivariate(term) {
     if (factor.startsWith('+')) {
       factor = factor.substring(1).trim();
     }
-    
+
     if (/^[+-]?\d+(?:\.\d+)?$/.test(factor)) {
       let val = parseFloat(factor);
       if (factorIsNegative) val = -val;
       coef *= val;
       continue;
     }
-    
+
     if (factorIsNegative) {
       isNegative = !isNegative;
     }
-    
+
     let xMatch = factor.match(/^x\^([+-]?\d+(?:\.\d+)?)$/) || (factor === 'x' ? ['x', '1'] : null);
     if (xMatch) {
       xPower += parseFloat(xMatch[1]);
       continue;
     }
-    
+
     let yMatch = factor.match(/^y\^([+-]?\d+(?:\.\d+)?)$/) || (factor === 'y' ? ['y', '1'] : null);
     if (yMatch) {
       yPower += parseFloat(yMatch[1]);
       continue;
     }
-    
+
     otherFactors.push(factor);
   }
-  
+
   const decimalsEl = document.getElementById('partial-diff-decimals');
   let decimals = decimalsEl ? parseInt(decimalsEl.value) : 4;
   if (isNaN(decimals) || decimals < 0) decimals = 4;
   coef = parseFloat(coef.toFixed(decimals));
 
   if (isNegative) coef = -coef;
-  
+
   let parts = [];
   if (coef !== 1 || (xPower === 0 && yPower === 0 && otherFactors.length === 0)) {
     if (coef === -1 && (xPower > 0 || yPower > 0 || otherFactors.length > 0)) {
@@ -3214,21 +3214,21 @@ function simplifyTermMultivariate(term) {
       parts.push(coef.toString());
     }
   }
-  
+
   if (xPower > 0) {
     if (xPower === 1) parts.push('x');
     else parts.push(`x^${xPower}`);
   }
-  
+
   if (yPower > 0) {
     if (yPower === 1) parts.push('y');
     else parts.push(`y^${yPower}`);
   }
-  
+
   for (let other of otherFactors) {
     parts.push(other);
   }
-  
+
   if (parts[0] === '-') {
     if (parts.length > 1) {
       parts[1] = '-' + parts[1];
@@ -3237,16 +3237,16 @@ function simplifyTermMultivariate(term) {
       return '-1';
     }
   }
-  
+
   return parts.join('*');
 }
 
 function simplifySymbolicMultivariate(expr) {
   expr = expr.replace(/\s+/g, '');
   if (!expr) return '0';
-  
+
   expr = removeOuterParens(expr);
-  
+
   // 1. Check for addition/subtraction at parent depth 0
   let terms = [];
   let current = '';
@@ -3263,7 +3263,7 @@ function simplifySymbolicMultivariate(expr) {
     }
   }
   if (current) terms.push(current);
-  
+
   if (terms.length > 1) {
     let simplifiedTerms = terms.map(t => {
       let sign = '';
@@ -3280,10 +3280,10 @@ function simplifySymbolicMultivariate(expr) {
       }
       return sign + simplified;
     });
-    
+
     simplifiedTerms = simplifiedTerms.filter(t => t !== '');
     if (simplifiedTerms.length === 0) return '0';
-    
+
     let merged = simplifiedTerms[0];
     for (let i = 1; i < simplifiedTerms.length; i++) {
       let t = simplifiedTerms[i];
@@ -3295,7 +3295,7 @@ function simplifySymbolicMultivariate(expr) {
     }
     return merged;
   }
-  
+
   // 2. Check for division at parent depth 0
   let divParts = splitByOperator(expr, '/');
   if (divParts.length > 1) {
@@ -3305,7 +3305,7 @@ function simplifySymbolicMultivariate(expr) {
     if (den === '1') return num;
     return `(${num})/(${den})`;
   }
-  
+
   // 3. Check for multiplication at parent depth 0
   let mulParts = splitByOperator(expr, '*');
   if (mulParts.length > 1) {
@@ -3313,22 +3313,22 @@ function simplifySymbolicMultivariate(expr) {
     if (simplifiedFactors.includes('0')) return '0';
     simplifiedFactors = simplifiedFactors.filter(f => f !== '1');
     if (simplifiedFactors.length === 0) return '1';
-    
+
     let termResult = simplifyTermMultivariate(simplifiedFactors.join('*'));
     return termResult;
   }
-  
+
   // 4. Basic factors
   expr = removeOuterParens(expr);
-  
+
   let isNegative = false;
   if (expr.startsWith('-')) {
     isNegative = true;
     expr = expr.substring(1).trim();
   }
-  
+
   let result = expr;
-  
+
   if (/^\d+(?:\.\d+)?$/.test(expr)) {
     const decimalsEl = document.getElementById('partial-diff-decimals');
     let decimals = decimalsEl ? parseInt(decimalsEl.value) : 4;
@@ -3337,32 +3337,32 @@ function simplifySymbolicMultivariate(expr) {
     numVal = parseFloat(numVal.toFixed(decimals));
     result = numVal.toString();
   }
-  
+
   return isNegative ? '-' + result : result;
 }
 
 function differentiateTermMultivariate(term, wrt) {
   term = term.trim();
   if (term === '') return '0';
-  
+
   if (term.startsWith('+')) {
     term = term.substring(1).trim();
   }
-  
+
   let isNegative = false;
   if (term.startsWith('-')) {
     isNegative = true;
     term = term.substring(1).trim();
   }
-  
+
   term = removeOuterParens(term);
-  
+
   let result = '0';
-  
+
   if (!hasVariable(term, wrt)) {
     return '0';
   }
-  
+
   let divParts = splitByOperator(term, '/');
   if (divParts.length > 1) {
     let num = divParts[0];
@@ -3373,7 +3373,7 @@ function differentiateTermMultivariate(term, wrt) {
     if (isNegative) return `-(${result})`;
     return result;
   }
-  
+
   let mulParts = splitByOperator(term, '*');
   if (mulParts.length > 1) {
     let left = mulParts[0];
@@ -3384,7 +3384,7 @@ function differentiateTermMultivariate(term, wrt) {
     if (isNegative) return `-(${result})`;
     return result;
   }
-  
+
   if (term === wrt) {
     result = '1';
   } else {
@@ -3393,7 +3393,7 @@ function differentiateTermMultivariate(term, wrt) {
       let p = parseFloat(powerMatch[2]);
       if (p === 1) result = '1';
       else if (p === 2) result = `2*${wrt}`;
-      else result = `${p}*${wrt}^${p-1}`;
+      else result = `${p}*${wrt}^${p - 1}`;
     } else {
       let sinMatch = term.match(/^sin\((.*)\)$/);
       if (sinMatch) {
@@ -3433,7 +3433,7 @@ function differentiateTermMultivariate(term, wrt) {
       }
     }
   }
-  
+
   if (isNegative) return `-${result}`;
   return result;
 }
@@ -3441,16 +3441,16 @@ function differentiateTermMultivariate(term, wrt) {
 function differentiateSymbolicMultivariate(expr, wrt) {
   expr = expr.replace(/\s+/g, '');
   if (!expr) return '0';
-  
+
   let terms = [];
   let current = '';
   let parenDepth = 0;
-  
+
   for (let i = 0; i < expr.length; i++) {
     let char = expr[i];
     if (char === '(') parenDepth++;
     if (char === ')') parenDepth--;
-    
+
     if ((char === '+' || char === '-') && parenDepth === 0) {
       if (current) terms.push(current);
       current = char;
@@ -3459,16 +3459,16 @@ function differentiateSymbolicMultivariate(expr, wrt) {
     }
   }
   if (current) terms.push(current);
-  
+
   let derivedTerms = terms.map(term => {
     let d = differentiateTermMultivariate(term, wrt);
     return simplifySymbolicMultivariate(d);
   });
-  
+
   let merged = '';
   for (let term of derivedTerms) {
     if (term === '0' || term === '') continue;
-    
+
     if (merged.length > 0) {
       if (term.startsWith('-')) {
         merged += ' - ' + term.substring(1);
@@ -3479,7 +3479,7 @@ function differentiateSymbolicMultivariate(expr, wrt) {
       merged += term;
     }
   }
-  
+
   if (!merged) return '0';
   return simplifySymbolicMultivariate(merged);
 }
@@ -3494,15 +3494,15 @@ function differentiateTermWithExplanation(term, wrt) {
     isNegative = true;
     termClean = termClean.substring(1).trim();
   }
-  
+
   let cleanTerm = formatMathRich(term);
   let wrtUpper = wrt.toUpperCase();
   let otherVar = wrt === 'x' ? 'y' : 'x';
-  
+
   let resultVal = differentiateTermMultivariate(termClean, wrt);
   let resultValClean = simplifySymbolicMultivariate(resultVal);
   let finalResult = isNegative ? simplifySymbolicMultivariate(`-(${resultValClean})`) : resultValClean;
-  
+
   if (!hasVariable(termClean, wrt)) {
     return {
       term: cleanTerm,
@@ -3511,7 +3511,7 @@ function differentiateTermWithExplanation(term, wrt) {
       derivative: '0'
     };
   }
-  
+
   if (termClean === wrt) {
     let deriv = isNegative ? '-1' : '1';
     return {
@@ -3521,7 +3521,7 @@ function differentiateTermWithExplanation(term, wrt) {
       derivative: deriv
     };
   }
-  
+
   let mulParts = splitByOperator(termClean, '*');
   if (mulParts.length > 1) {
     let constantFactors = [];
@@ -3533,24 +3533,24 @@ function differentiateTermWithExplanation(term, wrt) {
         variableFactors.push(factor);
       }
     }
-    
+
     if (constantFactors.length > 0 && variableFactors.length > 0) {
       let constantPart = constantFactors.join('*');
       let variablePart = variableFactors.join('*');
-      
+
       let dVarPart = differentiateSymbolicMultivariate(variablePart, wrt);
       let dVarPartClean = simplifySymbolicMultivariate(dVarPart);
-      
+
       let constantPartClean = formatMathRich(constantPart);
       let variablePartClean = formatMathRich(variablePart);
       let dVarPartCleanFormat = formatMathRich(dVarPartClean);
       let finalResultFormat = formatMathRich(finalResult);
-      
+
       let stepExplanation = `We factor out the constant multiplier <code>${constantPartClean}</code> (treating <strong>${otherVar}</strong> as constant) and differentiate <code>${variablePartClean}</code> with respect to <strong>${wrt}</strong>:
                              <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.25rem; display: block;">∂/∂${wrt}(${formatMathRich(termClean)}) = ${constantPartClean} · [ ∂/∂${wrt}(${variablePartClean}) ]</span>
                              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${constantPartClean} · (${dVarPartCleanFormat})</span>
                              <span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block; color: var(--teal);">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${finalResultFormat}</span>`;
-      
+
       return {
         term: cleanTerm,
         explanation: stepExplanation,
@@ -3558,7 +3558,7 @@ function differentiateTermWithExplanation(term, wrt) {
       };
     }
   }
-  
+
   let powerMatch = termClean.match(/^([xy])\^([+-]?\d+(?:\.\d+)?)$/);
   if (powerMatch && powerMatch[1] === wrt) {
     let p = parseFloat(powerMatch[2]);
@@ -3571,7 +3571,7 @@ function differentiateTermWithExplanation(term, wrt) {
       derivative: finalResult
     };
   }
-  
+
   let fnMatch = termClean.match(/^(sin|cos|exp|ln|tan)\((.*)\)$/) || termClean.match(/^e\^(.*)$/);
   if (fnMatch) {
     let fnName = fnMatch[1] || 'exp';
@@ -3580,17 +3580,17 @@ function differentiateTermWithExplanation(term, wrt) {
       fnName = 'e^';
       arg = termClean.substring(2);
     }
-    
+
     let dArg = differentiateSymbolicMultivariate(arg, wrt);
     let dArgClean = simplifySymbolicMultivariate(dArg);
-    
+
     let argClean = formatMathRich(arg);
     let dArgCleanFormat = formatMathRich(dArgClean);
     let finalResultFormat = formatMathRich(finalResult);
-    
+
     let stepExplanation = `Using the chain rule, we differentiate the outer function <code>${fnName}</code> and multiply by the derivative of the inner argument <code>${argClean}</code>:
                            <br><span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; margin-top: 0.25rem; display: block;">∂/∂${wrt}(${formatMathRich(termClean)}) = derivative_of_outer · ∂/∂${wrt}(${argClean})</span>`;
-    
+
     if (fnName === 'sin') {
       stepExplanation += `<span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= cos(${argClean}) · (${dArgCleanFormat})</span>`;
     } else if (fnName === 'cos') {
@@ -3602,16 +3602,16 @@ function differentiateTermWithExplanation(term, wrt) {
     } else if (fnName === 'tan') {
       stepExplanation += `<span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= (1 / cos(${argClean})²) · (${dArgCleanFormat})</span>`;
     }
-    
+
     stepExplanation += `<span style="font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; display: block; color: var(--teal);">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${finalResultFormat}</span>`;
-    
+
     return {
       term: cleanTerm,
       explanation: stepExplanation,
       derivative: finalResult
     };
   }
-  
+
   let finalResultFormat = formatMathRich(finalResult);
   return {
     term: cleanTerm,
@@ -3625,35 +3625,35 @@ function findCriticalPoints(dfdx, dfdy) {
   let c1 = evaluateMultivariateMath(dfdx, 0, 0);
   let a1 = evaluateMultivariateMath(dfdx, 1, 0) - c1;
   let b1 = evaluateMultivariateMath(dfdx, 0, 1) - c1;
-  
+
   let dfdx_lin = (
     Math.abs(evaluateMultivariateMath(dfdx, 2, 0) - (2 * a1 + c1)) < 1e-6 &&
     Math.abs(evaluateMultivariateMath(dfdx, 0, 2) - (2 * b1 + c1)) < 1e-6 &&
     Math.abs(evaluateMultivariateMath(dfdx, 1, 1) - (a1 + b1 + c1)) < 1e-6
   );
-  
+
   let c2 = evaluateMultivariateMath(dfdy, 0, 0);
   let a2 = evaluateMultivariateMath(dfdy, 1, 0) - c2;
   let b2 = evaluateMultivariateMath(dfdy, 0, 1) - c2;
-  
+
   let dfdy_lin = (
     Math.abs(evaluateMultivariateMath(dfdy, 2, 0) - (2 * a2 + c2)) < 1e-6 &&
     Math.abs(evaluateMultivariateMath(dfdy, 0, 2) - (2 * b2 + c2)) < 1e-6 &&
     Math.abs(evaluateMultivariateMath(dfdy, 1, 1) - (a2 + b2 + c2)) < 1e-6
   );
-  
+
   if (dfdx_lin && dfdy_lin) {
     let det = a1 * b2 - b1 * a2;
     if (Math.abs(det) > 1e-9) {
       let x = (-c1 * b2 - b1 * (-c2)) / det;
       let y = (a1 * (-c2) - (-c1) * a2) / det;
-      
+
       let xStr = x.toFixed(4);
       let yStr = y.toFixed(4);
-      
+
       let eq1Str = `${a1 !== 0 ? a1 + 'x' : ''}${b1 > 0 ? ' + ' + b1 + 'y' : b1 < 0 ? ' - ' + Math.abs(b1) + 'y' : ''} = ${-c1}`;
       let eq2Str = `${a2 !== 0 ? a2 + 'x' : ''}${b2 > 0 ? ' + ' + b2 + 'y' : b2 < 0 ? ' - ' + Math.abs(b2) + 'y' : ''} = ${-c2}`;
-      
+
       return {
         type: 'linear',
         points: [{ x, y }],
@@ -3666,7 +3666,7 @@ function findCriticalPoints(dfdx, dfdy) {
       };
     }
   }
-  
+
   // Case C: dfdx = a1*x^2 + b1*y, dfdy = b2*y^2 + a2*x
   let c1_q = evaluateMultivariateMath(dfdx, 0, 0);
   let a1_q = evaluateMultivariateMath(dfdx, 1, 0);
@@ -3677,7 +3677,7 @@ function findCriticalPoints(dfdx, dfdy) {
     Math.abs(evaluateMultivariateMath(dfdx, 0, 2) - 2 * b1_q) < 1e-6 &&
     Math.abs(evaluateMultivariateMath(dfdx, 1, 1) - (a1_q + b1_q)) < 1e-6
   );
-  
+
   let c2_q = evaluateMultivariateMath(dfdy, 0, 0);
   let a2_q = evaluateMultivariateMath(dfdy, 1, 0);
   let b2_q = evaluateMultivariateMath(dfdy, 0, 1);
@@ -3687,15 +3687,15 @@ function findCriticalPoints(dfdx, dfdy) {
     Math.abs(evaluateMultivariateMath(dfdy, 0, 2) - 4 * b2_q) < 1e-6 &&
     Math.abs(evaluateMultivariateMath(dfdy, 1, 1) - (a2_q + b2_q)) < 1e-6
   );
-  
+
   if (dfdx_caseC && dfdy_caseC && Math.abs(b1_q) > 1e-9 && Math.abs(b2_q) > 1e-9 && Math.abs(a1_q) > 1e-9) {
     let ratio = -a2_q * b1_q * b1_q / (b2_q * a1_q * a1_q);
     let x2 = Math.cbrt(ratio);
     let y2 = (-a1_q / b1_q) * x2 * x2;
-    
+
     let x2Str = x2.toFixed(4);
     let y2Str = y2.toFixed(4);
-    
+
     return {
       type: 'nonlinear_poly',
       points: [{ x: 0, y: 0 }, { x: x2, y: y2 }],
@@ -3711,10 +3711,10 @@ function findCriticalPoints(dfdx, dfdy) {
                 <br>Thus, we obtain two critical points: <strong>(0, 0)</strong> and <strong>(${x2Str}, ${y2Str})</strong>.`
     };
   }
-  
+
   // Numerical Newton-Raphson 2D Fallback
   let pts = [];
-  let guesses = [[-2,-2], [-2,2], [2,-2], [2,2], [0,0], [1,1], [-1,-1], [0.5,0.5], [-0.5,-0.5], [3,3], [-3,-3]];
+  let guesses = [[-2, -2], [-2, 2], [2, -2], [2, 2], [0, 0], [1, 1], [-1, -1], [0.5, 0.5], [-0.5, -0.5], [3, 3], [-3, -3]];
   for (let g of guesses) {
     let x = g[0], y = g[1];
     let converged = false;
@@ -3725,28 +3725,28 @@ function findCriticalPoints(dfdx, dfdy) {
         converged = true;
         break;
       }
-      
+
       let h = 1e-6;
       let fxx = (evaluateMultivariateMath(dfdx, x + h, y) - fx) / h;
       let fxy = (evaluateMultivariateMath(dfdx, x, y + h) - fx) / h;
       let fyx = (evaluateMultivariateMath(dfdy, x + h, y) - fy) / h;
       let fyy = (evaluateMultivariateMath(dfdy, x, y + h) - fy) / h;
-      
+
       let det = fxx * fyy - fxy * fyx;
       if (Math.abs(det) < 1e-10) break;
-      
+
       let dx = (-fx * fyy - fxy * (-fy)) / det;
       let dy = (fxx * (-fy) - (-fx) * fyx) / det;
-      
+
       x += dx;
       y += dy;
-      
+
       if (Math.abs(dx) < 1e-11 && Math.abs(dy) < 1e-11) {
         converged = true;
         break;
       }
     }
-    
+
     if (converged && isFinite(x) && isFinite(y)) {
       let isUnique = true;
       for (let p of pts) {
@@ -3760,7 +3760,7 @@ function findCriticalPoints(dfdx, dfdy) {
       }
     }
   }
-  
+
   if (pts.length > 0) {
     let ptsStr = pts.map(p => `<strong>(${p.x.toFixed(4)}, ${p.y.toFixed(4)})</strong>`).join(', ');
     return {
@@ -3772,7 +3772,7 @@ function findCriticalPoints(dfdx, dfdy) {
                 <br>Solving numerically yields stationary points at: ${ptsStr}.`
     };
   }
-  
+
   return { type: 'none', points: [], details: 'Unable to solve for critical points.' };
 }
 
@@ -3891,13 +3891,13 @@ function calculatePartialDiff() {
 
   let expr = document.getElementById('partial-diff-function').value.trim();
   let decimalsValStr = document.getElementById('partial-diff-decimals').value.trim();
-  
+
   if (expr === '' || decimalsValStr === '') {
     output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
     output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
-  
+
   // Validation
   let validationResult = validateMultivariateFunction(expr);
   if (!validationResult.isValid) {
@@ -3905,7 +3905,7 @@ function calculatePartialDiff() {
     output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
-  
+
   let decimals = parseInt(decimalsValStr);
   if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
     output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
@@ -3915,7 +3915,7 @@ function calculatePartialDiff() {
 
   let stepsHtml = '';
   let stepCount = 1;
-  
+
   // Step 1: Given Function
   let richExpr = formatMathRich(expr);
   stepsHtml += `<div class="step-card">
@@ -3940,14 +3940,14 @@ function calculatePartialDiff() {
   let dfdxVal = differentiateSymbolicMultivariate(expr, 'x');
   let dfdxValClean = simplifySymbolicMultivariate(dfdxVal);
   let dfdxValCleanFormat = formatMathRich(dfdxValClean);
-  
+
   let xStepsList = xDetails.map((d, index) => {
     return `<div style="margin-bottom: 1.25rem; padding: 1rem; border-left: 3px solid var(--amber); background: var(--bg2); border-radius: 8px;">
               <strong style="color: var(--navy); display: block; margin-bottom: 0.4rem;">Term ${index + 1}: <code>${d.term}</code></strong>
               <div style="font-size: 0.95rem; color: var(--text); line-height: 1.6;">${d.explanation}</div>
             </div>`;
   }).join('');
-  
+
   stepsHtml += `<div class="step-card">
                   <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -3978,14 +3978,14 @@ function calculatePartialDiff() {
   let dfdyVal = differentiateSymbolicMultivariate(expr, 'y');
   let dfdyValClean = simplifySymbolicMultivariate(dfdyVal);
   let dfdyValCleanFormat = formatMathRich(dfdyValClean);
-  
+
   let yStepsList = yDetails.map((d, index) => {
     return `<div style="margin-bottom: 1.25rem; padding: 1rem; border-left: 3px solid var(--amber); background: var(--bg2); border-radius: 8px;">
               <strong style="color: var(--navy); display: block; margin-bottom: 0.4rem;">Term ${index + 1}: <code>${d.term}</code></strong>
               <div style="font-size: 0.95rem; color: var(--text); line-height: 1.6;">${d.explanation}</div>
             </div>`;
   }).join('');
-  
+
   stepsHtml += `<div class="step-card">
                   <div class="step-header" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="toggleStep(this)">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -4014,11 +4014,11 @@ function calculatePartialDiff() {
   let d2fdx2Val = differentiateSymbolicMultivariate(dfdxValClean, 'x');
   let d2fdx2ValClean = simplifySymbolicMultivariate(d2fdx2Val);
   let d2fdx2ValCleanFormat = formatMathRich(d2fdx2ValClean);
-  
+
   let d2fdy2Val = differentiateSymbolicMultivariate(dfdyValClean, 'y');
   let d2fdy2ValClean = simplifySymbolicMultivariate(d2fdy2Val);
   let d2fdy2ValCleanFormat = formatMathRich(d2fdy2ValClean);
-  
+
   let d2fdxdyVal = differentiateSymbolicMultivariate(dfdyValClean, 'x');
   let d2fdxdyValClean = simplifySymbolicMultivariate(d2fdxdyVal);
   let d2fdxdyValCleanFormat = formatMathRich(d2fdxdyValClean);
@@ -4205,13 +4205,13 @@ function calculateMaximaMinima() {
 
   let expr = document.getElementById('maxima-minima-function').value.trim();
   let decimalsValStr = document.getElementById('maxima-minima-decimals').value.trim();
-  
+
   if (expr === '' || decimalsValStr === '') {
     output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Missing Fields</div></div><div class="step-desc">Please ensure all calculator parameters are filled with valid entries.</div></div>`;
     output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
-  
+
   // Validation
   let validationResult = validateMultivariateFunction(expr);
   if (!validationResult.isValid) {
@@ -4219,7 +4219,7 @@ function calculateMaximaMinima() {
     output.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
-  
+
   let decimals = parseInt(decimalsValStr);
   if (isNaN(decimals) || !/^\d+$/.test(decimalsValStr) || decimals < 0 || decimals > 15) {
     output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Decimal Places</div></div><div class="step-desc">Decimal places must be an integer between 0 and 15.</div></div>`;
@@ -4229,7 +4229,7 @@ function calculateMaximaMinima() {
 
   let stepsHtml = '';
   let stepCount = 1;
-  
+
   // Step 1: Given Function
   let richExpr = formatMathRich(expr);
   stepsHtml += `<div class="step-card">
@@ -4252,7 +4252,7 @@ function calculateMaximaMinima() {
   let dfdxVal = differentiateSymbolicMultivariate(expr, 'x');
   let dfdxValClean = simplifySymbolicMultivariate(dfdxVal);
   let dfdxValCleanFormat = formatMathRich(dfdxValClean);
-  
+
   let dfdyVal = differentiateSymbolicMultivariate(expr, 'y');
   let dfdyValClean = simplifySymbolicMultivariate(dfdyVal);
   let dfdyValCleanFormat = formatMathRich(dfdyValClean);
@@ -4314,11 +4314,11 @@ function calculateMaximaMinima() {
   let d2fdx2Val = differentiateSymbolicMultivariate(dfdxValClean, 'x');
   let d2fdx2ValClean = simplifySymbolicMultivariate(d2fdx2Val);
   let d2fdx2ValCleanFormat = formatMathRich(d2fdx2ValClean);
-  
+
   let d2fdy2Val = differentiateSymbolicMultivariate(dfdyValClean, 'y');
   let d2fdy2ValClean = simplifySymbolicMultivariate(d2fdy2Val);
   let d2fdy2ValCleanFormat = formatMathRich(d2fdy2ValClean);
-  
+
   let d2fdxdyVal = differentiateSymbolicMultivariate(dfdyValClean, 'x');
   let d2fdxdyValClean = simplifySymbolicMultivariate(d2fdxdyVal);
   let d2fdxdyValCleanFormat = formatMathRich(d2fdxdyValClean);
@@ -4346,26 +4346,26 @@ function calculateMaximaMinima() {
   // Step 5 & 6 & 7: Hessian test, classification, and function values at each point
   let classifications = [];
   let detailedPointHtml = '';
-  
+
   solverResult.points.forEach((p, idx) => {
     let px = parseFloat(p.x.toFixed(decimals));
     let py = parseFloat(p.y.toFixed(decimals));
-    
+
     // Evaluate second derivatives at this point
     let r = evaluateMultivariateMath(d2fdx2ValClean, px, py);
     let t = evaluateMultivariateMath(d2fdy2ValClean, px, py);
     let s = evaluateMultivariateMath(d2fdxdyValClean, px, py);
-    
+
     let D = r * t - s * s;
     let rVal = parseFloat(r.toFixed(decimals));
     let tVal = parseFloat(t.toFixed(decimals));
     let sVal = parseFloat(s.toFixed(decimals));
     let DVal = parseFloat(D.toFixed(decimals));
-    
+
     let classification = '';
     let classDesc = '';
     let classColor = '';
-    
+
     if (DVal > 0) {
       if (rVal > 0) {
         classification = 'Local Minimum';
@@ -4385,11 +4385,11 @@ function calculateMaximaMinima() {
       classDesc = `Since <strong>D = 0</strong>, the second derivative test is inconclusive (higher-order derivatives must be examined).`;
       classColor = 'var(--muted)';
     }
-    
+
     // Evaluate function value
     let fVal = evaluateMultivariateMath(expr, px, py);
     let fValFormatted = parseFloat(fVal.toFixed(decimals)).toString();
-    
+
     classifications.push({
       point: `(${px}, ${py})`,
       D: DVal,
@@ -4400,7 +4400,7 @@ function calculateMaximaMinima() {
       value: classification.includes('Local') ? fValFormatted : 'N/A',
       color: classColor
     });
-    
+
     detailedPointHtml += `
       <div style="padding: 1.5rem; border: 1px solid var(--border); border-radius: 12px; background: var(--white); margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem;">
@@ -4697,7 +4697,7 @@ function calculateNewtonRaphson() {
             </div>
           </div>
         </div>`;
-      
+
     stepsHtml = finalResultHtml + stepsHtml;
   }
 
@@ -5173,7 +5173,7 @@ function calculateFalsePosition() {
       ys = ys.filter(y => !isNaN(y) && isFinite(y));
       let minY = ys.length > 0 ? Math.min(0, ...ys) - 2 : -10;
       let maxY = ys.length > 0 ? Math.max(0, ...ys) + 2 : 10;
-      
+
       new InteractiveGraph('false-position-interactive-graph', {
         expr: expr, root: finalXr, minX: minX, maxX: maxX, minY: minY, maxY: maxY,
         iterations: tableRows, type: 'false-position'
@@ -5641,7 +5641,7 @@ function calculateIntegration() {
       let ys = nodes.map(n => n.y).filter(y => !isNaN(y) && isFinite(y));
       let minY = ys.length > 0 ? Math.min(0, ...ys) - Math.abs(Math.min(0, ...ys)) * 0.2 - 2 : -10;
       let maxY = ys.length > 0 ? Math.max(0, ...ys) + Math.abs(Math.max(0, ...ys)) * 0.2 + 2 : 10;
-      
+
       new InteractiveGraph('integration-interactive-graph', {
         expr: expr, minX: minX, maxX: maxX, minY: minY, maxY: maxY,
         type: 'integration',
@@ -7577,8 +7577,8 @@ function renderEchelonSummaryCard(matrix, pivots) {
 
   let fullRankVal = Math.min(rows, cols);
   let isFullRank = (rank === fullRankVal);
-  let rankStatusHtml = isFullRank ? 
-    `<span style="color: #10b981; font-weight: 700;">✓ Full Rank Matrix</span>` : 
+  let rankStatusHtml = isFullRank ?
+    `<span style="color: #10b981; font-weight: 700;">✓ Full Rank Matrix</span>` :
     `<span style="color: #ea580c; font-weight: 700;">⚠️ Rank Deficient / Defective Rank</span>`;
 
   let pivotPointsText = pivots.map(p => `(${p.r + 1}, ${p.c + 1})`).join(', ');
@@ -7821,8 +7821,8 @@ function matrixToHtmlEchelon(matrix, pivotRow, pivotCol) {
     return `<div style="display: flex; gap: 1rem; justify-content: center; align-items: center; min-height: 24px;">` +
       row.map((v, c) => {
         let isPivot = (r === pivotRow && c === pivotCol);
-        let style = isPivot ? 
-          `min-width: 32px; text-align: center; display: inline-block; background: var(--amber); color: #ffffff; border-radius: 4px; padding: 2px 6px; font-weight: 700;` : 
+        let style = isPivot ?
+          `min-width: 32px; text-align: center; display: inline-block; background: var(--amber); color: #ffffff; border-radius: 4px; padding: 2px 6px; font-weight: 700;` :
           `min-width: 32px; text-align: center; display: inline-block; padding: 2px 6px;`;
         return `<span style="${style}">${formatValueSimple(v)}</span>`;
       }).join('') +
@@ -7957,7 +7957,7 @@ function renderStepsListHTML(steps) {
 
 function getMinor(matrix, r, c) {
   return matrix.filter((_, rowIdx) => rowIdx !== r)
-               .map(row => row.filter((_, colIdx) => colIdx !== c));
+    .map(row => row.filter((_, colIdx) => colIdx !== c));
 }
 
 function renderDeterminantInterpretation(det) {
@@ -8079,7 +8079,7 @@ function generateCofactorExpansionSteps(A) {
       <div style="display: flex; gap: 1.5rem; justify-content: center; align-items: center; margin: 1rem 0; font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); flex-wrap: wrap;">
         ${A[0].map((val, idx) => `
           <div style="padding: 0.5rem 1rem; border: 2px solid var(--amber); border-radius: 8px; background: var(--bg); text-align: center; min-width: 80px;">
-            a<sub>1,${idx+1}</sub> = <strong>${formatValueSimple(val)}</strong>
+            a<sub>1,${idx + 1}</sub> = <strong>${formatValueSimple(val)}</strong>
           </div>
         `).join('')}
       </div>
@@ -8102,7 +8102,7 @@ function generateCofactorExpansionSteps(A) {
       let mp1 = ma * md, mp2 = mb * mc;
       minorDetStepHtml = `
         <div style="margin-top: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem;">
-          det(M<sub>1,${j+1}</sub>) = (${formatValueSimple(ma)} × ${formatValueSimple(md)}) - (${formatValueSimple(mb)} × ${formatValueSimple(mc)})<br>
+          det(M<sub>1,${j + 1}</sub>) = (${formatValueSimple(ma)} × ${formatValueSimple(md)}) - (${formatValueSimple(mb)} × ${formatValueSimple(mc)})<br>
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= ${formatValueSimple(mp1)} - (${formatValueSimple(mp2)})<br>
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= <strong>${formatValueSimple(detVal)}</strong>
         </div>
@@ -8111,7 +8111,7 @@ function generateCofactorExpansionSteps(A) {
       // Larger minor, recursively get det
       minorDetStepHtml = `
         <div style="margin-top: 0.5rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem;">
-          det(M<sub>1,${j+1}</sub>) = <strong>${formatValueSimple(detVal)}</strong> (calculated via further cofactor expansion)
+          det(M<sub>1,${j + 1}</sub>) = <strong>${formatValueSimple(detVal)}</strong> (calculated via further cofactor expansion)
         </div>
       `;
     }
@@ -8119,10 +8119,10 @@ function generateCofactorExpansionSteps(A) {
     minorCalculationsHtml += `
       <div style="padding: 1.25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--white); margin-bottom: 1.5rem; box-sizing: border-box; box-shadow: 0 4px 6px rgba(0,0,0,0.01); width: 100%;">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
-          <span style="font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--navy); font-size: 1.05rem;">Term a<sub>1,${j+1}</sub> = ${formatValueSimple(A[0][j])}</span>
+          <span style="font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--navy); font-size: 1.05rem;">Term a<sub>1,${j + 1}</sub> = ${formatValueSimple(A[0][j])}</span>
           <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: rgba(59, 130, 246, 0.1); color: #3b82f6;">Blue: Minor Calculation</span>
         </div>
-        <div class="step-desc" style="font-size: 0.9rem; margin-bottom: 0.5rem;">Remove **Row 1** and **Column ${j+1}** to find the minor matrix **M<sub>1,${j+1}</sub>**:</div>
+        <div class="step-desc" style="font-size: 0.9rem; margin-bottom: 0.5rem;">Remove **Row 1** and **Column ${j + 1}** to find the minor matrix **M<sub>1,${j + 1}</sub>**:</div>
         <div style="text-align: center; margin: 0.75rem 0;">
           ${matrixToHtml(sub)}
         </div>
@@ -8180,10 +8180,10 @@ function generateCofactorExpansionSteps(A) {
       <div class="step-desc" style="margin-bottom: 0.5rem;">For expanding along Row 1, the sign multipliers are:</div>
       <div style="display: flex; flex-direction: column; gap: 0.4rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; color: var(--navy); padding-left: 1rem; border-left: 2px solid var(--amber);">
         ${A[0].map((val, idx) => {
-          let s = (idx % 2 === 0) ? 1 : -1;
-          let sChar = s === 1 ? "+" : "-";
-          return `<div>Term a<sub>1,${idx+1}</sub> = ${formatValueSimple(val)} &rarr; Sign multiplier: (-1)<sup>1+${idx+1}</sup> = <strong>${sChar}1</strong></div>`;
-        }).join('')}
+      let s = (idx % 2 === 0) ? 1 : -1;
+      let sChar = s === 1 ? "+" : "-";
+      return `<div>Term a<sub>1,${idx + 1}</sub> = ${formatValueSimple(val)} &rarr; Sign multiplier: (-1)<sup>1+${idx + 1}</sup> = <strong>${sChar}1</strong></div>`;
+    }).join('')}
       </div>
     `
   });
@@ -8200,8 +8200,8 @@ function generateCofactorExpansionSteps(A) {
     terms.push(termVal);
 
     let prefix = (j === 0) ? "" : ((sign === 1) ? " + " : " - ");
-    substitutedExpr += `${prefix}a<sub>1,${j+1}</sub>(det(M<sub>1,${j+1}</sub>))`;
-    
+    substitutedExpr += `${prefix}a<sub>1,${j + 1}</sub>(det(M<sub>1,${j + 1}</sub>))`;
+
     let subNumPrefix = (j === 0) ? "" : ((sign === 1) ? " + " : " - ");
     substitutedNumbers += `${subNumPrefix}${formatValueSimple(cellVal)}(${formatValueSimple(mDet)})`;
   }
@@ -8242,7 +8242,7 @@ function generateCofactorExpansionSteps(A) {
     let nextVal = cleanTerms[j];
     let prevSum = currentSum;
     currentSum += nextVal;
-    
+
     let remaining = cleanTerms.slice(j + 1);
     let remainingStr = remaining.length > 0 ? " + " + remaining.map(v => formatValueSimple(v)).join(' + ') : "";
     remainingStr = remainingStr.replace(/\+ -/g, '- ');
@@ -8271,7 +8271,7 @@ function generateRowReductionSteps(A) {
   let n = A.length;
   let steps = [];
   let M = copyMatrix(A);
-  
+
   steps.push({
     title: "Original Matrix",
     isCollapsed: false,
@@ -8297,11 +8297,11 @@ function generateRowReductionSteps(A) {
 
     if (pivotRow === -1) {
       steps.push({
-        title: `Zero Pivot in Column ${c+1}`,
+        title: `Zero Pivot in Column ${c + 1}`,
         isCollapsed: false,
         content: `
           <div class="step-desc" style="margin-bottom: 0.75rem; color: #dc2626;">
-            Column ${c+1} has no non-zero entries at or below row ${c+1}.
+            Column ${c + 1} has no non-zero entries at or below row ${c + 1}.
           </div>
           <div class="step-desc" style="margin-bottom: 0.5rem;">
             This means the matrix is singular, and we cannot complete row reduction. Any upper triangular form will have a zero on the diagonal, so:
@@ -8323,15 +8323,15 @@ function generateRowReductionSteps(A) {
       swapCount++;
 
       steps.push({
-        title: `Row Swap: R${c+1} ↔ R${pivotRow+1}`,
+        title: `Row Swap: R${c + 1} ↔ R${pivotRow + 1}`,
         isCollapsed: false,
         content: `
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
-            <span style="font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--navy); font-size: 1.05rem;">R<sub>${c+1}</sub> &harr; R<sub>${pivotRow+1}</sub></span>
+            <span style="font-weight: 700; font-family: 'IBM Plex Mono', monospace; color: var(--navy); font-size: 1.05rem;">R<sub>${c + 1}</sub> &harr; R<sub>${pivotRow + 1}</sub></span>
             <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: rgba(249, 115, 22, 0.1); color: #f97316;">Orange: Row Swap</span>
           </div>
           <div class="step-desc" style="margin-bottom: 0.75rem;">
-            We swap Row ${c+1} and Row ${pivotRow+1} to position a non-zero pivot element **${formatValueSimple(M[c][c])}** on the diagonal.
+            We swap Row ${c + 1} and Row ${pivotRow + 1} to position a non-zero pivot element **${formatValueSimple(M[c][c])}** on the diagonal.
           </div>
           <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600; color: #f97316;">
             ⚠️ Crucial Rule: Swapping two rows changes the sign of the determinant!
@@ -8364,14 +8364,14 @@ function generateRowReductionSteps(A) {
 
         let opSign = factor < 0 ? "+" : "-";
         let absFactorStr = formatValueSimple(Math.abs(factor));
-        let opDesc = `R<sub>${i+1}</sub> &rarr; R<sub>${i+1}</sub> ${opSign} ${absFactorStr === "1" ? "" : absFactorStr + " "}R<sub>${c+1}</sub>`;
+        let opDesc = `R<sub>${i + 1}</sub> &rarr; R<sub>${i + 1}</sub> ${opSign} ${absFactorStr === "1" ? "" : absFactorStr + " "}R<sub>${c + 1}</sub>`;
         rowOps.push(opDesc);
       }
     }
 
     if (eliminated) {
       steps.push({
-        title: `Eliminate Column ${c+1} entries below diagonal`,
+        title: `Eliminate Column ${c + 1} entries below diagonal`,
         isCollapsed: false,
         content: `
           <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 0.5rem; margin-bottom: 0.75rem;">
@@ -8379,7 +8379,7 @@ function generateRowReductionSteps(A) {
             <span style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: rgba(16, 185, 129, 0.1); color: #10b981;">Green: Row Operation</span>
           </div>
           <div class="step-desc" style="margin-bottom: 0.75rem;">
-            We eliminate all entries below the diagonal in column ${c+1} using row operations. Row additions/subtractions **do not** alter the determinant.
+            We eliminate all entries below the diagonal in column ${c + 1} using row operations. Row additions/subtractions **do not** alter the determinant.
           </div>
           <div style="margin-left: 1rem; border-left: 2px solid var(--teal); padding-left: 1rem; margin-bottom: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.95rem; color: var(--navy); display: flex; flex-direction: column; gap: 0.4rem;">
             ${rowOps.map(op => `<div>${op}</div>`).join('')}
@@ -8400,7 +8400,7 @@ function generateRowReductionSteps(A) {
   for (let i = 0; i < n; i++) {
     diagProduct *= M[i][i];
     diagSubstitutes.push(M[i][i]);
-    diagFormula += (i === 0 ? "" : " × ") + `u<sub>${i+1},${i+1}</sub>`;
+    diagFormula += (i === 0 ? "" : " × ") + `u<sub>${i + 1},${i + 1}</sub>`;
   }
   let finalDet = signFactor * diagProduct;
 
@@ -8469,7 +8469,7 @@ function generateTriangularShortcutSteps(A) {
     for (let i = 0; i < n; i++) {
       diagProduct *= A[i][i];
       diagSubstitutes.push(A[i][i]);
-      diagFormula += (i === 0 ? "" : " × ") + `a<sub>${i+1},${i+1}</sub>`;
+      diagFormula += (i === 0 ? "" : " × ") + `a<sub>${i + 1},${i + 1}</sub>`;
     }
 
     steps.push({
@@ -8683,7 +8683,7 @@ function calculateEuler() {
     let next_x_formatted = parseFloat(nextX.toFixed(decimals));
 
     let substSubStr = formatSubstitution(expr, x_curr, y_curr, decimals);
-    let substStr = `y<sub>${i+1}</sub> = ${y_curr} + ${h} · (${slope_curr})`;
+    let substStr = `y<sub>${i + 1}</sub> = ${y_curr} + ${h} · (${slope_curr})`;
     let evalStr = `${y_curr} + ${parseFloat((h * slope_curr).toFixed(decimals))} = ${next_y_formatted}`;
 
     // Should the steps be collapsed or expanded by default?
@@ -8714,12 +8714,12 @@ function calculateEuler() {
                       </div>
 
                       <div class="step-desc" style="margin-bottom: 0.5rem;">
-                        2. Substitute into Euler's formula to find <strong>y<sub>${i+1}</sub></strong>:
+                        2. Substitute into Euler's formula to find <strong>y<sub>${i + 1}</sub></strong>:
                       </div>
                       <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--navy); padding-left: 0.75rem; border-left: 2px solid var(--teal);">
-                        y<sub>${i+1}</sub> = y<sub>${i}</sub> + h · f(x<sub>${i}</sub>, y<sub>${i}</sub>)
+                        y<sub>${i + 1}</sub> = y<sub>${i}</sub> + h · f(x<sub>${i}</sub>, y<sub>${i}</sub>)
                         <br>${substStr}
-                        <br>y<sub>${i+1}</sub> = <strong>${evalStr}</strong>
+                        <br>y<sub>${i + 1}</sub> = <strong>${evalStr}</strong>
                       </div>
                     </div>
                   </div>`;
@@ -8781,7 +8781,7 @@ function calculateEuler() {
 
   // Final Answer Card and Educational Notes
   let targetXFormatted = parseFloat(xn.toFixed(decimals)).toString();
-  
+
   stepsHtml += `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2.5rem;">
                   <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Approximate Solution Found!</div>
                   <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 2rem;">Euler Method completed successfully in <strong>${stepsCount}</strong> steps.</div>
@@ -9023,7 +9023,7 @@ function calculateRungeKutta() {
                       <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600;">Step B: Calculate k₂ (Slope at the midpoint of interval, using k₁)</div>
                       <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--navy); margin-bottom: 1rem; padding-left: 0.75rem; border-left: 2px solid var(--teal); display: flex; flex-direction: column; gap: 0.3rem;">
                         <div>k₂ = h · f(x<sub>${i}</sub> + h/2, y<sub>${i}</sub> + k₁/2)</div>
-                        <div>k₂ = ${h} · f(${x_curr} + ${h/2}, ${y_curr} + ${parseFloat((k1/2).toFixed(decimals))})</div>
+                        <div>k₂ = ${h} · f(${x_curr} + ${h / 2}, ${y_curr} + ${parseFloat((k1 / 2).toFixed(decimals))})</div>
                         <div>k₂ = ${h} · f(${parseFloat(x_mid.toFixed(decimals))}, ${parseFloat(y_mid2.toFixed(decimals))})</div>
                         <div style="opacity: 0.8; font-size: 0.9rem;">f(${parseFloat(x_mid.toFixed(decimals))}, ${parseFloat(y_mid2.toFixed(decimals))}) = ${f2_sub} = ${parseFloat(f2.toFixed(decimals))}</div>
                         <div>k₂ = ${h} · (${parseFloat(f2.toFixed(decimals))}) = <strong>${parseFloat(k2.toFixed(decimals))}</strong></div>
@@ -9033,7 +9033,7 @@ function calculateRungeKutta() {
                       <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600;">Step C: Calculate k₃ (Slope at the midpoint of interval, using k₂)</div>
                       <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--navy); margin-bottom: 1rem; padding-left: 0.75rem; border-left: 2px solid var(--teal); display: flex; flex-direction: column; gap: 0.3rem;">
                         <div>k₃ = h · f(x<sub>${i}</sub> + h/2, y<sub>${i}</sub> + k₂/2)</div>
-                        <div>k₃ = ${h} · f(${x_curr} + ${h/2}, ${y_curr} + ${parseFloat((k2/2).toFixed(decimals))})</div>
+                        <div>k₃ = ${h} · f(${x_curr} + ${h / 2}, ${y_curr} + ${parseFloat((k2 / 2).toFixed(decimals))})</div>
                         <div>k₃ = ${h} · f(${parseFloat(x_mid.toFixed(decimals))}, ${parseFloat(y_mid3.toFixed(decimals))})</div>
                         <div style="opacity: 0.8; font-size: 0.9rem;">f(${parseFloat(x_mid.toFixed(decimals))}, ${parseFloat(y_mid3.toFixed(decimals))}) = ${f3_sub} = ${parseFloat(f3.toFixed(decimals))}</div>
                         <div>k₃ = ${h} · (${parseFloat(f3.toFixed(decimals))}) = <strong>${parseFloat(k3.toFixed(decimals))}</strong></div>
@@ -9050,13 +9050,13 @@ function calculateRungeKutta() {
                       </div>
 
                       <!-- yn+1 calculation -->
-                      <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600;">Step E: Weighted Average & y<sub>${i+1}</sub> Calculation</div>
+                      <div class="step-desc" style="margin-bottom: 0.5rem; font-weight: 600;">Step E: Weighted Average & y<sub>${i + 1}</sub> Calculation</div>
                       <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--navy); padding-left: 0.75rem; border-left: 2px solid var(--amber); display: flex; flex-direction: column; gap: 0.4rem;">
-                        <div>y<sub>${i+1}</sub> = y<sub>${i}</sub> + <sup>1</sup>/<sub>6</sub> (k₁ + 2k₂ + 2k₃ + k₄)</div>
-                        <div>y<sub>${i+1}</sub> = ${y_curr} + <sup>1</sup>/<sub>6</sub> (${parseFloat(k1.toFixed(decimals))} + 2(${parseFloat(k2.toFixed(decimals))}) + 2(${parseFloat(k3.toFixed(decimals))}) + ${parseFloat(k4.toFixed(decimals))})</div>
-                        <div>y<sub>${i+1}</sub> = ${y_curr} + <sup>1</sup>/<sub>6</sub> (${parseFloat((k1 + 2*k2 + 2*k3 + k4).toFixed(decimals))})</div>
-                        <div>y<sub>${i+1}</sub> = ${y_curr} + ${parseFloat(((k1 + 2*k2 + 2*k3 + k4)/6).toFixed(decimals))}</div>
-                        <div>y<sub>${i+1}</sub> = <strong>${next_y_formatted}</strong></div>
+                        <div>y<sub>${i + 1}</sub> = y<sub>${i}</sub> + <sup>1</sup>/<sub>6</sub> (k₁ + 2k₂ + 2k₃ + k₄)</div>
+                        <div>y<sub>${i + 1}</sub> = ${y_curr} + <sup>1</sup>/<sub>6</sub> (${parseFloat(k1.toFixed(decimals))} + 2(${parseFloat(k2.toFixed(decimals))}) + 2(${parseFloat(k3.toFixed(decimals))}) + ${parseFloat(k4.toFixed(decimals))})</div>
+                        <div>y<sub>${i + 1}</sub> = ${y_curr} + <sup>1</sup>/<sub>6</sub> (${parseFloat((k1 + 2 * k2 + 2 * k3 + k4).toFixed(decimals))})</div>
+                        <div>y<sub>${i + 1}</sub> = ${y_curr} + ${parseFloat(((k1 + 2 * k2 + 2 * k3 + k4) / 6).toFixed(decimals))}</div>
+                        <div>y<sub>${i + 1}</sub> = <strong>${next_y_formatted}</strong></div>
                       </div>
                     </div>
                   </div>`;
@@ -9114,7 +9114,7 @@ function calculateRungeKutta() {
 
   // Final Answer Card and Educational Notes
   let targetXFormatted = parseFloat(xn.toFixed(decimals)).toString();
-  
+
   stepsHtml += `<div class="final-result animate-fade-in" style="text-align: center; padding: 2.5rem; background: #111827; color: #ffffff; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.15); margin-top: 2.5rem;">
                   <div style="font-size: 1.8rem; font-weight: 700; color: var(--amber); margin-bottom: 0.5rem; font-family:'Fraunces', serif;">✅ Approximate Solution Found!</div>
                   <div style="font-size: 1.05rem; opacity: 0.9; margin-bottom: 2rem;">RK4 Method completed successfully in <strong>${stepsCount}</strong> steps.</div>
@@ -9270,7 +9270,7 @@ function calculateFutureValue() {
         <div style="font-size: 1.25rem; font-weight: 600; color: var(--amber);">FV = PV &times; (1 + r/n)<sup>n &times; t</sup></div>
         <div style="border-top: 1px dashed var(--border); width: 100%; padding-top: 1rem; margin-top: 0.5rem;"><b>Substitution:</b></div>
         <div>FV = ${pv} &times; (1 + ${r.toFixed(decimals + 2)} / ${n})<sup>${n} &times; ${years}</sup></div>
-        <div>FV = ${pv} &times; (1 + ${(r/n).toFixed(decimals + 4)})<sup>${nt}</sup></div>
+        <div>FV = ${pv} &times; (1 + ${(r / n).toFixed(decimals + 4)})<sup>${nt}</sup></div>
         <div>FV = ${pv} &times; (${base.toFixed(decimals + 4)})<sup>${nt}</sup></div>
         <div>FV = ${pv} &times; <b>${power.toFixed(decimals + 4)}</b></div>
         <div style="font-size: 1.35rem; color: var(--teal); font-weight: 700; border-top: 1px solid var(--border); padding-top: 1rem; width: 100%;">FV = ₹${formatCurrency(fv)}</div>
@@ -9336,16 +9336,16 @@ function calculateFutureValue() {
   let yValue = [];
   let yInterest = [];
   let hoverTextArray = [];
-  
+
   for (let y = 0; y <= years; y++) {
     let pwr = Math.pow(base, y * n);
     let valAtY = pv * pwr;
     let intAtY = valAtY - pv;
-    
+
     xYears.push(y);
     yValue.push(valAtY);
     yInterest.push(intAtY);
-    
+
     hoverTextArray.push(
       `<b>Year: ${y}</b><br>Investment Value: ₹${formatCurrency(valAtY)}<br>Interest Earned: ₹${formatCurrency(intAtY)}<br>Growth Since Start: ₹${formatCurrency(intAtY)}`
     );
@@ -9363,7 +9363,7 @@ function calculateFutureValue() {
     hoverinfo: 'text',
     hovertext: hoverTextArray
   };
-  
+
   let traceInterest = {
     x: xYears,
     y: yInterest,
@@ -9593,7 +9593,7 @@ function calculatePresentValue() {
         <div style="font-size: 1.25rem; font-weight: 600; color: var(--amber);">PV = FV / (1 + r/n)<sup>n &times; t</sup></div>
         <div style="border-top: 1px dashed var(--border); width: 100%; padding-top: 1rem; margin-top: 0.5rem;"><b>Substitution:</b></div>
         <div>PV = ${fv} / (1 + ${r.toFixed(decimals + 2)} / ${n})<sup>${n} &times; ${years}</sup></div>
-        <div>PV = ${fv} / (1 + ${(r/n).toFixed(decimals + 4)})<sup>${nt}</sup></div>
+        <div>PV = ${fv} / (1 + ${(r / n).toFixed(decimals + 4)})<sup>${nt}</sup></div>
         <div>PV = ${fv} / (${base.toFixed(decimals + 4)})<sup>${nt}</sup></div>
         <div>PV = ${fv} / <b>${power.toFixed(decimals + 4)}</b></div>
         <div style="font-size: 1.35rem; color: var(--teal); font-weight: 700; border-top: 1px solid var(--border); padding-top: 1rem; width: 100%;">PV = ₹${formatCurrency(pv)}</div>
@@ -9659,16 +9659,16 @@ function calculatePresentValue() {
   let yPV = [];
   let yDiscount = [];
   let hoverTextArray = [];
-  
+
   for (let y = 0; y <= years; y++) {
     let pwr_y = Math.pow(base, n * y);
     let valAtY = fv / pwr_y;
     let discAtY = fv - valAtY;
-    
+
     xYears.push(y);
     yPV.push(valAtY);
     yDiscount.push(discAtY);
-    
+
     hoverTextArray.push(
       `<b>Year: ${y}</b><br>Present Value: ₹${formatCurrency(valAtY)}<br>Discount Amount: ₹${formatCurrency(discAtY)}<br>Future Value: ₹${formatCurrency(fv)}`
     );
@@ -9686,7 +9686,7 @@ function calculatePresentValue() {
     hoverinfo: 'text',
     hovertext: hoverTextArray
   };
-  
+
   let traceDiscount = {
     x: xYears,
     y: yDiscount,
@@ -10018,7 +10018,7 @@ function calculateAnnuity() {
   let yAccumulated = [];
   let yDeposits = [];
   let hoverTextArray = [];
-  
+
   for (let p = 0; p <= nt; p++) {
     let depositsAtP = pmt * p;
     let accumulatedAtP = 0;
@@ -10026,11 +10026,11 @@ function calculateAnnuity() {
       accumulatedAtP = pmt * ((Math.pow(1 + i, p) - 1) / i);
     }
     let interestAtP = accumulatedAtP - depositsAtP;
-    
+
     xPeriods.push(p);
     yAccumulated.push(accumulatedAtP);
     yDeposits.push(depositsAtP);
-    
+
     hoverTextArray.push(
       `<b>Period: ${p}</b><br>Total Deposits: ₹${formatCurrency(depositsAtP)}<br>Accumulated Value: ₹${formatCurrency(accumulatedAtP)}<br>Interest Earned: ₹${formatCurrency(interestAtP)}`
     );
@@ -10048,7 +10048,7 @@ function calculateAnnuity() {
     hoverinfo: 'text',
     hovertext: hoverTextArray
   };
-  
+
   let traceDeposits = {
     x: xPeriods,
     y: yDeposits,
@@ -10371,37 +10371,37 @@ function calculateInterestRate() {
 
   let calculatedRate = r;
   let testRates = [calculatedRate - 2, calculatedRate - 1, calculatedRate, calculatedRate + 1, calculatedRate + 2];
-  
+
   let tableRows = '';
   let plotRates = [];
   let plotFVs = [];
   let hoverTexts = [];
-  
+
   // Calculate +2% effect to display in insights card
   let fvPlus2 = pv * Math.pow(1 + (calculatedRate + 2) / 100, years);
   let differencePlus2 = fvPlus2 - fv;
-  
+
   for (let tr of testRates) {
     if (tr < 0) tr = 0; // Prevent negative rates
-    
+
     let simulatedFv = pv * Math.pow(1 + tr / 100, years);
     let diff = simulatedFv - fv;
     let isCalculated = Math.abs(tr - calculatedRate) < 0.0001;
-    
+
     plotRates.push(tr);
     plotFVs.push(simulatedFv);
-    
+
     let diffStr = diff >= 0 ? '+' + formatCurrency(diff) : '-' + formatCurrency(Math.abs(diff));
     if (isCalculated) diffStr = '₹0.00';
-    
+
     hoverTexts.push(
       `<b>Interest Rate: ${tr.toFixed(decimals)}%</b><br>Future Value: ${formatCurrency(simulatedFv)}<br>Difference from Calculated Scenario: ${diffStr}`
     );
-    
+
     let rowStyle = isCalculated ? 'background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); font-weight: bold; color: var(--amber);' : 'border-bottom: 1px solid rgba(255,255,255,0.05);';
     let icon = isCalculated ? '⭐ ' : '';
     let label = isCalculated ? ' <span style="font-size:0.85em; opacity:0.8;">(Calculated Rate)</span>' : '';
-    
+
     tableRows += `
       <tr style="${rowStyle}">
         <td style="padding: 1rem; text-align: left;">${icon}${tr.toFixed(decimals)}%${label}</td>
@@ -10409,7 +10409,7 @@ function calculateInterestRate() {
       </tr>
     `;
   }
-  
+
   let insightText = `A <strong style="color: var(--amber);">2% increase</strong> in interest rate (to <strong style="color: var(--amber);">${(calculatedRate + 2).toFixed(decimals)}%</strong>) increases the future value by <strong style="color: var(--amber);">${formatCurrency(differencePlus2)}</strong> over ${years} years.`;
 
   let sensitivityHtml = `
@@ -10747,29 +10747,29 @@ function calculateEMI() {
   let yPrincipal = [];
   let yInterest = [];
   let customEmi = [];
-  
+
   let currentBalance = P;
   let cumPrincipal = 0;
   let cumInterest = 0;
   let fixedEmi = emiVal;
-  
+
   for (let m = 1; m <= n; m++) {
     let intForMonth = currentBalance * r;
     let prinForMonth = fixedEmi - intForMonth;
     let thisEmi = fixedEmi;
-    
+
     // Last month adjustment to clear exactly
     if (m === n) {
       prinForMonth = currentBalance;
       thisEmi = prinForMonth + intForMonth;
     }
-    
+
     currentBalance -= prinForMonth;
     if (currentBalance < 0) currentBalance = 0;
-    
+
     cumPrincipal += prinForMonth;
     cumInterest += intForMonth;
-    
+
     xMonths.push(m);
     yBalance.push(currentBalance);
     yPrincipal.push(cumPrincipal);
@@ -10781,7 +10781,7 @@ function calculateEMI() {
   let hoverTextArray = [];
   for (let i = 0; i < n; i++) {
     hoverTextArray.push(
-      `<b>Month: ${xMonths[i]}</b><br>Remaining Balance: ₹${yBalance[i].toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br>Principal Repaid: ₹${yPrincipal[i].toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}<br>Monthly EMI: ₹${customEmi[i].toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+      `<b>Month: ${xMonths[i]}</b><br>Remaining Balance: ₹${yBalance[i].toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>Principal Repaid: ₹${yPrincipal[i].toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>Monthly EMI: ₹${customEmi[i].toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     );
   }
 
@@ -10797,7 +10797,7 @@ function calculateEMI() {
     hoverinfo: 'text',
     hovertext: hoverTextArray
   };
-  
+
   let tracePrincipal = {
     x: xMonths,
     y: yPrincipal,
@@ -10871,8 +10871,8 @@ function calculateEMI() {
         borderpad: 4
       },
       {
-        x: xMonths[n-1],
-        y: yBalance[n-1],
+        x: xMonths[n - 1],
+        y: yBalance[n - 1],
         xref: 'x', yref: 'y',
         text: 'Loan Fully Repaid',
         showarrow: true,
@@ -11152,11 +11152,11 @@ function calculateHyperbolic() {
   let xVals = [];
   let yVals = [];
   let hoverTexts = [];
-  
+
   for (let i = -5; i <= 5.01; i += 0.1) {
     let xv = i;
     let yv;
-    switch(funcType) {
+    switch (funcType) {
       case 'sinh': yv = Math.sinh(xv); break;
       case 'cosh': yv = Math.cosh(xv); break;
       case 'tanh': yv = Math.tanh(xv); break;
@@ -11166,7 +11166,7 @@ function calculateHyperbolic() {
     }
     xVals.push(xv);
     yVals.push(yv);
-    
+
     let yvStr = isFinite(yv) ? yv.toFixed(decimals) : 'Undefined';
     hoverTexts.push(`<b>x: ${xv.toFixed(2)}</b><br>${funcType}(x): ${yvStr}`);
   }
@@ -11272,7 +11272,7 @@ function calculatePolyRoots() {
 
   // Expression Validation
   let cleanExpr = expr.replace(/\s+/g, '');
-  
+
   // Check for allowed characters: x, numbers, operators, dots
   if (/[^x0-9\+\-\^\*\.]/.test(cleanExpr)) {
     output.innerHTML = `<div class="step-card" style="border-left-color: #dc2626;"><div class="step-header"><div class="step-title" style="color: #dc2626;">Error: Invalid Polynomial Syntax</div></div><div class="step-desc">The expression contains invalid characters. Only 'x', numbers, and operators (+, -, *, ^) are allowed.</div></div>`;
@@ -11391,7 +11391,7 @@ function calculatePolyRoots() {
     } else {
       let sign = imNum > 0 ? '+' : '-';
       let absIm = Math.abs(imNum).toFixed(decimals);
-      
+
       // Check if absIm is close to 1
       let imStr = absIm;
       if (Math.abs(Math.abs(imNum) - 1) < 1e-9) {
@@ -11482,7 +11482,7 @@ function calculatePolyRoots() {
       <div style="font-size: 0.9rem; color: var(--navy); opacity: 0.8; margin-top: 1rem;">Total iterations to converge: <b>${iterations.length}</b></div>
     </div>
   </div>`;
-  
+
   stepsHtml += iterHtml;
 
   // Educational Note Card
@@ -11517,7 +11517,7 @@ function calculatePolyRoots() {
   let yValsPlot = [];
   let polyHoverTexts = [];
 
-  for (let xv = xStart; xv <= xEnd + step/2; xv += step) {
+  for (let xv = xStart; xv <= xEnd + step / 2; xv += step) {
     let yv = coeffs.reduce((sum, c, i) => sum + c * Math.pow(xv, i), 0);
     xValsPlot.push(xv);
     yValsPlot.push(yv);
@@ -12252,11 +12252,11 @@ function calculateMultipleAngleExpand() {
       else if (k % 4 === 2) { sign = " − "; iTerm = ""; }
       else if (k % 4 === 3) { sign = " − "; iTerm = "i"; }
     }
-    
+
     let displayCoeff = coeff === 1 ? "" : coeff;
     let termTextEval = `${sign}${iTerm}${displayCoeff}${cosPart}${sinPart}`;
     if (k === 0) termTextEval = `${cosPart}`;
-    
+
     evaluatedTermsList.push(termTextEval);
   }
 
@@ -12449,7 +12449,7 @@ function calculateMultipleAngleExpand() {
     let r = d * Math.PI / 180;
     let baseVal = funcType === 'sin' ? Math.sin(r) : Math.cos(r);
     let expVal = funcType === 'sin' ? Math.sin(n * r) : Math.cos(n * r);
-    
+
     thetaValsPlot.push(d);
     baseValsPlot.push(baseVal);
     expandedValsPlot.push(expVal);
@@ -12640,7 +12640,7 @@ function calculatePowerReduction() {
     else if (n % 4 === 1) iPower = "i";
     else if (n % 4 === 2) { iPower = ""; coeffVal = -coeffVal; }
     else if (n % 4 === 3) { iPower = "i"; coeffVal = -coeffVal; }
-    
+
     let signCoeff = coeffVal < 0 ? `−${Math.abs(coeffVal)}` : `${coeffVal}`;
     powerLhs = `(2isinθ)<sup>${n}</sup> = ${signCoeff}${iPower}sin<sup>${n}</sup>θ`;
     powerRhs = `(z − 1/z)<sup>${n}</sup>`;
@@ -12788,7 +12788,7 @@ function calculatePowerReduction() {
     let r = d * Math.PI / 180;
     let lhsVal = funcType === 'sin' ? Math.pow(Math.sin(r), n) : Math.pow(Math.cos(r), n);
     let rhsValPlot = lookup.eval(r);
-    
+
     thetaValsPlot.push(d);
     lhsValsPlot.push(lhsVal);
     rhsValsPlot.push(rhsValPlot);
@@ -12988,7 +12988,7 @@ function calculateBinomial() {
       combinationsVal = Math.round(Math.exp(logCombination(n, x)));
       let factN = exactFactorial(n);
       let factX = exactFactorial(x);
-      let factNX = exactFactorial(n-x);
+      let factNX = exactFactorial(n - x);
       let denom = factX * factNX;
       combinationStepsHtml = `
         <div style="font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; text-align: center; color: var(--navy); margin-bottom: 1.5rem; background: var(--bg); padding: 1.5rem; border-radius: 8px;">
@@ -13023,9 +13023,9 @@ function calculateBinomial() {
     </div>`;
 
     // Exact Probability Calculation Step
-    let pXPart = (p === 0 || p === 1) ? ((p===0 && x===0) || (p===1 && x===n) ? 1 : 0) : Math.pow(p, x);
-    let qNXPart = (q === 0 || q === 1) ? ((q===0 && n-x===0) || (q===1 && n-x===n) ? 1 : 0) : Math.pow(q, n-x);
-    
+    let pXPart = (p === 0 || p === 1) ? ((p === 0 && x === 0) || (p === 1 && x === n) ? 1 : 0) : Math.pow(p, x);
+    let qNXPart = (q === 0 || q === 1) ? ((q === 0 && n - x === 0) || (q === 1 && n - x === n) ? 1 : 0) : Math.pow(q, n - x);
+
     stepsHtml += `<div class="step-card">
       <div class="step-header">
         <div class="step-number">${stepCount++}</div>
@@ -13046,7 +13046,7 @@ function calculateBinomial() {
     // RANGE MODE
     isTargetFn = (k) => k >= x1 && k <= x2;
     let pRange = 0;
-    for(let i=x1; i<=x2; i++) {
+    for (let i = x1; i <= x2; i++) {
       pRange += binomialProb(n, p, i);
     }
     if (pRange > 1) pRange = 1;
@@ -13071,7 +13071,7 @@ function calculateBinomial() {
     let sumBreakdown = '';
     if (termsToShow <= 10) {
       let termsHtml = [];
-      for(let i=x1; i<=x2; i++) {
+      for (let i = x1; i <= x2; i++) {
         termsHtml.push(`P(X=${i}) &approx; ${binomialProb(n, p, i).toFixed(5)}`);
       }
       sumBreakdown = `
@@ -13111,11 +13111,11 @@ function calculateBinomial() {
     vizStart = Math.max(0, Math.floor(mean - 3 * stdDev));
     vizEnd = Math.min(n, Math.ceil(mean + 3 * stdDev));
     if (vizEnd - vizStart > 50) {
-       vizStart = Math.max(0, Math.floor(mean - 25));
-       vizEnd = Math.min(n, vizStart + 50);
+      vizStart = Math.max(0, Math.floor(mean - 25));
+      vizEnd = Math.min(n, vizStart + 50);
     }
   }
-  
+
   let maxProb = 0;
   let distPoints = [];
   for (let i = vizStart; i <= vizEnd; i++) {
@@ -13123,7 +13123,7 @@ function calculateBinomial() {
     if (prob > maxProb) maxProb = prob;
     distPoints.push({ x: i, p: prob });
   }
-  
+
   if (maxProb === 0) maxProb = 1;
 
   let barsHtml = '';
@@ -13132,7 +13132,7 @@ function calculateBinomial() {
     let isTarget = isTargetFn(pt.x);
     let color = isTarget ? 'var(--amber)' : 'var(--teal)';
     let opacity = isTarget ? '1' : '0.6';
-    
+
     barsHtml += `
       <div style="display: flex; flex-direction: column; justify-content: flex-end; align-items: center; flex: 1; min-width: 28px; height: 100%; position: relative;" onmouseover="this.querySelector('.bar-tooltip').style.opacity=1; this.querySelector('.bar-tooltip').style.visibility='visible';" onmouseout="this.querySelector('.bar-tooltip').style.opacity=0; this.querySelector('.bar-tooltip').style.visibility='hidden';">
         <div class="bar-tooltip" style="position: absolute; bottom: calc(${Math.max(0.5, heightPercent)}% + 10px); font-size: 0.75rem; color: var(--white); opacity: 0; visibility: hidden; transition: 0.2s; white-space: nowrap; z-index: 20; background: var(--navy); padding: 6px 10px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: center; pointer-events: none;">
@@ -13239,9 +13239,9 @@ function calculateBinomial() {
     `;
   } else {
     // Mode range grid
-    let pLessX1 = 0; for(let i=0; i<x1; i++) pLessX1 += binomialProb(n, p, i);
-    let pGreaterX2 = 0; for(let i=x2+1; i<=n; i++) pGreaterX2 += binomialProb(n, p, i);
-    
+    let pLessX1 = 0; for (let i = 0; i < x1; i++) pLessX1 += binomialProb(n, p, i);
+    let pGreaterX2 = 0; for (let i = x2 + 1; i <= n; i++) pGreaterX2 += binomialProb(n, p, i);
+
     resultsGridHtml = `
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
         <div style="padding: 1.5rem; background: rgba(255,255,255,0.06); border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); display: flex; flex-direction: column; justify-content: space-between;">
@@ -13367,24 +13367,24 @@ function calculateUniform() {
     probValue = cdf(x);
     probTitle = `P(X &le; ${x})`;
     probFormula = `F(x) = ${renderFraction('x - a', 'b - a')}`;
-    
+
     let subX = Math.max(a, Math.min(b, x));
     probSub = renderFraction(`${subX} - ${a}`, `${b} - ${a}`);
     if (x <= a) probSub = `0 &nbsp;&nbsp;<span style="font-size: 0.8rem; font-family: 'Figtree', sans-serif;">(since x &le; a)</span>`;
     if (x >= b) probSub = `1 &nbsp;&nbsp;<span style="font-size: 0.8rem; font-family: 'Figtree', sans-serif;">(since x &ge; b)</span>`;
-    
+
     finalTargetText = `a value less than or equal to <b>${x}</b>`;
   } else {
     probValue = cdf(x2) - cdf(x1);
     probTitle = `P(${x1} &le; X &le; ${x2})`;
     probFormula = `P(x₁ &le; X &le; x₂) = ${renderFraction('x₂ - x₁', 'b - a')}`;
-    
+
     let subX2 = Math.max(a, Math.min(b, x2));
     let subX1 = Math.max(a, Math.min(b, x1));
     probSub = renderFraction(`${subX2} - ${subX1}`, `${b} - ${a}`);
-    
+
     if (x2 <= a || x1 >= b) {
-       probSub = `0 &nbsp;&nbsp;<span style="font-size: 0.8rem; font-family: 'Figtree', sans-serif;">(range is outside [a, b])</span>`;
+      probSub = `0 &nbsp;&nbsp;<span style="font-size: 0.8rem; font-family: 'Figtree', sans-serif;">(range is outside [a, b])</span>`;
     }
     finalTargetText = `a value between <b>${x1}</b> and <b>${x2}</b>`;
   }
@@ -13445,7 +13445,7 @@ function calculateUniform() {
           <div>=</div>
           <div>${renderFraction(`(${b} - ${a})&sup2;`, '12')}</div>
           <div>=</div>
-          <div>${renderFraction(`${(b - a)**2}`, '12')}</div>
+          <div>${renderFraction(`${(b - a) ** 2}`, '12')}</div>
           <div>&approx; ${variance.toFixed(4)}</div>
         </div>
       </div>
@@ -13494,7 +13494,7 @@ function calculateUniform() {
   let rangeLength = b - a;
   let pctStart = ((shadeStart - a) / rangeLength) * 100;
   let pctWidth = ((shadeEnd - shadeStart) / rangeLength) * 100;
-  
+
   if (pctStart < 0) pctStart = 0;
   if (pctWidth < 0) pctWidth = 0;
   if (pctStart + pctWidth > 100) pctWidth = 100 - pctStart;
@@ -13586,7 +13586,7 @@ function calculateUniform() {
   `;
 
   output.innerHTML = resultsHtml + stepsHtml + vizHtml;
-  
+
   setTimeout(() => {
     if (window.MathJax) {
       MathJax.typesetPromise().then(() => {
@@ -13605,7 +13605,7 @@ function calculateUniform() {
 function calculatePearsonRank() {
   const output = document.getElementById('steps-output');
   output.innerHTML = '';
-  
+
   // Helper to handle error display
   const showError = (msg) => {
     output.innerHTML = `
@@ -13626,11 +13626,11 @@ function calculatePearsonRank() {
   // Read Inputs
   const decimals = parseInt(document.getElementById('pearson-decimals').value) || 4;
   const rawData = [];
-  
+
   for (let i = 1; i <= 8; i++) {
     const xVal = document.getElementById(`pearson-x-${i}`).value;
     const yVal = document.getElementById(`pearson-y-${i}`).value;
-    
+
     if (xVal !== '' || yVal !== '') {
       rawData.push({ row: i, xStr: xVal, yStr: yVal });
     }
@@ -13644,18 +13644,18 @@ function calculatePearsonRank() {
   const xs = [];
   const ys = [];
   const origOrder = [];
-  
+
   for (let r of rawData) {
     if (r.xStr === '' || r.yStr === '') {
       return showError(`Mismatched data: Row ${r.row} has a value for X but not Y (or vice versa). Each row must have both X and Y, or be left completely empty.`);
     }
     const x = parseFloat(r.xStr);
     const y = parseFloat(r.yStr);
-    
+
     if (isNaN(x) || isNaN(y)) {
       return showError(`Non-numeric value detected in row ${r.row}. All entries must be numbers.`);
     }
-    
+
     xs.push(x);
     ys.push(y);
     origOrder.push(r.row);
@@ -13685,17 +13685,17 @@ function calculatePearsonRank() {
   const n = xs.length;
   const denom = n * (n * n - 1);
   if (denom === 0) {
-     return showError("Denominator evaluates to zero. Cannot compute correlation.");
+    return showError("Denominator evaluates to zero. Cannot compute correlation.");
   }
 
   // Phase 3: Average Rank Algorithm
   function computeRanks(arr, varName) {
     const indices = arr.map((val, idx) => idx);
     indices.sort((a, b) => arr[a] - arr[b]);
-    
+
     const ranks = new Array(n);
     const tieNotes = [];
-    
+
     let i = 0;
     while (i < n) {
       let j = i;
@@ -13704,24 +13704,24 @@ function calculatePearsonRank() {
       }
       const k = j - i;
       const avgRank = (i + 1) + (k - 1) / 2;
-      
+
       for (let m = i; m < j; m++) {
         ranks[indices[m]] = avgRank;
       }
-      
+
       if (k > 1) {
-        tieNotes.push(`Value ${fmt(arr[indices[i]], decimals)} appears ${k} times (positions ${i+1} to ${j}) &rarr; assigned average rank <b>${avgRank}</b>.`);
+        tieNotes.push(`Value ${fmt(arr[indices[i]], decimals)} appears ${k} times (positions ${i + 1} to ${j}) &rarr; assigned average rank <b>${avgRank}</b>.`);
       }
-      
+
       i = j;
     }
-    
+
     return { ranks, tieNotes };
   }
 
   const rankXInfo = computeRanks(xs, 'X');
   const rankYInfo = computeRanks(ys, 'Y');
-  
+
   const Rx = rankXInfo.ranks;
   const Ry = rankYInfo.ranks;
 
@@ -13729,7 +13729,7 @@ function calculatePearsonRank() {
   const d = new Array(n);
   const d2 = new Array(n);
   let sumD2 = 0;
-  
+
   for (let i = 0; i < n; i++) {
     d[i] = Rx[i] - Ry[i];
     d2[i] = d[i] * d[i];
@@ -13750,7 +13750,7 @@ function calculatePearsonRank() {
   let interpText = "";
   let interpColor = "";
   let interpDesc = "";
-  
+
   if (rho === 1) { interpText = "Perfect Positive"; interpColor = "var(--teal)"; interpDesc = "X and Y increase together in perfect monotonicity."; }
   else if (rho >= 0.7) { interpText = "Strong Positive"; interpColor = "var(--teal)"; interpDesc = "High ranks in X strongly correspond to high ranks in Y."; }
   else if (rho >= 0.4) { interpText = "Moderate Positive"; interpColor = "var(--teal)"; interpDesc = "Higher X ranks generally correspond to higher Y ranks."; }
@@ -13815,7 +13815,7 @@ function calculatePearsonRank() {
             <thead><tr>${th('No.')}${th(varLabel)}${th('Rank')}</tr></thead>
             <tbody>
     `;
-    
+
     const rankCounts = {};
     ranks.forEach(r => rankCounts[r] = (rankCounts[r] || 0) + 1);
 
@@ -13824,7 +13824,7 @@ function calculatePearsonRank() {
       rHtml += `<tr ${tieTrHighlight(isTied)}>${td(origOrder[i])}${td(fmt(arr[i], decimals))}<td ${isTied ? tieHighlight : td(ranks[i])}>${ranks[i]}</td></tr>`;
     }
     rHtml += `</tbody></table></div>`;
-    
+
     if (notes.length > 0) {
       rHtml += `<div style="background: var(--bg2); padding: 1rem; border-radius: 8px; font-size: 0.9rem; color: var(--navy); border: 1px dashed var(--border);">`;
       rHtml += `<div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--amber);">Tie Handling Notes:</div>`;
@@ -13973,44 +13973,44 @@ function calculatePearsonRank() {
   const svgH = 320;
   const plotW = svgW - 2 * pad;
   const plotH = svgH - 2 * pad;
-  
+
   const mapX = (r) => pad + ((r - 1) / (n - 1 || 1)) * plotW;
   const mapY = (r) => pad + plotH - ((r - 1) / (n - 1 || 1)) * plotH;
-  
+
   let scatterHtml = '';
   for (let i = 1; i <= n; i++) {
     const px = mapX(i);
     const py = mapY(i);
-    scatterHtml += `<line x1="${px}" y1="${pad}" x2="${px}" y2="${pad+plotH}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4" />`;
-    scatterHtml += `<line x1="${pad}" y1="${py}" x2="${pad+plotW}" y2="${py}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4" />`;
+    scatterHtml += `<line x1="${px}" y1="${pad}" x2="${px}" y2="${pad + plotH}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4" />`;
+    scatterHtml += `<line x1="${pad}" y1="${py}" x2="${pad + plotW}" y2="${py}" stroke="var(--border)" stroke-width="1" stroke-dasharray="4" />`;
     scatterHtml += `<text x="${px}" y="${svgH - pad + 15}" text-anchor="middle" font-family="sans-serif" font-size="10" fill="var(--muted)">${i}</text>`;
     scatterHtml += `<text x="${pad - 10}" y="${py + 4}" text-anchor="end" font-family="sans-serif" font-size="10" fill="var(--muted)">${i}</text>`;
   }
-  scatterHtml += `<line x1="${pad}" y1="${pad+plotH}" x2="${pad+plotW}" y2="${pad+plotH}" stroke="var(--navy)" stroke-width="2" />`;
-  scatterHtml += `<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${pad+plotH}" stroke="var(--navy)" stroke-width="2" />`;
-  scatterHtml += `<text x="${pad + plotW/2}" y="${svgH - 5}" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="var(--navy)">Rank of X</text>`;
-  scatterHtml += `<text x="12" y="${pad + plotH/2}" transform="rotate(-90 12,${pad + plotH/2})" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="var(--navy)">Rank of Y</text>`;
-  
+  scatterHtml += `<line x1="${pad}" y1="${pad + plotH}" x2="${pad + plotW}" y2="${pad + plotH}" stroke="var(--navy)" stroke-width="2" />`;
+  scatterHtml += `<line x1="${pad}" y1="${pad}" x2="${pad}" y2="${pad + plotH}" stroke="var(--navy)" stroke-width="2" />`;
+  scatterHtml += `<text x="${pad + plotW / 2}" y="${svgH - 5}" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="var(--navy)">Rank of X</text>`;
+  scatterHtml += `<text x="12" y="${pad + plotH / 2}" transform="rotate(-90 12,${pad + plotH / 2})" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="var(--navy)">Rank of Y</text>`;
+
   let sumRx = 0, sumRy = 0, sumRxRy = 0, sumRx2 = 0;
-  for (let i=0; i<n; i++) {
-    sumRx += Rx[i]; sumRy += Ry[i]; sumRxRy += Rx[i]*Ry[i]; sumRx2 += Rx[i]*Rx[i];
+  for (let i = 0; i < n; i++) {
+    sumRx += Rx[i]; sumRy += Ry[i]; sumRxRy += Rx[i] * Ry[i]; sumRx2 += Rx[i] * Rx[i];
   }
   const trendDenom = (n * sumRx2 - sumRx * sumRx);
   if (trendDenom !== 0) {
     const slope = (n * sumRxRy - sumRx * sumRy) / trendDenom;
     const intercept = (sumRy - slope * sumRx) / n;
-    
+
     const yAt1 = slope * 1 + intercept;
     const yAtN = slope * n + intercept;
-    
+
     const lineX1 = mapX(1);
     const lineY1 = mapY(Math.max(1, Math.min(n, yAt1)));
     const lineX2 = mapX(n);
     const lineY2 = mapY(Math.max(1, Math.min(n, yAtN)));
-    
+
     scatterHtml += `<line x1="${lineX1}" y1="${lineY1}" x2="${lineX2}" y2="${lineY2}" stroke="var(--teal)" stroke-width="3" />`;
   }
-  
+
   for (let i = 0; i < n; i++) {
     scatterHtml += `<circle cx="${mapX(Rx[i])}" cy="${mapY(Ry[i])}" r="6" fill="var(--amber)" stroke="#fff" stroke-width="2" />`;
   }
@@ -14090,16 +14090,16 @@ function calculatePearsonRank() {
 }
 
 // Global Exports Handlers
-window.exportPearsonCSV = function() {
+window.exportPearsonCSV = function () {
   const data = window._pearsonData;
   if (!data) return;
-  
+
   let csv = "No.,X,Y,Rank_X,Rank_Y,d,d^2\n";
   for (let i = 0; i < data.n; i++) {
     csv += `${data.origOrder[i]},${data.xs[i]},${data.ys[i]},${data.Rx[i]},${data.Ry[i]},${data.d[i]},${data.d2[i]}\n`;
   }
   csv += `\nSpearman Rank Correlation (rho),${data.rho}\n`;
-  
+
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -14111,7 +14111,7 @@ window.exportPearsonCSV = function() {
   URL.revokeObjectURL(url);
 };
 
-window.exportPearsonPDF = function() {
+window.exportPearsonPDF = function () {
   const style = document.createElement('style');
   style.innerHTML = `
     @media print {
@@ -14131,7 +14131,7 @@ window.exportPearsonPDF = function() {
 // REGRESSION CALCULATOR ENGINE
 // ==========================================
 
-window.toggleRegressionInputMethod = function(method) {
+window.toggleRegressionInputMethod = function (method) {
   const tableContainer = document.getElementById('regression-table-input-sub');
   const rawContainer = document.getElementById('regression-raw-input-sub');
   if (method === 'table') {
@@ -14143,7 +14143,7 @@ window.toggleRegressionInputMethod = function(method) {
   }
 };
 
-window.addRegressionRow = function() {
+window.addRegressionRow = function () {
   const tbody = document.getElementById('regression-table-body');
   if (!tbody) return;
   const rowCount = tbody.rows.length + 1;
@@ -14156,7 +14156,7 @@ window.addRegressionRow = function() {
   tbody.appendChild(newRow);
 };
 
-window.clearRegressionTable = function() {
+window.clearRegressionTable = function () {
   const tbody = document.getElementById('regression-table-body');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -14171,7 +14171,7 @@ window.clearRegressionTable = function() {
   }
 };
 
-window.runRegressionPredictY = function(xValStr) {
+window.runRegressionPredictY = function (xValStr) {
   const out = document.getElementById('predicted-y-output');
   if (!out || !window._regressionCoeffs) return;
   const x = parseFloat(xValStr);
@@ -14184,7 +14184,7 @@ window.runRegressionPredictY = function(xValStr) {
   out.innerText = Number.isInteger(y) ? y.toString() : y.toFixed(decimals);
 };
 
-window.runRegressionPredictX = function(yValStr) {
+window.runRegressionPredictX = function (yValStr) {
   const out = document.getElementById('predicted-x-output');
   if (!out || !window._regressionCoeffs) return;
   const y = parseFloat(yValStr);
@@ -14197,10 +14197,10 @@ window.runRegressionPredictX = function(yValStr) {
   out.innerText = Number.isInteger(x) ? x.toString() : x.toFixed(decimals);
 };
 
-window.exportRegressionCSV = function() {
+window.exportRegressionCSV = function () {
   const data = window._regressionData;
   if (!data) return;
-  
+
   let csv = "No.,X,Y";
   if (data.mode === 'y-on-x' || data.mode === 'both') {
     csv += ",Fitted_Y,Residual_Y";
@@ -14209,7 +14209,7 @@ window.exportRegressionCSV = function() {
     csv += ",Fitted_X,Residual_X";
   }
   csv += "\n";
-  
+
   for (let i = 0; i < data.n; i++) {
     csv += `${data.origOrder[i]},${data.xs[i]},${data.ys[i]}`;
     if (data.mode === 'y-on-x' || data.mode === 'both') {
@@ -14220,7 +14220,7 @@ window.exportRegressionCSV = function() {
     }
     csv += "\n";
   }
-  
+
   csv += `\nSummary Statistics\n`;
   csv += `n,${data.n}\n`;
   csv += `Pearson Correlation (r),${data.r}\n`;
@@ -14233,7 +14233,7 @@ window.exportRegressionCSV = function() {
     csv += `X on Y Equation,X = ${data.c} + (${data.d}) * Y\n`;
     csv += `X on Y Std Error,${data.seX}\n`;
   }
-  
+
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -14245,7 +14245,7 @@ window.exportRegressionCSV = function() {
   URL.revokeObjectURL(url);
 };
 
-window.exportRegressionPDF = function() {
+window.exportRegressionPDF = function () {
   const style = document.createElement('style');
   style.innerHTML = `
     @media print {
@@ -14294,12 +14294,12 @@ function calculateRegression() {
   if (inputMethod === 'table') {
     const tbody = document.getElementById('regression-table-body');
     const rows = tbody.getElementsByTagName('tr');
-    
+
     for (let i = 0; i < rows.length; i++) {
       const idx = i + 1;
       const xValStr = document.getElementById(`regression-x-${idx}`).value.trim();
       const yValStr = document.getElementById(`regression-y-${idx}`).value.trim();
-      
+
       if (xValStr !== '' || yValStr !== '') {
         if (xValStr === '' || yValStr === '') {
           return showError(`Mismatched data: Row ${idx} has a value for X but not Y (or vice versa). Each row must have both X and Y, or be left completely empty.`);
@@ -14800,7 +14800,7 @@ function calculateRegression() {
     const minRes = Math.min(...resArr);
     const maxRes = Math.max(...resArr);
     const absResMax = Math.max(Math.abs(minRes), Math.abs(maxRes)) || 1.0;
-    
+
     const minFit = Math.min(...fitArr);
     const maxFit = Math.max(...fitArr);
     const deltaFit = (maxFit - minFit) * 0.1 || 1.0;
@@ -15122,7 +15122,7 @@ function calculateRegression() {
 // RANK CALCULATOR ENGINE
 // ==========================================
 
-window.toggleRankCalcInputMethod = function(method) {
+window.toggleRankCalcInputMethod = function (method) {
   const tableContainer = document.getElementById('rank-calc-table-sub');
   const rawContainer = document.getElementById('rank-calc-raw-sub');
   if (method === 'table') {
@@ -15134,7 +15134,7 @@ window.toggleRankCalcInputMethod = function(method) {
   }
 };
 
-window.addRankCalcRow = function() {
+window.addRankCalcRow = function () {
   const tbody = document.getElementById('rank-calc-table-body');
   if (!tbody) return;
   const rowCount = tbody.getElementsByTagName('tr').length + 1;
@@ -15146,7 +15146,7 @@ window.addRankCalcRow = function() {
   tbody.appendChild(newRow);
 };
 
-window.clearRankCalcTable = function() {
+window.clearRankCalcTable = function () {
   const tbody = document.getElementById('rank-calc-table-body');
   if (!tbody) return;
   tbody.innerHTML = '';
@@ -15160,7 +15160,7 @@ window.clearRankCalcTable = function() {
   }
 };
 
-window.exportRanksCSV = function() {
+window.exportRanksCSV = function () {
   const data = window._rankCalcData;
   if (!data) return;
   const { finalRanks } = data;
@@ -15180,7 +15180,7 @@ window.exportRanksCSV = function() {
   document.body.removeChild(link);
 };
 
-window.exportRanksPDF = function() {
+window.exportRanksPDF = function () {
   const style = document.createElement('style');
   style.innerHTML = `
     @media print {
@@ -15325,7 +15325,7 @@ function calculateRanks() {
     } else {
       if (method === 'fractional') {
         assignedRankVal = (startRank + endRank) / 2;
-        const ordinalRangeStr = Array.from({length: size}, (_, idx) => startRank + idx).join(" + ");
+        const ordinalRangeStr = Array.from({ length: size }, (_, idx) => startRank + idx).join(" + ");
         explanation = `Tie group of ${size} duplicate values of ${val} at sorted ranks ${startRank} to ${endRank}. ` +
           `Assigned rank is the average of these ranks: (${ordinalRangeStr}) / ${size} = <strong>${fmt(assignedRankVal, decimals)}</strong>.`;
       } else if (method === 'competition') {
@@ -15636,14 +15636,14 @@ function calculateRanks() {
   const mapY = (r) => pad + plotH - (rangeRank > 0 ? ((r - minRank) / rangeRank) * plotH : plotH / 2);
 
   let distTicksHtml = '';
-  const rankTicks = rangeRank > 0 ? [minRank, minRank + rangeRank*0.25, minRank + rangeRank*0.5, minRank + rangeRank*0.75, maxRank] : [minRank];
+  const rankTicks = rangeRank > 0 ? [minRank, minRank + rangeRank * 0.25, minRank + rangeRank * 0.5, minRank + rangeRank * 0.75, maxRank] : [minRank];
   rankTicks.forEach(tick => {
     const y = mapY(tick);
     distTicksHtml += `<line x1="${pad}" y1="${y}" x2="${pad + plotW}" y2="${y}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
     distTicksHtml += `<text x="${pad - 8}" y="${y + 3}" text-anchor="end" font-family="sans-serif" font-size="8" fill="var(--muted)">${fmt(tick, 1)}</text>`;
   });
 
-  const valTicks = rangeVal > 0 ? [minVal, minVal + rangeVal*0.25, minVal + rangeVal*0.5, minVal + rangeVal*0.75, maxVal] : [minVal];
+  const valTicks = rangeVal > 0 ? [minVal, minVal + rangeVal * 0.25, minVal + rangeVal * 0.5, minVal + rangeVal * 0.75, maxVal] : [minVal];
   valTicks.forEach(tick => {
     const x = mapX(tick);
     distTicksHtml += `<line x1="${x}" y1="${pad}" x2="${x}" y2="${pad + plotH}" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="3" />`;
@@ -15652,7 +15652,7 @@ function calculateRanks() {
 
   let distPathHtml = '';
   let lastPt = null;
-  const sortedCopyForChart = [...items].sort((a,b) => a.val - b.val);
+  const sortedCopyForChart = [...items].sort((a, b) => a.val - b.val);
   sortedCopyForChart.forEach(item => {
     const cx = mapX(item.val);
     const cy = mapY(item.rank);
@@ -15671,9 +15671,9 @@ function calculateRanks() {
 
   // Histogram
   const numBins = 5;
-  const bins = Array.from({length: numBins}, () => 0);
+  const bins = Array.from({ length: numBins }, () => 0);
   const binWidth = rangeVal > 0 ? rangeVal / numBins : 1.0;
-  
+
   rawValues.forEach(v => {
     let binIdx = Math.floor((v - minVal) / binWidth);
     if (binIdx >= numBins) binIdx = numBins - 1;
@@ -15683,7 +15683,7 @@ function calculateRanks() {
 
   const maxBinCount = Math.max(...bins) || 1.0;
   const histTicks = [0, maxBinCount * 0.25, maxBinCount * 0.5, maxBinCount * 0.75, maxBinCount];
-  
+
   let histHtml = '';
   histTicks.forEach(tick => {
     const y = pad + plotH - (tick / maxBinCount) * plotH;
@@ -15699,11 +15699,11 @@ function calculateRanks() {
     const bx = pad + i * (barW + barSpacing) + barSpacing / 2;
     const by = pad + plotH - bHeight;
     histHtml += `<rect x="${bx}" y="${by}" width="${barW}" height="${bHeight}" fill="var(--teal)" opacity="0.85" rx="3" />`;
-    
+
     const binStart = minVal + i * binWidth;
     const midX = bx + barW / 2;
-    histHtml += `<text x="${midX}" y="${svgH - pad + 12}" text-anchor="middle" font-family="sans-serif" font-size="7.5" fill="var(--muted)">${fmt(binStart,1)}</text>`;
-    
+    histHtml += `<text x="${midX}" y="${svgH - pad + 12}" text-anchor="middle" font-family="sans-serif" font-size="7.5" fill="var(--muted)">${fmt(binStart, 1)}</text>`;
+
     if (count > 0) {
       histHtml += `<text x="${midX}" y="${by - 4}" text-anchor="middle" font-family="sans-serif" font-size="8.5" font-weight="bold" fill="var(--navy)">${count}</text>`;
     }
@@ -15714,7 +15714,7 @@ function calculateRanks() {
   items.forEach(item => {
     rankFreqMap[item.rank] = (rankFreqMap[item.rank] || 0) + 1;
   });
-  const uniqueRanks = Object.keys(rankFreqMap).map(Number).sort((a,b) => a - b);
+  const uniqueRanks = Object.keys(rankFreqMap).map(Number).sort((a, b) => a - b);
   const maxFreq = Math.max(...Object.values(rankFreqMap)) || 1.0;
 
   let freqHtml = '';
@@ -15735,10 +15735,10 @@ function calculateRanks() {
     const bx = pad + i * (fBarW + fBarSpacing) + fBarSpacing / 2;
     const by = pad + plotH - bHeight;
     freqHtml += `<rect x="${bx}" y="${by}" width="${fBarW}" height="${bHeight}" fill="var(--amber)" opacity="0.85" rx="3" />`;
-    
+
     const midX = bx + fBarW / 2;
     freqHtml += `<text x="${midX}" y="${svgH - pad + 12}" text-anchor="middle" font-family="sans-serif" font-size="8" fill="var(--muted)">${fmt(rankVal, 1)}</text>`;
-    
+
     if (count > 0) {
       freqHtml += `<text x="${midX}" y="${by - 4}" text-anchor="middle" font-family="sans-serif" font-size="8.5" font-weight="bold" fill="var(--navy)">${count}</text>`;
     }
@@ -15954,7 +15954,7 @@ function calculatePoisson() {
   const pGt = 1 - pLte;
 
   let mainResult, mainLabel, modeDesc;
-  switch(mode) {
+  switch (mode) {
     case 'exact': mainResult = pExact; mainLabel = `P(X = ${xInt})`; modeDesc = `exactly ${xInt} occurrences`; break;
     case 'lte': mainResult = pLte; mainLabel = `P(X ≤ ${xInt})`; modeDesc = `at most ${xInt} occurrences`; break;
     case 'lt': mainResult = pLt; mainLabel = `P(X < ${xInt})`; modeDesc = `fewer than ${xInt} occurrences`; break;
@@ -16194,7 +16194,7 @@ function calculatePoisson() {
   let vizEnd = Math.max(xInt + 5, Math.ceil(lambda + 3 * Math.sqrt(lambda)));
   if (vizEnd > 50) vizEnd = Math.min(vizEnd, Math.ceil(lambda + 4 * Math.sqrt(lambda) + 5));
   if (vizEnd > 80) vizEnd = 80;
-  
+
   let maxProb = 0;
   let distPoints = [];
   for (let i = vizStart; i <= vizEnd; i++) {
@@ -16214,7 +16214,7 @@ function calculatePoisson() {
     let isTarget = pt.x === xInt;
     let color = isTarget ? 'var(--amber)' : 'var(--teal)';
     let opacity = isTarget ? '1' : '0.6';
-    
+
     barsHtml += `
       <div style="display: flex; flex-direction: column; justify-content: flex-end; align-items: center; flex: 1; min-width: 28px; height: 100%; position: relative;" onmouseover="this.querySelector('.bar-tooltip').style.opacity=1; this.querySelector('.bar-tooltip').style.visibility='visible';" onmouseout="this.querySelector('.bar-tooltip').style.opacity=0; this.querySelector('.bar-tooltip').style.visibility='hidden';">
         <div class="bar-tooltip" style="position: absolute; bottom: calc(${Math.max(0.5, heightPercent)}% + 10px); font-size: 0.75rem; color: var(--white); opacity: 0; visibility: hidden; transition: 0.2s; white-space: nowrap; z-index: 20; background: var(--navy); padding: 6px 10px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: center; pointer-events: none;">
@@ -16273,45 +16273,45 @@ function calculatePoisson() {
   const svgW = 500, svgH = 220, padL = 50, padR = 20, padT = 20, padB = 40;
   const plotW = svgW - padL - padR;
   const plotH = svgH - padT - padB;
-  
+
   let curvePoints = [];
   let svgBarCount = Math.min(filteredPoints.length, 40);
   let svgPts = filteredPoints.slice(0, svgBarCount);
-  
+
   let svgBarsHtml = '';
   let svgCurvePath = '';
   let svgHighlight = '';
-  
+
   if (svgPts.length > 0) {
     const barW = Math.min(plotW / svgPts.length * 0.7, 20);
     const gap = plotW / svgPts.length;
-    
+
     svgPts.forEach((pt, idx) => {
       const cx = padL + idx * gap + gap / 2;
       const barH = (pt.p / maxProb) * plotH * 0.9;
       const by = svgH - padB - barH;
       const isTarget = pt.x === xInt;
-      
-      svgBarsHtml += `<rect x="${cx - barW/2}" y="${by}" width="${barW}" height="${barH}" rx="2" fill="${isTarget ? '#f59e0b' : '#0d9488'}" opacity="${isTarget ? '1' : '0.5'}"/>`;
-      
+
+      svgBarsHtml += `<rect x="${cx - barW / 2}" y="${by}" width="${barW}" height="${barH}" rx="2" fill="${isTarget ? '#f59e0b' : '#0d9488'}" opacity="${isTarget ? '1' : '0.5'}"/>`;
+
       curvePoints.push({ cx, cy: by });
-      
+
       if (isTarget) {
         svgHighlight += `<circle cx="${cx}" cy="${by}" r="5" fill="#f59e0b" stroke="#fff" stroke-width="2"/>`;
         svgHighlight += `<line x1="${cx}" y1="${by}" x2="${cx}" y2="${svgH - padB}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5"/>`;
       }
-      
+
       // X-axis labels (show every nth)
       if (svgPts.length <= 20 || idx % Math.ceil(svgPts.length / 15) === 0 || isTarget) {
         svgBarsHtml += `<text x="${cx}" y="${svgH - padB + 16}" fill="var(--muted)" font-size="9" font-family="IBM Plex Mono" text-anchor="middle" font-weight="${isTarget ? '700' : '400'}">${pt.x}</text>`;
       }
     });
-    
+
     // Smooth curve through bar tops
     if (curvePoints.length >= 2) {
       svgCurvePath = `M ${curvePoints[0].cx},${curvePoints[0].cy}`;
       for (let i = 1; i < curvePoints.length; i++) {
-        const prev = curvePoints[i-1];
+        const prev = curvePoints[i - 1];
         const curr = curvePoints[i];
         const cpx = (prev.cx + curr.cx) / 2;
         svgCurvePath += ` C ${cpx},${prev.cy} ${cpx},${curr.cy} ${curr.cx},${curr.cy}`;
@@ -16427,7 +16427,7 @@ function calculatePoisson() {
             • <strong>Mean:</strong> E[X] = λ = ${lambda}<br>
             • <strong>Variance:</strong> Var(X) = λ = ${lambda}<br>
             • <strong>Std. Dev:</strong> σ = √λ = ${Math.sqrt(lambda).toFixed(4)}<br>
-            • <strong>Skewness:</strong> 1/√λ = ${lambda > 0 ? (1/Math.sqrt(lambda)).toFixed(4) : '∞'}<br>
+            • <strong>Skewness:</strong> 1/√λ = ${lambda > 0 ? (1 / Math.sqrt(lambda)).toFixed(4) : '∞'}<br>
             • <strong>Mode:</strong> ⌊λ⌋ = ${Math.floor(lambda)}
           </div>
         </div>
@@ -16496,7 +16496,7 @@ function runPoissonSimulation(simId, lambda) {
   const svg = document.getElementById(simId + '-svg');
   const countDiv = document.getElementById(simId + '-count');
   if (!svg) return;
-  
+
   // Generate Poisson random number
   let arrivals = [];
   let L = Math.exp(-lambda);
@@ -16507,25 +16507,25 @@ function runPoissonSimulation(simId, lambda) {
     p *= Math.random();
   } while (p > L);
   k--;
-  
+
   // Generate arrival times (uniform within the window)
   let times = [];
   for (let i = 0; i < k; i++) {
     times.push(Math.random());
   }
   times.sort();
-  
+
   // Build SVG
   let html = '';
   html += '<line x1="40" y1="80" x2="560" y2="80" stroke="var(--border)" stroke-width="2"/>';
-  
+
   // Time markers
   for (let t = 0; t <= 10; t++) {
     const tx = 40 + t * 52;
     html += `<line x1="${tx}" y1="78" x2="${tx}" y2="82" stroke="var(--muted)" stroke-width="1"/>`;
     html += `<text x="${tx}" y="95" fill="var(--muted)" font-size="9" font-family="IBM Plex Mono" text-anchor="middle">${t}</text>`;
   }
-  
+
   // Arrival events (animated)
   times.forEach((t, idx) => {
     const cx = 40 + t * 520;
@@ -16538,20 +16538,20 @@ function runPoissonSimulation(simId, lambda) {
       <animate attributeName="opacity" from="0" to="0.4" dur="0.3s" begin="${delay}s" fill="freeze"/>
     </line>`;
   });
-  
+
   // Title
   html += `<text x="300" y="20" fill="var(--navy)" font-size="12" font-family="Fraunces" text-anchor="middle" font-weight="700">Poisson Arrivals (λ = ${lambda})</text>`;
   html += `<text x="300" y="112" fill="var(--muted)" font-size="11" font-family="Figtree" text-anchor="middle" font-weight="600">Time →</text>`;
-  
+
   svg.innerHTML = html;
   countDiv.textContent = `Events generated: ${k} (Expected: λ = ${lambda})`;
 }
 
 // ---- POISSON CSV EXPORT ----
 function exportPoissonCSV(lambda, x, mode) {
-  function logFact(k) { if (k<=1) return 0; let r=0; for(let i=2;i<=k;i++) r+=Math.log(i); return r; }
-  function pPMF(l, k) { if(l===0) return k===0?1:0; return Math.exp(-l + k*Math.log(l) - logFact(k)); }
-  
+  function logFact(k) { if (k <= 1) return 0; let r = 0; for (let i = 2; i <= k; i++) r += Math.log(i); return r; }
+  function pPMF(l, k) { if (l === 0) return k === 0 ? 1 : 0; return Math.exp(-l + k * Math.log(l) - logFact(k)); }
+
   let csvRows = ['k,P(X=k),P(X<=k)'];
   let cumulative = 0;
   const maxK = Math.min(Math.max(x + 10, Math.ceil(lambda + 4 * Math.sqrt(lambda))), 100);
@@ -16560,13 +16560,13 @@ function exportPoissonCSV(lambda, x, mode) {
     cumulative += pk;
     csvRows.push(`${k},${pk.toFixed(8)},${Math.min(cumulative, 1).toFixed(8)}`);
   }
-  
+
   csvRows.push('');
   csvRows.push('Parameters');
   csvRows.push(`Lambda,${lambda}`);
   csvRows.push(`x,${x}`);
   csvRows.push(`Mode,${mode}`);
-  
+
   const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -16577,37 +16577,37 @@ function exportPoissonCSV(lambda, x, mode) {
 
 // ---- POISSON PDF EXPORT ----
 function exportPoissonPDF(lambda, x, mode) {
-  function logFact(k) { if (k<=1) return 0; let r=0; for(let i=2;i<=k;i++) r+=Math.log(i); return r; }
-  function pPMF(l, k) { if(l===0) return k===0?1:0; return Math.exp(-l + k*Math.log(l) - logFact(k)); }
-  function cumPMF(l, upTo) { let s=0; for(let i=0;i<=upTo;i++) s+=pPMF(l,i); return Math.min(s,1); }
-  
+  function logFact(k) { if (k <= 1) return 0; let r = 0; for (let i = 2; i <= k; i++) r += Math.log(i); return r; }
+  function pPMF(l, k) { if (l === 0) return k === 0 ? 1 : 0; return Math.exp(-l + k * Math.log(l) - logFact(k)); }
+  function cumPMF(l, upTo) { let s = 0; for (let i = 0; i <= upTo; i++) s += pPMF(l, i); return Math.min(s, 1); }
+
   const pExact = pPMF(lambda, x);
   const pLte = cumPMF(lambda, x);
   const pLt = x === 0 ? 0 : cumPMF(lambda, x - 1);
   const pGte = 1 - pLt;
   const pGt = 1 - pLte;
-  
+
   const w = 595, h = 842; // A4 in points
   let y = 50;
-  
+
   let content = '';
-  
+
   // Header
   content += `BT /F1 20 Tf 50 ${h - y} Td (Poisson Distribution Report) Tj ET\n`;
   y += 30;
   content += `BT /F1 11 Tf 50 ${h - y} Td (Generated by VMath Calculator) Tj ET\n`;
   y += 30;
-  
+
   // Line
   content += `50 ${h - y} m 545 ${h - y} l S\n`;
   y += 20;
-  
+
   // Parameters
   content += `BT /F1 14 Tf 50 ${h - y} Td (Parameters) Tj ET\n`;
   y += 22;
   content += `BT /F1 11 Tf 50 ${h - y} Td (Lambda = ${lambda}, x = ${x}, Mode = ${mode}) Tj ET\n`;
   y += 30;
-  
+
   // Results
   content += `BT /F1 14 Tf 50 ${h - y} Td (Results) Tj ET\n`;
   y += 22;
@@ -16623,7 +16623,7 @@ function exportPoissonPDF(lambda, x, mode) {
     y += 18;
   });
   y += 15;
-  
+
   // PMF Table
   content += `BT /F1 14 Tf 50 ${h - y} Td (PMF Table) Tj ET\n`;
   y += 22;
@@ -16631,7 +16631,7 @@ function exportPoissonPDF(lambda, x, mode) {
   y += 5;
   content += `50 ${h - y} m 480 ${h - y} l S\n`;
   y += 15;
-  
+
   let cum = 0;
   const maxK = Math.min(Math.max(x + 5, Math.ceil(lambda + 3 * Math.sqrt(lambda))), 30);
   for (let k = 0; k <= maxK && y < h - 80; k++) {
@@ -16640,32 +16640,32 @@ function exportPoissonPDF(lambda, x, mode) {
     content += `BT /F1 10 Tf 50 ${h - y} Td (${k}) Tj 150 ${h - y} Td (${pk.toFixed(6)}) Tj 320 ${h - y} Td (${Math.min(cum, 1).toFixed(6)}) Tj ET\n`;
     y += 16;
   }
-  
+
   // Build minimal valid PDF
   let pdf = '%PDF-1.4\n';
   let offsets = [];
-  
+
   // Obj 1: Catalog
   offsets.push(pdf.length);
   pdf += '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n';
-  
+
   // Obj 2: Pages
   offsets.push(pdf.length);
   pdf += '2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj\n';
-  
+
   // Obj 3: Page
   offsets.push(pdf.length);
   pdf += `3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 ${w} ${h}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n`;
-  
+
   // Obj 4: Content stream
   offsets.push(pdf.length);
   let stream = content;
   pdf += `4 0 obj << /Length ${stream.length} >> stream\n${stream}endstream endobj\n`;
-  
+
   // Obj 5: Font
   offsets.push(pdf.length);
   pdf += '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n';
-  
+
   // Xref
   let xrefOff = pdf.length;
   pdf += `xref\n0 ${offsets.length + 1}\n`;
@@ -16673,9 +16673,9 @@ function exportPoissonPDF(lambda, x, mode) {
   offsets.forEach(off => {
     pdf += off.toString().padStart(10, '0') + ' 00000 n \n';
   });
-  
+
   pdf += `trailer << /Size ${offsets.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOff}\n%%EOF`;
-  
+
   const blob = new Blob([pdf], { type: 'application/pdf' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -16691,12 +16691,12 @@ function exportPoissonPDF(lambda, x, mode) {
 function erf(x) {
   const sign = (x >= 0) ? 1 : -1;
   x = Math.abs(x);
-  const a1 =  0.254829592;
+  const a1 = 0.254829592;
   const a2 = -0.284496736;
-  const a3 =  1.421413741;
+  const a3 = 1.421413741;
   const a4 = -1.453152027;
-  const a5 =  1.061405429;
-  const p  =  0.3275911;
+  const a5 = 1.061405429;
+  const p = 0.3275911;
 
   const t = 1.0 / (1.0 + p * x);
   const y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
@@ -16758,11 +16758,11 @@ function calculateNormal() {
   const cdf1 = normalCDF(x1, mu, sigma);
   const cdf2 = mode === 'between' ? normalCDF(x2, mu, sigma) : 0;
   const pdf1 = normalPDF(x1, mu, sigma);
-  
+
   let resultProb = 0;
   let mainLabel = '';
   let modeDesc = '';
-  
+
   if (mode === 'exact') {
     resultProb = pdf1;
     mainLabel = `f(${x1})`;
@@ -16955,11 +16955,11 @@ function calculateNormal() {
   const svgW = 600, svgH = 260, padL = 40, padR = 40, padT = 30, padB = 40;
   const plotW = svgW - padL - padR;
   const plotH = svgH - padT - padB;
-  
+
   // X range: typically mu +/- 4 sigma
   let minX = mu - 4 * sigma;
   let maxX = mu + 4 * sigma;
-  
+
   // Extend range if user query is outside
   if (x1 < minX) minX = x1 - sigma;
   if (x1 > maxX) maxX = x1 + sigma;
@@ -16970,7 +16970,7 @@ function calculateNormal() {
 
   const xScale = plotW / (maxX - minX);
   const getX = (val) => padL + (val - minX) * xScale;
-  
+
   // PDF peak is at mu
   const peakY = normalPDF(mu, mu, sigma);
   const yScale = plotH / (peakY * 1.1); // Add 10% padding
@@ -16980,16 +16980,16 @@ function calculateNormal() {
   let curvePath = '';
   const numPoints = 200;
   let areaPath = '';
-  
+
   for (let i = 0; i <= numPoints; i++) {
     const xVal = minX + (i / numPoints) * (maxX - minX);
     const yVal = normalPDF(xVal, mu, sigma);
     const px = getX(xVal);
     const py = getY(yVal);
-    
+
     if (i === 0) curvePath = `M ${px},${py}`;
     else curvePath += ` L ${px},${py}`;
-    
+
     // Build shaded area logic
     let inZone = false;
     if (mode === 'lte' || mode === 'lt') {
@@ -16999,7 +16999,7 @@ function calculateNormal() {
     } else if (mode === 'between') {
       if (xVal >= x1 && xVal <= x2) inZone = true;
     }
-    
+
     if (inZone) {
       if (!areaPath) {
         // start area
@@ -17028,14 +17028,14 @@ function calculateNormal() {
       }
     }
   }
-  
+
   // Highlight markers
   let highlightLines = '';
   if (mode !== 'exact') {
     const px1 = getX(x1);
     highlightLines += `<line x1="${px1}" y1="${getY(normalPDF(x1, mu, sigma))}" x2="${px1}" y2="${svgH - padB}" stroke="#0ea5e9" stroke-width="2" stroke-dasharray="4,4"/>`;
     highlightLines += `<text x="${px1}" y="${svgH - padB + 28}" fill="#0ea5e9" font-size="11" font-weight="700" text-anchor="middle">x₁=${x1}</text>`;
-    
+
     if (mode === 'between') {
       const px2 = getX(x2);
       highlightLines += `<line x1="${px2}" y1="${getY(normalPDF(x2, mu, sigma))}" x2="${px2}" y2="${svgH - padB}" stroke="#0ea5e9" stroke-width="2" stroke-dasharray="4,4"/>`;
@@ -17191,10 +17191,10 @@ function calculateNormal() {
 }
 
 // ---- NORMAL ANIMATION ----
-window.runNormalAnimation = function(simId) {
+window.runNormalAnimation = function (simId) {
   const path = document.getElementById(simId + '-path');
   if (!path) return;
-  
+
   // Animate by modifying SVG path data
   const keyframes = [
     "M 50,160 Q 300,10 550,160",  // Medium
@@ -17202,29 +17202,29 @@ window.runNormalAnimation = function(simId) {
     "M 50,160 Q 300,100 550,160",  // Wide (high variance)
     "M 50,160 Q 300,10 550,160"   // Back to Medium
   ];
-  
+
   let currentFrame = 0;
-  
+
   // Use animate tag internally
   path.innerHTML = `<animate attributeName="d" values="${keyframes.join(';')}" dur="4s" repeatCount="1" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1; 0.4 0 0.2 1; 0.4 0 0.2 1" keyTimes="0; 0.33; 0.66; 1"/>`;
-  
+
   // Reset text
   const svg = document.getElementById(simId + '-svg');
   let text = svg.querySelector('text[y="30"]');
-  if(text) text.textContent = "Variance animating (low -> high -> normal)";
+  if (text) text.textContent = "Variance animating (low -> high -> normal)";
 };
 
 // ---- NORMAL CSV EXPORT ----
-window.exportNormalCSV = function(mu, sigma, x1, mode, x2) {
+window.exportNormalCSV = function (mu, sigma, x1, mode, x2) {
   let csvRows = ['Z-Score,X-Value,PDF f(x),CDF P(X<=x)'];
-  
+
   for (let z = -4; z <= 4; z += 0.5) {
     const xVal = mu + z * sigma;
     const pdfVal = normalPDF(xVal, mu, sigma);
     const cdfVal = normalCDF(xVal, mu, sigma);
     csvRows.push(`${z.toFixed(2)},${xVal.toFixed(4)},${pdfVal.toFixed(6)},${cdfVal.toFixed(6)}`);
   }
-  
+
   csvRows.push('');
   csvRows.push('Parameters');
   csvRows.push(`Mean (mu),${mu}`);
@@ -17232,7 +17232,7 @@ window.exportNormalCSV = function(mu, sigma, x1, mode, x2) {
   csvRows.push(`Mode,${mode}`);
   csvRows.push(`x1,${x1}`);
   if (mode === 'between') csvRows.push(`x2,${x2}`);
-  
+
   const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -17242,29 +17242,29 @@ window.exportNormalCSV = function(mu, sigma, x1, mode, x2) {
 };
 
 // ---- NORMAL PDF EXPORT ----
-window.exportNormalPDF = function(mu, sigma, x1, mode, x2) {
+window.exportNormalPDF = function (mu, sigma, x1, mode, x2) {
   const w = 595, h = 842;
   let y = 50;
   let content = '';
-  
+
   content += `BT /F1 20 Tf 50 ${h - y} Td (Normal Distribution Report) Tj ET\n`;
   y += 30;
   content += `BT /F1 11 Tf 50 ${h - y} Td (Generated by VMath Calculator) Tj ET\n`;
   y += 30;
   content += `50 ${h - y} m 545 ${h - y} l S\n`;
   y += 20;
-  
+
   content += `BT /F1 14 Tf 50 ${h - y} Td (Parameters) Tj ET\n`;
   y += 22;
   content += `BT /F1 11 Tf 50 ${h - y} Td (Mean = ${mu}, Std Dev = ${sigma}, Mode = ${mode}) Tj ET\n`;
   y += 30;
-  
+
   content += `BT /F1 14 Tf 50 ${h - y} Td (Results) Tj ET\n`;
   y += 22;
-  
+
   const cdf1 = normalCDF(x1, mu, sigma);
   const pdf1 = normalPDF(x1, mu, sigma);
-  
+
   if (mode === 'exact') content += `BT /F1 11 Tf 50 ${h - y} Td (PDF f(${x1}) = ${pdf1.toFixed(8)}) Tj ET\n`;
   else if (mode === 'lte' || mode === 'lt') content += `BT /F1 11 Tf 50 ${h - y} Td (P(X <= ${x1}) = ${cdf1.toFixed(8)}) Tj ET\n`;
   else if (mode === 'gte' || mode === 'gt') content += `BT /F1 11 Tf 50 ${h - y} Td (P(X >= ${x1}) = ${(1 - cdf1).toFixed(8)}) Tj ET\n`;
@@ -17273,14 +17273,14 @@ window.exportNormalPDF = function(mu, sigma, x1, mode, x2) {
     content += `BT /F1 11 Tf 50 ${h - y} Td (P(${x1} <= X <= ${x2}) = ${(cdf2 - cdf1).toFixed(8)}) Tj ET\n`;
   }
   y += 30;
-  
+
   content += `BT /F1 14 Tf 50 ${h - y} Td (Distribution Points) Tj ET\n`;
   y += 22;
   content += `BT /F1 10 Tf 50 ${h - y} Td (Z) Tj 150 ${h - y} Td (X) Tj 250 ${h - y} Td (PDF) Tj 350 ${h - y} Td (CDF) Tj ET\n`;
   y += 5;
   content += `50 ${h - y} m 480 ${h - y} l S\n`;
   y += 15;
-  
+
   for (let z = -3; z <= 3; z += 0.5) {
     const xVal = mu + z * sigma;
     const pVal = normalPDF(xVal, mu, sigma);
@@ -17288,7 +17288,7 @@ window.exportNormalPDF = function(mu, sigma, x1, mode, x2) {
     content += `BT /F1 10 Tf 50 ${h - y} Td (${z.toFixed(1)}) Tj 150 ${h - y} Td (${xVal.toFixed(4)}) Tj 250 ${h - y} Td (${pVal.toFixed(6)}) Tj 350 ${h - y} Td (${cVal.toFixed(6)}) Tj ET\n`;
     y += 16;
   }
-  
+
   let pdf = '%PDF-1.4\n';
   let offsets = [];
   offsets.push(pdf.length); pdf += '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n';
@@ -17296,12 +17296,12 @@ window.exportNormalPDF = function(mu, sigma, x1, mode, x2) {
   offsets.push(pdf.length); pdf += `3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 ${w} ${h}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n`;
   offsets.push(pdf.length); pdf += `4 0 obj << /Length ${content.length} >> stream\n${content}endstream endobj\n`;
   offsets.push(pdf.length); pdf += '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n';
-  
+
   let xrefOff = pdf.length;
   pdf += `xref\n0 ${offsets.length + 1}\n0000000000 65535 f \n`;
   offsets.forEach(off => { pdf += off.toString().padStart(10, '0') + ' 00000 n \n'; });
   pdf += `trailer << /Size ${offsets.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOff}\n%%EOF`;
-  
+
   const blob = new Blob([pdf], { type: 'application/pdf' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -17556,10 +17556,10 @@ function calculateGamma() {
         <div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">
           <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">🎯 Step 3e: Mode</div>
           <div style="font-family: 'IBM Plex Mono', monospace; color: var(--text); line-height: 1.8;">
-            ${alpha >= 1 ? 
-              `Mode = (α − 1) × β<br>Mode = (${alpha} − 1) × ${beta}<br>Mode = ${(alpha - 1).toFixed(4)} × ${beta}<br><span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">Mode = ${modeVal.toFixed(4)}</span>` :
-              `For α < 1, the PDF → ∞ as x → 0⁺, so the <span style="color: var(--amber); font-weight: 700;">mode = 0</span>`
-            }
+            ${alpha >= 1 ?
+      `Mode = (α − 1) × β<br>Mode = (${alpha} − 1) × ${beta}<br>Mode = ${(alpha - 1).toFixed(4)} × ${beta}<br><span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">Mode = ${modeVal.toFixed(4)}</span>` :
+      `For α < 1, the PDF → ∞ as x → 0⁺, so the <span style="color: var(--amber); font-weight: 700;">mode = 0</span>`
+    }
           </div>
         </div>
       </div>
@@ -17736,11 +17736,11 @@ function calculateGamma() {
             <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why does it start at zero?</div>
             <div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">
               ${alpha > 1 ?
-                `Since α = ${alpha} > 1, the factor x<sup>(α−1)</sup> = x<sup>${(alpha-1).toFixed(1)}</sup> equals <strong>0</strong> when x = 0. Therefore f(0) = 0. The PDF begins at the origin.` :
-                alpha === 1 ?
-                `Since α = 1, x<sup>(α−1)</sup> = x<sup>0</sup> = 1, and the distribution starts at a <strong>finite positive value</strong> f(0⁺) = 1/(Γ(1)·β) = ${(1/beta).toFixed(4)}. This is the Exponential distribution case.` :
-                `Since α = ${alpha} < 1, x<sup>(α−1)</sup> → ∞ as x → 0⁺, meaning the PDF shoots up to <strong>infinity</strong> near the origin, creating a J-shaped curve.`
-              }
+      `Since α = ${alpha} > 1, the factor x<sup>(α−1)</sup> = x<sup>${(alpha - 1).toFixed(1)}</sup> equals <strong>0</strong> when x = 0. Therefore f(0) = 0. The PDF begins at the origin.` :
+      alpha === 1 ?
+        `Since α = 1, x<sup>(α−1)</sup> = x<sup>0</sup> = 1, and the distribution starts at a <strong>finite positive value</strong> f(0⁺) = 1/(Γ(1)·β) = ${(1 / beta).toFixed(4)}. This is the Exponential distribution case.` :
+        `Since α = ${alpha} < 1, x<sup>(α−1)</sup> → ∞ as x → 0⁺, meaning the PDF shoots up to <strong>infinity</strong> near the origin, creating a J-shaped curve.`
+    }
             </div>
           </div>
         </div>
@@ -17751,11 +17751,11 @@ function calculateGamma() {
             <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why does it rise to a peak?</div>
             <div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">
               ${alpha > 1 ?
-                `As x increases from 0, the power term x<sup>${(alpha-1).toFixed(1)}</sup> grows <strong>faster</strong> than the exponential decay e<sup>−x/${beta}</sup> shrinks. This causes the PDF to rise. The peak occurs at the <strong>mode = (α−1)β = ${modeVal.toFixed(2)}</strong>, where these two competing forces are perfectly balanced.` :
-                alpha === 1 ?
-                `With α = 1, there is <strong>no rising portion</strong>. The function starts at its maximum and immediately decays — this is the classic Exponential decay shape.` :
-                `With α < 1, the function actually <strong>decreases monotonically</strong> from infinity. There is no visible peak — the mode is at x = 0.`
-              }
+      `As x increases from 0, the power term x<sup>${(alpha - 1).toFixed(1)}</sup> grows <strong>faster</strong> than the exponential decay e<sup>−x/${beta}</sup> shrinks. This causes the PDF to rise. The peak occurs at the <strong>mode = (α−1)β = ${modeVal.toFixed(2)}</strong>, where these two competing forces are perfectly balanced.` :
+      alpha === 1 ?
+        `With α = 1, there is <strong>no rising portion</strong>. The function starts at its maximum and immediately decays — this is the classic Exponential decay shape.` :
+        `With α < 1, the function actually <strong>decreases monotonically</strong> from infinity. There is no visible peak — the mode is at x = 0.`
+    }
             </div>
           </div>
         </div>
@@ -17765,7 +17765,7 @@ function calculateGamma() {
           <div>
             <div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why does it decrease afterward?</div>
             <div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">
-              Beyond the mode, the <strong>exponential decay</strong> factor e<sup>−x/${beta}</sup> dominates over the polynomial growth x<sup>${(alpha-1).toFixed(1)}</sup>. The exponential function decays far more rapidly than any polynomial can grow, causing the tail to asymptotically approach zero as x → ∞. The distribution has a <strong>right-skewed</strong> (positively skewed) shape with skewness = ${skewness.toFixed(4)}.
+              Beyond the mode, the <strong>exponential decay</strong> factor e<sup>−x/${beta}</sup> dominates over the polynomial growth x<sup>${(alpha - 1).toFixed(1)}</sup>. The exponential function decays far more rapidly than any polynomial can grow, causing the tail to asymptotically approach zero as x → ∞. The distribution has a <strong>right-skewed</strong> (positively skewed) shape with skewness = ${skewness.toFixed(4)}.
             </div>
           </div>
         </div>
@@ -18065,8 +18065,8 @@ function betaInc(x, a, b) {
 }
 
 function betaCDF(x, a, b) {
-  if(x <= 0) return 0;
-  if(x >= 1) return 1;
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
   return betaInc(x, a, b);
 }
 
@@ -18099,15 +18099,15 @@ function calculateBeta() {
   const variance = (alpha * beta) / (Math.pow(alpha + beta, 2) * (alpha + beta + 1));
   const stddev = Math.sqrt(variance);
   const modeVal = (alpha > 1 && beta > 1) ? (alpha - 1) / (alpha + beta - 2) : (alpha < 1 && beta < 1 ? "Bimodal (0 and 1)" : (alpha <= 1 && beta > 1 ? 0 : (alpha > 1 && beta <= 1 ? 1 : "Undefined")));
-  
+
   const skewness = (2 * (beta - alpha) * Math.sqrt(alpha + beta + 1)) / ((alpha + beta + 2) * Math.sqrt(alpha * beta));
   const kurtosis = 6 * (Math.pow(alpha - beta, 2) * (alpha + beta + 1) - alpha * beta * (alpha + beta + 2)) / (alpha * beta * (alpha + beta + 2) * (alpha + beta + 3));
 
   const betaAlphaBeta = betaFuncCalc(alpha, beta);
   let pdfAtX = 0, cdfAtX = 0;
   if (!isNaN(xVal) && xVal >= 0 && xVal <= 1) {
-      pdfAtX = betaPDF(xVal, alpha, beta);
-      cdfAtX = betaCDF(xVal, alpha, beta);
+    pdfAtX = betaPDF(xVal, alpha, beta);
+    cdfAtX = betaCDF(xVal, alpha, beta);
   }
 
   let stepCount = 1;
@@ -18373,7 +18373,7 @@ function calculateBeta() {
   </div>`;
 
   // ── Step 7: Shape Analysis ──
-  
+
   let shapeStartStr = alpha > 1 ? "since α > 1, the curve starts at f(0) = 0." : "since α ≤ 1, the curve starts at a finite value or approaches infinity.";
   let shapePeakStr = (alpha > 1 && beta > 1) ? ("Because both α > 1 and β > 1, the product x^(α-1)(1-x)^(β-1) grows from 0, reaches a maximum at the mode (" + modeVal.toFixed(2) + "), and then drops back to 0. This creates the bell shape.") : "For these parameters, the distribution doesn't reach a single internal peak. It's either monotonically increasing, decreasing, or U-shaped.";
   let shapeEndStr = beta > 1 ? "Since β = " + beta + " > 1, the curve drops to 0 at x = 1." : "Since β ≤ 1, the curve approaches a finite value or infinity at x = 1.";
@@ -18603,8 +18603,8 @@ function calculateExponential() {
 
   let pdfAtX = 0, cdfAtX = 0;
   if (!isNaN(xVal) && xVal >= 0) {
-      pdfAtX = exponentialPDF(xVal, lambda);
-      cdfAtX = exponentialCDF(xVal, lambda);
+    pdfAtX = exponentialPDF(xVal, lambda);
+    cdfAtX = exponentialCDF(xVal, lambda);
   }
 
   let stepCount = 1;
@@ -18613,190 +18613,190 @@ function calculateExponential() {
   // ── Step 1: Definition ──
   html += '<div class="step-card" style="border-left-color: var(--amber);">' +
     '<div class="step-header">' +
-      '<div class="step-number">' + (stepCount++) + '</div>' +
-      '<div class="step-title">Definition — Exponential Distribution</div>' +
+    '<div class="step-number">' + (stepCount++) + '</div>' +
+    '<div class="step-title">Definition — Exponential Distribution</div>' +
     '</div>' +
     '<div class="step-desc" style="text-align: center;">' +
-      '<p style="font-size: 1.1rem; color: var(--navy); font-weight: 700; margin-bottom: 1rem;">' +
-        'The Exponential Distribution is a continuous probability distribution often used to model the time elapsed between events in a Poisson point process.' +
-      '</p>' +
-      '<div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; padding: 2rem; margin: 1.5rem auto; max-width: 650px; box-shadow: 0 4px 15px rgba(217,119,6,0.15);">' +
-        '<div style="font-weight: 700; color: #92400e; margin-bottom: 0.75rem; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Probability Density Function (PDF)</div>' +
-        '<div style="font-family: \'IBM Plex Mono\', monospace; font-size: 1.5rem; color: #78350f; font-weight: 600; line-height: 2;">' +
-          'f(x) = λe<sup>−λx</sup>' +
-        '</div>' +
-      '</div>' +
-      '<p style="color: var(--muted); font-size: 0.95rem; margin-top: 1rem;">' +
-        'Where x ≥ 0 and λ > 0. It describes the waiting time until a specific event occurs.' +
-      '</p>' +
+    '<p style="font-size: 1.1rem; color: var(--navy); font-weight: 700; margin-bottom: 1rem;">' +
+    'The Exponential Distribution is a continuous probability distribution often used to model the time elapsed between events in a Poisson point process.' +
+    '</p>' +
+    '<div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px; padding: 2rem; margin: 1.5rem auto; max-width: 650px; box-shadow: 0 4px 15px rgba(217,119,6,0.15);">' +
+    '<div style="font-weight: 700; color: #92400e; margin-bottom: 0.75rem; font-size: 0.95rem; letter-spacing: 0.05em; text-transform: uppercase;">Probability Density Function (PDF)</div>' +
+    '<div style="font-family: \'IBM Plex Mono\', monospace; font-size: 1.5rem; color: #78350f; font-weight: 600; line-height: 2;">' +
+    'f(x) = λe<sup>−λx</sup>' +
     '</div>' +
-  '</div>';
+    '</div>' +
+    '<p style="color: var(--muted); font-size: 0.95rem; margin-top: 1rem;">' +
+    'Where x ≥ 0 and λ > 0. It describes the waiting time until a specific event occurs.' +
+    '</p>' +
+    '</div>' +
+    '</div>';
 
   // ── Step 2: Parameter Explanation ──
   html += '<div class="step-card" style="border-left-color: #0891b2;">' +
     '<div class="step-header">' +
-      '<div class="step-number">' + (stepCount++) + '</div>' +
-      '<div class="step-title">Parameter & Concept Explanation</div>' +
+    '<div class="step-number">' + (stepCount++) + '</div>' +
+    '<div class="step-title">Parameter & Concept Explanation</div>' +
     '</div>' +
     '<div class="step-desc">' +
-      '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1rem 0;">' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">' +
-          '<div style="font-size: 2rem; font-weight: 800; color: var(--amber); font-family: \'IBM Plex Mono\', monospace;">λ = ' + lambda + '</div>' +
-          '<div style="font-weight: 700; color: var(--navy); margin: 0.5rem 0;">Rate Parameter (λ)</div>' +
-          '<div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">The average number of events per unit of time. A higher rate means shorter expected waiting times.</div>' +
-        '</div>' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">' +
-          '<div style="font-size: 2rem; font-weight: 800; color: #0891b2; font-family: \'IBM Plex Mono\', monospace;">Poisson Link</div>' +
-          '<div style="font-weight: 700; color: var(--navy); margin: 0.5rem 0;">Relationship with Poisson</div>' +
-          '<div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">If the number of events follows a Poisson distribution with rate λ, then the exact waiting time between consecutive events is exponentially distributed.</div>' +
-        '</div>' +
-      '</div>' +
-      '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-top: 1rem;">' +
-        '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.75rem; text-align: center;">Waiting Time Meaning</div>' +
-        '<p style="color: var(--muted); font-size: 0.95rem; text-align: center; margin-bottom: 1rem;">' +
-        'It represents the continuous time duration until the next random event occurs. Because it models time, the random variable x can never be negative (x ≥ 0).' +
-        '</p>' +
-      '</div>' +
+    '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 1rem 0;">' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">' +
+    '<div style="font-size: 2rem; font-weight: 800; color: var(--amber); font-family: \'IBM Plex Mono\', monospace;">λ = ' + lambda + '</div>' +
+    '<div style="font-weight: 700; color: var(--navy); margin: 0.5rem 0;">Rate Parameter (λ)</div>' +
+    '<div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">The average number of events per unit of time. A higher rate means shorter expected waiting times.</div>' +
     '</div>' +
-  '</div>';
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center;">' +
+    '<div style="font-size: 2rem; font-weight: 800; color: #0891b2; font-family: \'IBM Plex Mono\', monospace;">Poisson Link</div>' +
+    '<div style="font-weight: 700; color: var(--navy); margin: 0.5rem 0;">Relationship with Poisson</div>' +
+    '<div style="font-size: 0.9rem; color: var(--muted); line-height: 1.5;">If the number of events follows a Poisson distribution with rate λ, then the exact waiting time between consecutive events is exponentially distributed.</div>' +
+    '</div>' +
+    '</div>' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; margin-top: 1rem;">' +
+    '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.75rem; text-align: center;">Waiting Time Meaning</div>' +
+    '<p style="color: var(--muted); font-size: 0.95rem; text-align: center; margin-bottom: 1rem;">' +
+    'It represents the continuous time duration until the next random event occurs. Because it models time, the random variable x can never be negative (x ≥ 0).' +
+    '</p>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
 
   // ── Step 3: Step-by-step calculations ──
   html += '<div class="step-card" style="border-left-color: #7c3aed;">' +
     '<div class="step-header">' +
-      '<div class="step-number">' + (stepCount++) + '</div>' +
-      '<div class="step-title">Step-by-Step Calculations</div>' +
+    '<div class="step-number">' + (stepCount++) + '</div>' +
+    '<div class="step-title">Step-by-Step Calculations</div>' +
     '</div>' +
     '<div class="step-desc">' +
-      '<div style="font-weight: 600; color: var(--navy); margin-bottom: 1rem; font-size: 1.05rem;">Given: λ = ' + lambda + '</div>' +
-      '<div style="display: flex; flex-direction: column; gap: 1.5rem;">' +
+    '<div style="font-weight: 600; color: var(--navy); margin-bottom: 1rem; font-size: 1.05rem;">Given: λ = ' + lambda + '</div>' +
+    '<div style="display: flex; flex-direction: column; gap: 1.5rem;">' +
 
-        '<!-- Mean -->' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
-          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📊 Step 3a: Mean (Expected Value, μ)</div>' +
-          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
-            'μ = 1 / λ<br>' +
-            'μ = 1 / ' + lambda + '<br>' +
-            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">μ = ' + mean.toFixed(4) + '</span>' +
-          '</div>' +
-        '</div>' +
-
-        '<!-- Variance -->' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
-          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📈 Step 3b: Variance (σ²)</div>' +
-          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
-            'σ² = 1 / λ²<br>' +
-            'σ² = 1 / (' + lambda + ')²<br>' +
-            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">σ² = ' + variance.toFixed(4) + '</span>' +
-          '</div>' +
-        '</div>' +
-
-        '<!-- Standard Deviation -->' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
-          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📏 Step 3c: Standard Deviation (σ)</div>' +
-          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
-            'σ = 1 / λ<br>' +
-            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">σ = ' + stddev.toFixed(4) + '</span>' +
-          '</div>' +
-        '</div>' +
-
-        '<!-- Median -->' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
-          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">🎯 Step 3d: Median</div>' +
-          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
-            'Median = ln(2) / λ<br>' +
-            'Median = ' + Math.LN2.toFixed(4) + ' / ' + lambda + '<br>' +
-            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">Median = ' + median.toFixed(4) + '</span>' +
-          '</div>' +
-        '</div>' +
-
-        '<!-- Mode -->' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
-          '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">🎯 Step 3e: Mode</div>' +
-          '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
-            'Mode = 0<br>' +
-            '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">Mode = ' + modeVal.toFixed(4) + '</span>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
-
-      '<!-- Statistical Summary -->' +
-      '<div style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 16px; padding: 1.5rem; margin-top: 1.5rem; box-shadow: 0 4px 12px rgba(124,58,237,0.1);">' +
-        '<div style="font-weight: 700; color: #5b21b6; margin-bottom: 1rem; text-align: center; font-size: 1.05rem;">Statistical Summary</div>' +
-        '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; text-align: center; font-family: \'IBM Plex Mono\', monospace;">' +
-          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Mean</div>' +
-            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + mean.toFixed(4) + '</div>' +
-          '</div>' +
-          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Variance</div>' +
-            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + variance.toFixed(4) + '</div>' +
-          '</div>' +
-          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Std Dev</div>' +
-            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + stddev.toFixed(4) + '</div>' +
-          '</div>' +
-          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Median</div>' +
-            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + median.toFixed(4) + '</div>' +
-          '</div>' +
-          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Mode</div>' +
-            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + modeVal.toFixed(4) + '</div>' +
-          '</div>' +
-          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Skewness</div>' +
-            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + skewness.toFixed(4) + '</div>' +
-          '</div>' +
-          '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
-            '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Ex. Kurtosis</div>' +
-            '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + kurtosis.toFixed(4) + '</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
+    '<!-- Mean -->' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+    '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📊 Step 3a: Mean (Expected Value, μ)</div>' +
+    '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+    'μ = 1 / λ<br>' +
+    'μ = 1 / ' + lambda + '<br>' +
+    '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">μ = ' + mean.toFixed(4) + '</span>' +
     '</div>' +
-  '</div>';
+    '</div>' +
+
+    '<!-- Variance -->' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+    '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📈 Step 3b: Variance (σ²)</div>' +
+    '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+    'σ² = 1 / λ²<br>' +
+    'σ² = 1 / (' + lambda + ')²<br>' +
+    '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">σ² = ' + variance.toFixed(4) + '</span>' +
+    '</div>' +
+    '</div>' +
+
+    '<!-- Standard Deviation -->' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+    '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">📏 Step 3c: Standard Deviation (σ)</div>' +
+    '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+    'σ = 1 / λ<br>' +
+    '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">σ = ' + stddev.toFixed(4) + '</span>' +
+    '</div>' +
+    '</div>' +
+
+    '<!-- Median -->' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+    '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">🎯 Step 3d: Median</div>' +
+    '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+    'Median = ln(2) / λ<br>' +
+    'Median = ' + Math.LN2.toFixed(4) + ' / ' + lambda + '<br>' +
+    '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">Median = ' + median.toFixed(4) + '</span>' +
+    '</div>' +
+    '</div>' +
+
+    '<!-- Mode -->' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+    '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.5rem;">🎯 Step 3e: Mode</div>' +
+    '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 1.8;">' +
+    'Mode = 0<br>' +
+    '<span style="color: var(--amber); font-weight: 700; font-size: 1.15rem;">Mode = ' + modeVal.toFixed(4) + '</span>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+
+    '<!-- Statistical Summary -->' +
+    '<div style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 16px; padding: 1.5rem; margin-top: 1.5rem; box-shadow: 0 4px 12px rgba(124,58,237,0.1);">' +
+    '<div style="font-weight: 700; color: #5b21b6; margin-bottom: 1rem; text-align: center; font-size: 1.05rem;">Statistical Summary</div>' +
+    '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; text-align: center; font-family: \'IBM Plex Mono\', monospace;">' +
+    '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+    '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Mean</div>' +
+    '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + mean.toFixed(4) + '</div>' +
+    '</div>' +
+    '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+    '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Variance</div>' +
+    '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + variance.toFixed(4) + '</div>' +
+    '</div>' +
+    '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+    '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Std Dev</div>' +
+    '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + stddev.toFixed(4) + '</div>' +
+    '</div>' +
+    '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+    '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Median</div>' +
+    '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + median.toFixed(4) + '</div>' +
+    '</div>' +
+    '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+    '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Mode</div>' +
+    '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + modeVal.toFixed(4) + '</div>' +
+    '</div>' +
+    '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+    '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Skewness</div>' +
+    '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + skewness.toFixed(4) + '</div>' +
+    '</div>' +
+    '<div style="background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">' +
+    '<div style="font-size: 0.8rem; color: #6b21a8; text-transform: uppercase; letter-spacing: 0.05em;">Ex. Kurtosis</div>' +
+    '<div style="font-size: 1.4rem; font-weight: 800; color: #5b21b6;">' + kurtosis.toFixed(4) + '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
 
   // ── Step 4: Probability Calculation at x ──
   if (mode === 'pdf') {
     html += '<div class="step-card" style="border-left-color: #059669;">' +
       '<div class="step-header">' +
-        '<div class="step-number">' + (stepCount++) + '</div>' +
-        '<div class="step-title">PDF Evaluation at x = ' + xVal + '</div>' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">PDF Evaluation at x = ' + xVal + '</div>' +
       '</div>' +
       '<div class="step-desc">' +
-        '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
-          '<span style="color: #059669; font-weight: 700; font-size: 1.2rem;">f(' + xVal + ') = ' + pdfAtX.toFixed(6) + '</span>' +
-        '</div>' +
+      '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+      '<span style="color: #059669; font-weight: 700; font-size: 1.2rem;">f(' + xVal + ') = ' + pdfAtX.toFixed(6) + '</span>' +
       '</div>' +
-    '</div>';
+      '</div>' +
+      '</div>';
   } else if (mode === 'lte') {
     html += '<div class="step-card" style="border-left-color: #059669;">' +
       '<div class="step-header">' +
-        '<div class="step-number">' + (stepCount++) + '</div>' +
-        '<div class="step-title">CDF: P(X ≤ ' + xVal + ')</div>' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">CDF: P(X ≤ ' + xVal + ')</div>' +
       '</div>' +
       '<div class="step-desc">' +
-        '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
-          'F(x) = 1 − e<sup>−λx</sup><br>' +
-          '<span style="color: #059669; font-weight: 700; font-size: 1.2rem;">P(X ≤ ' + xVal + ') = ' + cdfAtX.toFixed(6) + '</span>' +
-        '</div>' +
+      '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+      'F(x) = 1 − e<sup>−λx</sup><br>' +
+      '<span style="color: #059669; font-weight: 700; font-size: 1.2rem;">P(X ≤ ' + xVal + ') = ' + cdfAtX.toFixed(6) + '</span>' +
       '</div>' +
-    '</div>';
+      '</div>' +
+      '</div>';
   } else if (mode === 'gte') {
     const survAtX = 1 - cdfAtX;
     html += '<div class="step-card" style="border-left-color: #059669;">' +
       '<div class="step-header">' +
-        '<div class="step-number">' + (stepCount++) + '</div>' +
-        '<div class="step-title">Survival: P(X ≥ ' + xVal + ')</div>' +
+      '<div class="step-number">' + (stepCount++) + '</div>' +
+      '<div class="step-title">Survival: P(X ≥ ' + xVal + ')</div>' +
       '</div>' +
       '<div class="step-desc">' +
-        '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
-          'P(X ≥ ' + xVal + ') = 1 − P(X ≤ ' + xVal + ')<br>' +
-          'P(X ≥ ' + xVal + ') = e<sup>−λx</sup><br>' +
-          '<span style="color: #059669; font-weight: 700; font-size: 1.2rem;">P(X ≥ ' + xVal + ') = ' + survAtX.toFixed(6) + '</span>' +
-        '</div>' +
+      '<div style="font-family: \'IBM Plex Mono\', monospace; color: var(--text); line-height: 2; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;">' +
+      'P(X ≥ ' + xVal + ') = 1 − P(X ≤ ' + xVal + ')<br>' +
+      'P(X ≥ ' + xVal + ') = e<sup>−λx</sup><br>' +
+      '<span style="color: #059669; font-weight: 700; font-size: 1.2rem;">P(X ≥ ' + xVal + ') = ' + survAtX.toFixed(6) + '</span>' +
       '</div>' +
-    '</div>';
+      '</div>' +
+      '</div>';
   }
 
   // ── Step 5: PDF Table ──
@@ -18806,155 +18806,155 @@ function calculateExponential() {
     const cVal = exponentialCDF(xi, lambda);
     const isHighlight = xi === modeVal;
     tableRows += '<tr style="' + (isHighlight ? 'background: rgba(217,119,6,0.08); font-weight: 600;' : '') + '">' +
-        '<td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: \'IBM Plex Mono\', monospace;">' + xi + '</td>' +
-        '<td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: \'IBM Plex Mono\', monospace;">' + pVal.toFixed(6) + '</td>' +
-        '<td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: \'IBM Plex Mono\', monospace;">' + cVal.toFixed(6) + '</td>' +
+      '<td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: \'IBM Plex Mono\', monospace;">' + xi + '</td>' +
+      '<td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: \'IBM Plex Mono\', monospace;">' + pVal.toFixed(6) + '</td>' +
+      '<td style="padding: 0.5rem 1rem; text-align: center; border-bottom: 1px solid var(--border); font-family: \'IBM Plex Mono\', monospace;">' + cVal.toFixed(6) + '</td>' +
       '</tr>';
   }
 
   html += '<div class="step-card" style="border-left-color: #2563eb;">' +
     '<div class="step-header">' +
-      '<div class="step-number">' + (stepCount++) + '</div>' +
-      '<div class="step-title">PDF & CDF Values Table (x = 0 to 20)</div>' +
+    '<div class="step-number">' + (stepCount++) + '</div>' +
+    '<div class="step-title">PDF & CDF Values Table (x = 0 to 20)</div>' +
     '</div>' +
     '<div class="step-desc">' +
-      '<p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; text-align: center;">' +
-        'Values are generated with interval 1. PDF gives the density f(x) = λe<sup>-λx</sup>, CDF gives F(x) = 1 − e<sup>-λx</sup>.' +
-      '</p>' +
-      '<div style="overflow-x: auto; border-radius: 12px; border: 1px solid var(--border);">' +
-        '<table style="width: 100%; border-collapse: collapse; font-family: \'Figtree\', sans-serif;">' +
-          '<thead>' +
-            '<tr style="background: var(--navy); color: white;">' +
-              '<th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">x</th>' +
-              '<th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">f(x) — PDF</th>' +
-              '<th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">F(x) — CDF</th>' +
-            '</tr>' +
-          '</thead>' +
-          '<tbody>' +
-            tableRows +
-          '</tbody>' +
-        '</table>' +
-      '</div>' +
+    '<p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; text-align: center;">' +
+    'Values are generated with interval 1. PDF gives the density f(x) = λe<sup>-λx</sup>, CDF gives F(x) = 1 − e<sup>-λx</sup>.' +
+    '</p>' +
+    '<div style="overflow-x: auto; border-radius: 12px; border: 1px solid var(--border);">' +
+    '<table style="width: 100%; border-collapse: collapse; font-family: \'Figtree\', sans-serif;">' +
+    '<thead>' +
+    '<tr style="background: var(--navy); color: white;">' +
+    '<th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">x</th>' +
+    '<th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">f(x) — PDF</th>' +
+    '<th style="padding: 0.75rem 1rem; text-align: center; font-weight: 700;">F(x) — CDF</th>' +
+    '</tr>' +
+    '</thead>' +
+    '<tbody>' +
+    tableRows +
+    '</tbody>' +
+    '</table>' +
     '</div>' +
-  '</div>';
+    '</div>' +
+    '</div>';
 
   // ── Step 6: Interactive Graph ──
   const graphId = 'exponential-dist-graph-' + Date.now();
   html += '<div class="step-card" style="border-left-color: #ec4899;">' +
     '<div class="step-header">' +
-      '<div class="step-number">' + (stepCount++) + '</div>' +
-      '<div class="step-title">Exponential Distribution PDF & CDF Graph</div>' +
+    '<div class="step-number">' + (stepCount++) + '</div>' +
+    '<div class="step-title">Exponential Distribution PDF & CDF Graph</div>' +
     '</div>' +
     '<div class="step-desc">' +
-      '<div id="' + graphId + '" style="width:100%; height: 480px; border-radius: 12px; overflow: hidden;"></div>' +
+    '<div id="' + graphId + '" style="width:100%; height: 480px; border-radius: 12px; overflow: hidden;"></div>' +
     '</div>' +
-  '</div>';
+    '</div>';
 
   // ── Step 7: Graph Shape Analysis ──
   html += '<div class="step-card" style="border-left-color: #f59e0b;">' +
     '<div class="step-header">' +
-      '<div class="step-number">' + (stepCount++) + '</div>' +
-      '<div class="step-title">Graph Shape Analysis</div>' +
+    '<div class="step-number">' + (stepCount++) + '</div>' +
+    '<div class="step-title">Graph Shape Analysis</div>' +
     '</div>' +
     '<div class="step-desc">' +
-      '<div style="display: flex; flex-direction: column; gap: 1.25rem;">' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">' +
-          '<div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #fde68a, #fbbf24); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📍</div>' +
-          '<div>' +
-            '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why the graph starts at maximum value?</div>' +
-            '<div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">' +
-              'At x = 0, e<sup>-λ(0)</sup> = 1. Therefore, f(0) = λ. The highest likelihood is always at zero because there is a high probability that the event will happen sooner rather than later.' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">' +
-          '<div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #bbf7d0, #4ade80); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📉</div>' +
-          '<div>' +
-            '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why it continuously decreases (Exponential Decay)?</div>' +
-            '<div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">' +
-              'The term e<sup>-λx</sup> mathematically forces a continuous monotonic decay. As x (waiting time) increases, the probability density exponentially decays towards 0. Long waiting times become increasingly unlikely.' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">' +
-          '<div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #bfdbfe, #60a5fa); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">⛰️</div>' +
-          '<div>' +
-            '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why there is no peak after x = 0?</div>' +
-            '<div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">' +
-              'Unlike the Normal or Beta distributions, the Exponential Distribution has a strictly monotonically decreasing PDF for λ > 0. It never rises, meaning the mode is always precisely at 0.' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
+    '<div style="display: flex; flex-direction: column; gap: 1.25rem;">' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">' +
+    '<div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #fde68a, #fbbf24); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📍</div>' +
+    '<div>' +
+    '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why the graph starts at maximum value?</div>' +
+    '<div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">' +
+    'At x = 0, e<sup>-λ(0)</sup> = 1. Therefore, f(0) = λ. The highest likelihood is always at zero because there is a high probability that the event will happen sooner rather than later.' +
     '</div>' +
-  '</div>';
+    '</div>' +
+    '</div>' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">' +
+    '<div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #bbf7d0, #4ade80); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📉</div>' +
+    '<div>' +
+    '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why it continuously decreases (Exponential Decay)?</div>' +
+    '<div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">' +
+    'The term e<sup>-λx</sup> mathematically forces a continuous monotonic decay. As x (waiting time) increases, the probability density exponentially decays towards 0. Long waiting times become increasingly unlikely.' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '<div style="background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; display: flex; align-items: flex-start; gap: 1rem;">' +
+    '<div style="min-width: 40px; height: 40px; background: linear-gradient(135deg, #bfdbfe, #60a5fa); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">⛰️</div>' +
+    '<div>' +
+    '<div style="font-weight: 700; color: var(--navy); margin-bottom: 0.3rem;">Why there is no peak after x = 0?</div>' +
+    '<div style="color: var(--muted); line-height: 1.6; font-size: 0.95rem;">' +
+    'Unlike the Normal or Beta distributions, the Exponential Distribution has a strictly monotonically decreasing PDF for λ > 0. It never rises, meaning the mode is always precisely at 0.' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
 
   // ── Step 8: Memoryless Property ──
   html += '<div class="step-card" style="border-left-color: #ef4444;">' +
     '<div class="step-header">' +
-      '<div class="step-number">' + (stepCount++) + '</div>' +
-      '<div class="step-title">The Memoryless Property</div>' +
+    '<div class="step-number">' + (stepCount++) + '</div>' +
+    '<div class="step-title">The Memoryless Property</div>' +
     '</div>' +
     '<div class="step-desc">' +
-      '<div style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 15px rgba(239,68,68,0.1);">' +
-        '<div style="font-weight: 700; color: #991b1b; margin-bottom: 0.5rem; font-size: 1.1rem;">P(X > s + t | X > s) = P(X > t)</div>' +
-        '<div style="font-size: 0.95rem; color: #7f1d1d; line-height: 1.6; max-width: 600px; margin: 0 auto;">' +
-          'The exponential distribution is the <b>only</b> continuous distribution with the memoryless property. ' +
-          'It means the future probability of waiting time depends only on the present, not on the past elapsed time.' +
-        '</div>' +
-      '</div>' +
-      '<div style="margin-top: 1.5rem; color: var(--muted); line-height: 1.6; font-size: 0.95rem; padding: 1rem; border-left: 4px solid #f87171; background: var(--bg2);">' +
-        '<b>Example:</b> If you have already waited 10 minutes (s=10) for a bus (where waiting time is exponentially distributed), the probability of having to wait an additional 5 minutes (t=5) is exactly the same as the probability of waiting 5 minutes when you first arrived at the bus stop. The process "forgets" the time that has already passed.' +
-      '</div>' +
+    '<div style="background: linear-gradient(135deg, #fef2f2, #fee2e2); border-radius: 16px; padding: 1.5rem; text-align: center; box-shadow: 0 4px 15px rgba(239,68,68,0.1);">' +
+    '<div style="font-weight: 700; color: #991b1b; margin-bottom: 0.5rem; font-size: 1.1rem;">P(X > s + t | X > s) = P(X > t)</div>' +
+    '<div style="font-size: 0.95rem; color: #7f1d1d; line-height: 1.6; max-width: 600px; margin: 0 auto;">' +
+    'The exponential distribution is the <b>only</b> continuous distribution with the memoryless property. ' +
+    'It means the future probability of waiting time depends only on the present, not on the past elapsed time.' +
     '</div>' +
-  '</div>';
+    '</div>' +
+    '<div style="margin-top: 1.5rem; color: var(--muted); line-height: 1.6; font-size: 0.95rem; padding: 1rem; border-left: 4px solid #f87171; background: var(--bg2);">' +
+    '<b>Example:</b> If you have already waited 10 minutes (s=10) for a bus (where waiting time is exponentially distributed), the probability of having to wait an additional 5 minutes (t=5) is exactly the same as the probability of waiting 5 minutes when you first arrived at the bus stop. The process "forgets" the time that has already passed.' +
+    '</div>' +
+    '</div>' +
+    '</div>';
 
   // ── Step 9: Real-Life Applications ──
   html += '<div class="step-card" style="border-left-color: #8b5cf6;">' +
     '<div class="step-header">' +
-      '<div class="step-number">' + (stepCount++) + '</div>' +
-      '<div class="step-title">Real-Life Applications</div>' +
+    '<div class="step-number">' + (stepCount++) + '</div>' +
+    '<div class="step-title">Real-Life Applications</div>' +
     '</div>' +
     '<div class="step-desc">' +
-      '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem;">' +
-        '<div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(217,119,6,0.1);">' +
-          '<div style="font-weight: 700; color: #92400e; margin-bottom: 0.5rem;">Queueing Theory</div>' +
-          '<div style="font-size: 0.85rem; color: #78350f; line-height: 1.5;">Waiting time for phone calls, customer arrivals at a bank or store, and network packet arrivals.</div>' +
-        '</div>' +
-        '<div style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(5,150,105,0.1);">' +
-          '<div style="font-weight: 700; color: #065f46; margin-bottom: 0.5rem;">Reliability Engineering</div>' +
-          '<div style="font-size: 0.85rem; color: #064e3b; line-height: 1.5;">Time until failure for electronic components or mechanical parts (assuming a constant failure rate).</div>' +
-        '</div>' +
-        '<div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(37,99,235,0.1);">' +
-          '<div style="font-weight: 700; color: #1e40af; margin-bottom: 0.5rem;">Survival Analysis</div>' +
-          '<div style="font-size: 0.85rem; color: #1e3a5f; line-height: 1.5;">Modeling survival times and evaluating risk over time without considering age-related degradation.</div>' +
-        '</div>' +
-        '<div style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(139,92,246,0.1);">' +
-          '<div style="font-weight: 700; color: #5b21b6; margin-bottom: 0.5rem;">Machine Learning</div>' +
-          '<div style="font-size: 0.85rem; color: #4c1d95; line-height: 1.5;">Utilized in deep learning initialization schemes and as a prior distribution in Bayesian probabilistic networks.</div>' +
-        '</div>' +
-      '</div>' +
+    '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem;">' +
+    '<div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(217,119,6,0.1);">' +
+    '<div style="font-weight: 700; color: #92400e; margin-bottom: 0.5rem;">Queueing Theory</div>' +
+    '<div style="font-size: 0.85rem; color: #78350f; line-height: 1.5;">Waiting time for phone calls, customer arrivals at a bank or store, and network packet arrivals.</div>' +
     '</div>' +
-  '</div>';
+    '<div style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(5,150,105,0.1);">' +
+    '<div style="font-weight: 700; color: #065f46; margin-bottom: 0.5rem;">Reliability Engineering</div>' +
+    '<div style="font-size: 0.85rem; color: #064e3b; line-height: 1.5;">Time until failure for electronic components or mechanical parts (assuming a constant failure rate).</div>' +
+    '</div>' +
+    '<div style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(37,99,235,0.1);">' +
+    '<div style="font-weight: 700; color: #1e40af; margin-bottom: 0.5rem;">Survival Analysis</div>' +
+    '<div style="font-size: 0.85rem; color: #1e3a5f; line-height: 1.5;">Modeling survival times and evaluating risk over time without considering age-related degradation.</div>' +
+    '</div>' +
+    '<div style="background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-radius: 14px; padding: 1.5rem; text-align: center; box-shadow: 0 3px 10px rgba(139,92,246,0.1);">' +
+    '<div style="font-weight: 700; color: #5b21b6; margin-bottom: 0.5rem;">Machine Learning</div>' +
+    '<div style="font-size: 0.85rem; color: #4c1d95; line-height: 1.5;">Utilized in deep learning initialization schemes and as a prior distribution in Bayesian probabilistic networks.</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '</div>';
 
   // ── Step 10: Conclusion ──
   html += '<div class="step-card" style="border-left-color: #0891b2; background: linear-gradient(135deg, var(--white), #f0f9ff);">' +
     '<div class="step-header">' +
-      '<div class="step-number">' + (stepCount++) + '</div>' +
-      '<div class="step-title">Conclusion</div>' +
+    '<div class="step-number">' + (stepCount++) + '</div>' +
+    '<div class="step-title">Conclusion</div>' +
     '</div>' +
     '<div class="step-desc" style="text-align: center;">' +
-      '<div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 16px; padding: 2rem; margin: 1rem auto; max-width: 700px; box-shadow: 0 4px 15px rgba(5,150,105,0.1);">' +
-        '<div style="font-size: 1.5rem; margin-bottom: 1rem;">✅</div>' +
-        '<p style="font-size: 1.05rem; color: #065f46; line-height: 1.8; font-weight: 500;">' +
-          'The <strong>Exponential Distribution</strong> vividly displays waiting time characteristics. The rate parameter λ = ' + lambda + ' determines the speed of decay.' +
-        '</p>' +
-        '<p style="font-size: 0.95rem; color: #047857; line-height: 1.6; margin-top: 1rem;">' +
-          'With λ = ' + lambda + ', the expected waiting time is 1/λ = ' + mean.toFixed(4) + '. A higher λ causes the PDF to spike higher at 0 and drop down faster, whereas a smaller λ flattens the curve, stretching probabilities into the long tail.' +
-        '</p>' +
-      '</div>' +
+    '<div style="background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-radius: 16px; padding: 2rem; margin: 1rem auto; max-width: 700px; box-shadow: 0 4px 15px rgba(5,150,105,0.1);">' +
+    '<div style="font-size: 1.5rem; margin-bottom: 1rem;">✅</div>' +
+    '<p style="font-size: 1.05rem; color: #065f46; line-height: 1.8; font-weight: 500;">' +
+    'The <strong>Exponential Distribution</strong> vividly displays waiting time characteristics. The rate parameter λ = ' + lambda + ' determines the speed of decay.' +
+    '</p>' +
+    '<p style="font-size: 0.95rem; color: #047857; line-height: 1.6; margin-top: 1rem;">' +
+    'With λ = ' + lambda + ', the expected waiting time is 1/λ = ' + mean.toFixed(4) + '. A higher λ causes the PDF to spike higher at 0 and drop down faster, whereas a smaller λ flattens the curve, stretching probabilities into the long tail.' +
+    '</p>' +
     '</div>' +
-  '</div>';
+    '</div>' +
+    '</div>';
 
   output.innerHTML = html;
 
@@ -18970,7 +18970,7 @@ function calculateExponential() {
     // Max X for graphing: ideally around 5/lambda
     let maxX = Math.max(20, Math.ceil(5 / lambda));
     let pts = 400;
-    
+
     for (let i = 0; i <= pts; i++) {
       const xi = (i / pts) * maxX;
       xArr.push(xi);
@@ -19242,7 +19242,7 @@ function calculateGeometric() {
       <div class="step-title">Bernoulli Trials Visualization</div>
     </div>
     <div class="step-desc">
-      <p style="font-size: 0.95rem; color: var(--muted); margin-bottom: 1rem;">This visualizes the sequence of trials. Red represents failure (q = ${(1-pVal).toFixed(2)}), green represents the first success (p = ${pVal}) stopping the sequence at x = ${x1}.</p>
+      <p style="font-size: 0.95rem; color: var(--muted); margin-bottom: 1rem;">This visualizes the sequence of trials. Red represents failure (q = ${(1 - pVal).toFixed(2)}), green represents the first success (p = ${pVal}) stopping the sequence at x = ${x1}.</p>
       <div id="${simId}" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 1.5rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; min-height: 100px;">
         <!-- Filled via JS -->
       </div>
@@ -19341,7 +19341,7 @@ function calculateGeometric() {
 
     const layout = {
       title: { text: `Geometric Distribution — p = ${pVal}`, font: { family: 'Fraunces, serif', size: 20, color: '#1e293b' } },
-      xaxis: { title: 'x (Number of Trials)', tickmode: 'linear', dtick: Math.ceil(xMax/20) },
+      xaxis: { title: 'x (Number of Trials)', tickmode: 'linear', dtick: Math.ceil(xMax / 20) },
       yaxis: { title: 'Probability Mass P(X=x)', rangemode: 'tozero' },
       yaxis2: {
         title: 'Cumulative Probability F(x)',
@@ -19362,25 +19362,25 @@ function calculateGeometric() {
   setTimeout(() => {
     const simDiv = document.getElementById(simId);
     if (!simDiv) return;
-    
+
     let boxes = '';
     const numTrials = Math.min(x1, 100); // cap to prevent DOM freezing
-    
+
     for (let i = 1; i <= numTrials; i++) {
       const isSuccess = (i === x1);
       const color = isSuccess ? '#10b981' : '#ef4444'; // green or red
       const label = isSuccess ? 'S' : 'F';
-      
+
       boxes += `
       <div style="width: 40px; height: 40px; background: ${color}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 6px; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2), 0 4px 6px rgba(0,0,0,0.1); font-family: 'IBM Plex Mono', monospace; transform: perspective(200px) rotateX(10deg); transition: transform 0.2s ease;" onmouseover="this.style.transform='perspective(200px) rotateX(0deg) scale(1.1)'" onmouseout="this.style.transform='perspective(200px) rotateX(10deg) scale(1)'">
         ${label}
       </div>`;
     }
-    
+
     if (x1 > 100) {
       boxes += `<div style="padding: 0.5rem; color: var(--muted); font-weight: 600;">... (${x1 - 100} more failures)</div>`;
     }
-    
+
     simDiv.innerHTML = boxes;
   }, 200);
 
@@ -19388,24 +19388,24 @@ function calculateGeometric() {
 }
 
 // Geometric Exports
-window.exportGeometricCSV = function(p, x1, mode, x2) {
+window.exportGeometricCSV = function (p, x1, mode, x2) {
   let csvRows = ['x (Trials),PMF P(X=x),CDF P(X<=x),Survival P(X>x)'];
   const maxLimit = Math.max(20, Math.ceil(x1 + 4));
-  
+
   for (let i = 1; i <= maxLimit; i++) {
     const pmfVal = geometricPMF(i, p);
     const cdfVal = geometricCDF(i, p);
     const survVal = 1 - cdfVal;
     csvRows.push(`${i},${pmfVal.toFixed(6)},${cdfVal.toFixed(6)},${survVal.toFixed(6)}`);
   }
-  
+
   csvRows.push('');
   csvRows.push('Parameters');
   csvRows.push(`Success Probability (p),${p}`);
   csvRows.push(`Mode,${mode}`);
   csvRows.push(`x1,${x1}`);
   if (mode === 'between') csvRows.push(`x2,${x2}`);
-  
+
   const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -19414,29 +19414,29 @@ window.exportGeometricCSV = function(p, x1, mode, x2) {
   URL.revokeObjectURL(a.href);
 };
 
-window.exportGeometricPDF = function(p, x1, mode, x2) {
+window.exportGeometricPDF = function (p, x1, mode, x2) {
   let content = '';
   const h = 842; let y = 50;
-  
+
   content += `BT /F1 20 Tf 50 ${h - y} Td (Geometric Distribution Report) Tj ET\n`; y += 30;
   content += `BT /F1 11 Tf 50 ${h - y} Td (Generated by VMath Calculator) Tj ET\n`; y += 30;
   content += `50 ${h - y} m 545 ${h - y} l S\n`; y += 20;
-  
+
   content += `BT /F1 14 Tf 50 ${h - y} Td (Parameters) Tj ET\n`; y += 22;
   content += `BT /F1 11 Tf 50 ${h - y} Td (Success Prob p = ${p}, Mode = ${mode}, Target x = ${x1}) Tj ET\n`; y += 30;
-  
+
   content += `BT /F1 14 Tf 50 ${h - y} Td (Distribution Points) Tj ET\n`; y += 22;
   content += `BT /F1 10 Tf 50 ${h - y} Td (x) Tj 150 ${h - y} Td (PMF) Tj 250 ${h - y} Td (CDF) Tj 350 ${h - y} Td (Survival) Tj ET\n`; y += 5;
   content += `50 ${h - y} m 480 ${h - y} l S\n`; y += 15;
-  
+
   const maxLimit = Math.max(20, Math.ceil(x1 + 4));
   for (let i = 1; i <= maxLimit; i++) {
     const pmfVal = geometricPMF(i, p);
     const cdfVal = geometricCDF(i, p);
-    content += `BT /F1 10 Tf 50 ${h - y} Td (${i}) Tj 150 ${h - y} Td (${pmfVal.toFixed(6)}) Tj 250 ${h - y} Td (${cdfVal.toFixed(6)}) Tj 350 ${h - y} Td (${(1-cdfVal).toFixed(6)}) Tj ET\n`;
+    content += `BT /F1 10 Tf 50 ${h - y} Td (${i}) Tj 150 ${h - y} Td (${pmfVal.toFixed(6)}) Tj 250 ${h - y} Td (${cdfVal.toFixed(6)}) Tj 350 ${h - y} Td (${(1 - cdfVal).toFixed(6)}) Tj ET\n`;
     y += 16;
   }
-  
+
   let pdf = '%PDF-1.4\n';
   let offsets = [];
   offsets.push(pdf.length); pdf += '1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n';
@@ -19444,12 +19444,12 @@ window.exportGeometricPDF = function(p, x1, mode, x2) {
   offsets.push(pdf.length); pdf += `3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj\n`;
   offsets.push(pdf.length); pdf += `4 0 obj << /Length ${content.length} >> stream\n${content}endstream endobj\n`;
   offsets.push(pdf.length); pdf += '5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj\n';
-  
+
   let xrefOff = pdf.length;
   pdf += `xref\n0 ${offsets.length + 1}\n0000000000 65535 f \n`;
   offsets.forEach(off => { pdf += off.toString().padStart(10, '0') + ' 00000 n \n'; });
   pdf += `trailer << /Size ${offsets.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOff}\n%%EOF`;
-  
+
   const blob = new Blob([pdf], { type: 'application/pdf' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
