@@ -1647,7 +1647,8 @@ html[data-theme="dark"] .moon-icon {
 /* Search & Theme Toggle Responsiveness */
 @media (max-width: 768px) {
   #nav-logo-name {
-    display: none;
+    display: block;
+    font-size: 1.1rem;
   }
   #nav-search-container {
     max-width: 180px;

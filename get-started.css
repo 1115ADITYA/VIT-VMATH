@@ -461,21 +461,40 @@
     /* Tablet and laptop landscape adjustments (< 1024px) */
     @media (max-width: 1023px) {
       body {
-        height: auto !important;
-        overflow-y: auto !important;
+        height: 100vh !important;
+        overflow: hidden !important;
       }
       .workspace {
-        flex-direction: column !important;
-        overflow-y: auto !important;
-        height: auto !important;
+        flex-direction: row !important;
+        overflow: hidden !important;
+        position: relative !important;
+        height: calc(100vh - var(--nav-h)) !important;
       }
       .sidebar {
-        width: 100% !important;
-        height: auto !important;
-        border-right: none !important;
-        border-bottom: 1px solid var(--border) !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        height: 100% !important;
+        width: 280px !important;
+        max-width: 85vw !important;
+        z-index: 100 !important;
+        background: var(--white) !important;
+        border-right: 1px solid var(--border) !important;
+        border-bottom: none !important;
         flex-shrink: 0 !important;
         padding: 1.25rem !important;
+        transform: translateX(0) !important;
+        transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      
+      .sidebar.mobile-collapsed {
+        transform: translateX(-100%) !important;
+      }
+      
+      /* Mobile Menu button */
+      #mobile-menu-btn {
+        display: flex !important;
       }
       .calc-list {
         display: grid !important;
@@ -487,8 +506,14 @@
       }
       .main-area {
         width: 100% !important;
+        height: 100% !important;
         padding: 1.5rem 1rem !important;
-        overflow-y: visible !important;
+        overflow-y: auto !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
       }
       .overview-grid {
         grid-template-columns: repeat(2, 1fr) !important;

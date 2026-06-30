@@ -7,6 +7,21 @@ function formatCurrency(value) {
   }).format(value);
 }
 
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('sidebar-content');
+  const overlay = document.getElementById('mobile-sidebar-overlay');
+  if (sidebar) {
+    sidebar.classList.toggle('mobile-collapsed');
+    if (overlay) {
+      if (sidebar.classList.contains('mobile-collapsed')) {
+        overlay.style.display = 'none';
+      } else {
+        overlay.style.display = 'block';
+      }
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Theme Toggle Logic
   const themeToggleBtn = document.getElementById('theme-toggle');
@@ -22,6 +37,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  // Ensure mobile sidebar is collapsed on load for mobile width, but we can manage state here if needed
+  window.addEventListener('resize', () => {
+    if (window.innerWidth >= 1024) {
+      const sidebar = document.getElementById('sidebar-content');
+      const overlay = document.getElementById('mobile-sidebar-overlay');
+      if (sidebar) sidebar.classList.remove('mobile-collapsed');
+      if (overlay) overlay.style.display = 'none';
+    }
+  });
 
   // Search Enter Key Logic
   const appSearch = document.getElementById('app-search');
@@ -636,8 +661,16 @@ function openCalc(calcId, element, fromHistory = false) {
       renderMatrixInputs();
     }
 
-    // Scroll down
-    document.querySelector('.main-area').scrollTo({ top: 0, behavior: 'smooth' });
+    // Scroll down or collapse mobile sidebar
+    if (window.innerWidth < 1024) {
+      const sidebar = document.getElementById('sidebar-content');
+      const overlay = document.getElementById('mobile-sidebar-overlay');
+      if (sidebar) sidebar.classList.add('mobile-collapsed');
+      if (overlay) overlay.style.display = 'none';
+      document.querySelector('.main-area').scrollTo({ top: 0, behavior: 'instant' });
+    } else {
+      document.querySelector('.main-area').scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   if (typeof updateURL !== 'undefined' && !fromHistory) {
