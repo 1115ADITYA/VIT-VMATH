@@ -10,11 +10,19 @@ export default async function handler(req, res) {
   }
 
   const API_KEY = process.env.API_KEY;
-  const AI_MODEL = process.env.AI_MODEL || 'google/gemma-4-31b-it:free';
+  const AI_MODEL = process.env.AI_MODEL || 'openrouter/free';
 
   if (!API_KEY) {
     return res.status(500).json({ error: 'Server misconfiguration: API_KEY missing' });
   }
+
+  // Automatic fallback array so a 429 upstream rate limit switches to the next free model seamlessly
+  const fallbackModels = Array.from(new Set([
+    AI_MODEL,
+    'openrouter/free',
+    'google/gemma-4-26b-a4b-it:free',
+    'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free'
+  ]));
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -27,6 +35,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: AI_MODEL,
+        models: fallbackModels,
         messages: messages
       })
     });

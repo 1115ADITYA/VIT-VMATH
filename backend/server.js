@@ -34,7 +34,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     const API_KEY = process.env.API_KEY;
-    const AI_MODEL = process.env.AI_MODEL || 'google/gemma-4-31b-it:free';
+    const AI_MODEL = process.env.AI_MODEL || 'openrouter/free';
 
     if (!API_KEY) {
         console.error("❌ Error: API_KEY is missing from environment variables (.env file).");
@@ -43,6 +43,14 @@ app.post('/api/chat', async (req, res) => {
             details: 'OpenRouter API_KEY is not defined in the backend environment variables (.env file).' 
         });
     }
+
+    // Fallback list of free models to prevent 429 rate limit errors
+    const fallbackModels = Array.from(new Set([
+        AI_MODEL,
+        'openrouter/free',
+        'google/gemma-4-26b-a4b-it:free',
+        'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free'
+    ]));
 
     try {
         console.log(`🤖 [AI Chat Request] Sending request to OpenRouter using model: ${AI_MODEL}`);
@@ -57,6 +65,7 @@ app.post('/api/chat', async (req, res) => {
             },
             body: JSON.stringify({
                 model: AI_MODEL,
+                models: fallbackModels,
                 messages: messages
             })
         });
