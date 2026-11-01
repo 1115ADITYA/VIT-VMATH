@@ -33,8 +33,9 @@ app.post('/api/chat', async (req, res) => {
         return res.status(400).json({ error: 'Invalid messages format. Expected an array of message objects.' });
     }
 
-    const API_KEY = process.env.API_KEY;
-    const AI_MODEL = process.env.AI_MODEL || 'openrouter/free';
+    const rawKey = process.env.API_KEY || process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY;
+    const API_KEY = rawKey ? rawKey.trim().replace(/^Bearer\s+/i, '') : '';
+    const AI_MODEL = process.env.AI_MODEL || 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
 
     if (!API_KEY) {
         console.error("❌ Error: API_KEY is missing from environment variables (.env file).");
@@ -48,7 +49,9 @@ app.post('/api/chat', async (req, res) => {
     const fallbackModels = Array.from(new Set([
         AI_MODEL,
         'openrouter/free',
-        'google/gemma-4-26b-a4b-it:free',
+        'cohere/north-mini-code:free',
+        'nvidia/nemotron-3.5-lightning:free',
+        'liquid/lfm-2.5-2.6b:free',
         'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free'
     ]));
 

@@ -9,26 +9,34 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid messages format' });
   }
 
-  const API_KEY = process.env.API_KEY;
-  const AI_MODEL = process.env.AI_MODEL || 'openrouter/free';
+  // Support multiple env variable names in case user named it OPENROUTER_API_KEY
+  const rawKey = process.env.API_KEY || process.env.OPENROUTER_API_KEY || process.env.OPEN_ROUTER_API_KEY;
+  const cleanedKey = rawKey ? rawKey.trim().replace(/^Bearer\s+/i, '') : '';
 
-  if (!API_KEY) {
-    return res.status(500).json({ error: 'Server misconfiguration: API_KEY missing' });
+  if (!cleanedKey || cleanedKey === 'undefined' || cleanedKey === 'null') {
+    return res.status(500).json({
+      error: "OpenRouter API Key missing. Please set 'API_KEY' (starts with sk-or-...) in your Vercel Environment Variables and redeploy."
+    });
   }
 
-  // Automatic fallback array so a 429 upstream rate limit switches to the next free model seamlessly
+  // 100% Non-Google Free Models
+  const AI_MODEL = process.env.AI_MODEL || 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
+
+  // Fallback array completely free of Google/Gemini models
   const fallbackModels = Array.from(new Set([
     AI_MODEL,
-    'openrouter/free',
-    'google/gemma-4-26b-a4b-it:free',
-    'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free'
+    'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+    'cohere/north-mini-code:free',
+    'nvidia/nemotron-3.5-lightning:free',
+    'liquid/lfm-2.5-2.6b:free',
+    'openrouter/free'
   ]));
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${API_KEY}`,
+        'Authorization': `Bearer ${cleanedKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': req.headers.referer || 'https://vmath.ai',
         'X-Title': 'VMath AI'
@@ -42,7 +50,12 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`API Error: ${response.status} - ${errText}`);
+      let parsedErr = errText;
+      try {
+        const json = JSON.parse(errText);
+        parsedErr = json.error?.message || errText;
+      } catch (e) {}
+      throw new Error(`API Error: ${response.status} - ${parsedErr}`);
     }
 
     const data = await response.json();
