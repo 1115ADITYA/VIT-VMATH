@@ -34,7 +34,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     const API_KEY = process.env.API_KEY;
-    const AI_MODEL = process.env.AI_MODEL || 'google/gemini-2.5-flash';
+    const AI_MODEL = process.env.AI_MODEL || 'google/gemma-4-31b-it:free';
 
     if (!API_KEY) {
         console.error("❌ Error: API_KEY is missing from environment variables (.env file).");

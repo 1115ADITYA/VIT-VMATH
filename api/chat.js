@@ -10,10 +10,10 @@ export default async function handler(req, res) {
   }
 
   const API_KEY = process.env.API_KEY;
-  const AI_MODEL = process.env.AI_MODEL;
+  const AI_MODEL = process.env.AI_MODEL || 'google/gemma-4-31b-it:free';
 
-  if (!API_KEY || !AI_MODEL) {
-    return res.status(500).json({ error: 'Server misconfiguration: API_KEY or AI_MODEL missing' });
+  if (!API_KEY) {
+    return res.status(500).json({ error: 'Server misconfiguration: API_KEY missing' });
   }
 
   try {
